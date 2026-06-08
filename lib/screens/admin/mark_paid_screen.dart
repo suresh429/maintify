@@ -6,386 +6,256 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
-import '../../models/bill_model.dart';
 import '../../widgets/shimmer_loading.dart';
-import '../../widgets/status_chip.dart';
+import 'monthly_bill_detail_screen.dart';
 
-class MarkPaidScreen extends StatefulWidget {
+class MarkPaidScreen extends StatelessWidget {
   const MarkPaidScreen({super.key});
-
-  @override
-  State<MarkPaidScreen> createState() => _MarkPaidScreenState();
-}
-
-class _MarkPaidScreenState extends State<MarkPaidScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabCtrl;
-  String _search = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _tabCtrl = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabCtrl.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final aptId = auth.currentUser?.apartmentId ?? 'apt1';
-    final theme = RoleTheme.of(UserRole.admin);
     final billProvider = context.watch<BillProvider>();
+    final theme = RoleTheme.of(UserRole.admin);
 
-    final allBills = billProvider.billsForApartment(aptId);
-    final pendingBills = allBills
-        .where((b) => billProvider.paymentsForBill(b.id).any((p) => !p.isPaid))
-        .where((b) =>
-            _search.isEmpty ||
-            b.title.toLowerCase().contains(_search.toLowerCase()))
-        .toList();
-    final fullyPaidBills = allBills
-        .where((b) {
-          final payments = billProvider.paymentsForBill(b.id);
-          return payments.isNotEmpty && payments.every((p) => p.isPaid);
-        })
-        .where((b) =>
-            _search.isEmpty ||
-            b.title.toLowerCase().contains(_search.toLowerCase()))
-        .toList();
+    if (billProvider.isLoading) return const ShimmerDashboard();
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: TextField(
-            onChanged: (v) => setState(() => _search = v),
-            decoration: InputDecoration(
-              hintText: 'Search bills...',
-              hintStyle: AppTextStyles.bodyMedium(),
-              prefixIcon: const Icon(Icons.search_rounded,
-                  color: AppColors.textSecondary),
+    final monthlySummaries = billProvider.monthlyBillsForApartment(aptId);
+
+    return monthlySummaries.isEmpty
+        ? const EmptyState(
+            title: 'No Bills Yet',
+            subtitle: 'Create a monthly bill to get started',
+            icon: Icons.receipt_long_outlined,
+          )
+        : ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            itemCount: monthlySummaries.length,
+            itemBuilder: (_, i) => _MonthlyCard(
+              summary: monthlySummaries[i],
+              theme: theme,
+              aptId: aptId,
             ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Container(
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 6,
-                ),
-              ],
-            ),
-            child: TabBar(
-              controller: _tabCtrl,
-              labelStyle: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 12,
-              ),
-              labelColor: Colors.white,
-              unselectedLabelColor: AppColors.textSecondary,
-              indicator: BoxDecoration(
-                gradient: LinearGradient(colors: theme.gradient),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              tabs: [
-                Tab(text: 'Pending (${pendingBills.length})'),
-                Tab(text: 'Paid (${fullyPaidBills.length})'),
-              ],
-            ),
-          ),
-        ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabCtrl,
-            children: [
-              _BillPaymentList(
-                bills: pendingBills,
-                billProvider: billProvider,
-                showMarkPaid: true,
-                isLoading: billProvider.isLoading,
-                emptyTitle: 'All Collected!',
-                emptySubtitle: 'No pending payments',
-                emptyIcon: Icons.check_circle_outline,
-              ),
-              _BillPaymentList(
-                bills: fullyPaidBills,
-                billProvider: billProvider,
-                showMarkPaid: false,
-                isLoading: billProvider.isLoading,
-                emptyTitle: 'No Fully Paid Bills',
-                emptySubtitle: 'Bills will appear here when all flats pay',
-                emptyIcon: Icons.receipt_outlined,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+          );
   }
 }
 
-class _BillPaymentList extends StatelessWidget {
-  final List<BillModel> bills;
-  final BillProvider billProvider;
-  final bool showMarkPaid;
-  final bool isLoading;
-  final String emptyTitle;
-  final String emptySubtitle;
-  final IconData emptyIcon;
+class _MonthlyCard extends StatelessWidget {
+  final MonthlyBillSummary summary;
+  final RoleTheme theme;
+  final String aptId;
 
-  const _BillPaymentList({
-    required this.bills,
-    required this.billProvider,
-    required this.showMarkPaid,
-    required this.isLoading,
-    required this.emptyTitle,
-    required this.emptySubtitle,
-    required this.emptyIcon,
+  const _MonthlyCard({
+    required this.summary,
+    required this.theme,
+    required this.aptId,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (bills.isEmpty) {
-      return EmptyState(
-          title: emptyTitle, subtitle: emptySubtitle, icon: emptyIcon);
+    final paidCount = summary.fullyPaidFlats;
+    final total = summary.totalFlats;
+    final progress = total == 0 ? 0.0 : paidCount / total;
+
+    Color statusColor;
+    String statusLabel;
+    switch (summary.overallStatus) {
+      case 'Paid':
+        statusColor = AppColors.green;
+        statusLabel = 'Fully Paid';
+        break;
+      case 'Partial':
+        statusColor = AppColors.pending;
+        statusLabel = 'Partial';
+        break;
+      default:
+        statusColor = AppColors.overdue;
+        statusLabel = 'Pending';
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: bills.length,
-      itemBuilder: (_, i) => _BillPaymentCard(
-        bill: bills[i],
-        billProvider: billProvider,
-        showMarkPaid: showMarkPaid,
-        isLoading: isLoading,
-      ),
-    );
-  }
-}
-
-class _BillPaymentCard extends StatelessWidget {
-  final BillModel bill;
-  final BillProvider billProvider;
-  final bool showMarkPaid;
-  final bool isLoading;
-
-  const _BillPaymentCard({
-    required this.bill,
-    required this.billProvider,
-    required this.showMarkPaid,
-    required this.isLoading,
-  });
-
-  Future<void> _markPaid(BuildContext context, BillPayment payment) async {
-    final confirm = await AppUtils.showConfirmDialog(
-      context,
-      title: 'Mark as Paid',
-      message:
-          'Mark "${bill.title}" for ${payment.unitNumber} as paid?\n\nAmount: ${AppUtils.formatCurrency(bill.perFlatShare)}',
-      confirmText: 'Mark Paid',
-      confirmColor: AppColors.green,
-    );
-    if (confirm != true) return;
-
-    final bp = context.read<BillProvider>();
-    await bp.adminMarkPaid(bill.id, payment.userId);
-    if (!context.mounted) return;
-    AppUtils.showSnackBar(context, 'Payment marked as paid!',
-        color: AppColors.green);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final payments = billProvider.paymentsForBill(bill.id);
-    final paidCount = bill.paidFlats(payments);
-    final theme = RoleTheme.of(UserRole.admin);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MonthlyBillDetailScreen(
+            summary: summary,
+            aptId: aptId,
           ),
-        ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Bill header
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  theme.primary.withOpacity(0.08),
-                  theme.primary.withOpacity(0.02),
-                ],
-              ),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(14)),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(bill.title,
-                          style: AppTextStyles.subheading(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${AppUtils.formatCurrency(bill.totalAmount)} total · ${AppUtils.formatCurrency(bill.perFlatShare)}/flat · Due ${AppUtils.formatDate(bill.dueDate)}',
-                        style: AppTextStyles.caption(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '$paidCount/${bill.totalFlats}',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.bold,
-                        color: paidCount == bill.totalFlats
-                            ? AppColors.green
-                            : theme.primary,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text('flats paid', style: AppTextStyles.caption()),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    theme.primary.withOpacity(0.07),
+                    theme.primary.withOpacity(0.01),
                   ],
                 ),
-              ],
-            ),
-          ),
-
-          // Progress bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: bill.totalFlats == 0
-                    ? 0
-                    : paidCount / bill.totalFlats,
-                backgroundColor: AppColors.lightGray,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                    paidCount == bill.totalFlats
-                        ? AppColors.green
-                        : theme.primary),
-                minHeight: 6,
-              ),
-            ),
-          ),
-
-          // Per-flat payment rows
-          ...payments.map((payment) {
-            return Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                      color: AppColors.lightGray, width: 1),
-                ),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: AppColors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
+                      color: theme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(payment.unitNumber,
-                        style: AppTextStyles.caption(color: AppColors.blue)
-                            .copyWith(fontWeight: FontWeight.w600)),
+                    child: Icon(Icons.calendar_month_rounded,
+                        color: theme.primary, size: 22),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (payment.paidDate != null)
-                          Text(
-                            'Paid on ${AppUtils.formatDate(payment.paidDate!)}',
-                            style: AppTextStyles.caption(
-                                color: AppColors.green),
-                          ),
-                        if (payment.transactionId != null)
-                          Text(
-                            payment.transactionId!,
-                            style: AppTextStyles.caption(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                        Text(summary.month,
+                            style: AppTextStyles.subheading()),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${summary.bills.length} categor${summary.bills.length == 1 ? 'y' : 'ies'} · ${AppUtils.formatCurrency(summary.totalAmount)} total',
+                          style: AppTextStyles.caption(),
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  if (!payment.isPaid && showMarkPaid)
-                    GestureDetector(
-                      onTap: isLoading ? null : () => _markPaid(context, payment),
-                      child: Container(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppColors.green, AppColors.teal],
-                          ),
+                          color: statusColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Text(
-                          'Mark Paid',
+                        child: Text(
+                          statusLabel,
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                            color: statusColor,
                           ),
                         ),
                       ),
-                    )
-                  else
-                    StatusChip(status: payment.status),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${AppUtils.formatCurrency(summary.perFlatShare)}/flat',
+                        style: AppTextStyles.caption(),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            );
-          }),
+            ),
 
-          const SizedBox(height: 4),
-        ],
+            // Progress section
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '$paidCount of $total flats paid',
+                        style: AppTextStyles.caption(),
+                      ),
+                      Text(
+                        '${(progress * 100).toInt()}%',
+                        style: AppTextStyles.caption(color: theme.primary)
+                            .copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: AppColors.lightGray,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                          paidCount == total && total > 0
+                              ? AppColors.green
+                              : theme.primary),
+                      minHeight: 8,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _StatPill(
+                        label: 'Collected',
+                        value: AppUtils.formatCurrency(
+                            paidCount * summary.perFlatShare),
+                        color: AppColors.green,
+                      ),
+                      _StatPill(
+                        label: 'Pending',
+                        value: AppUtils.formatCurrency(
+                            (total - paidCount) * summary.perFlatShare),
+                        color: AppColors.overdue,
+                      ),
+                      Row(
+                        children: [
+                          Text('View Details',
+                              style: AppTextStyles.caption(
+                                  color: theme.primary)),
+                          const SizedBox(width: 2),
+                          Icon(Icons.chevron_right_rounded,
+                              color: theme.primary, size: 16),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _StatPill(
+      {required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTextStyles.caption()),
+        Text(value,
+            style: AppTextStyles.caption(color: color)
+                .copyWith(fontWeight: FontWeight.w600)),
+      ],
     );
   }
 }

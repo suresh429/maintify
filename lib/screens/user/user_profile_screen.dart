@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/bill_provider.dart';
 import 'complaints_screen.dart';
 import 'i_paid_screen.dart';
+import '../../widgets/change_password_sheet.dart';
 
 class UserProfileScreen extends StatelessWidget {
   const UserProfileScreen({super.key});
@@ -38,8 +39,8 @@ class UserProfileScreen extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: theme.gradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
               ),
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
@@ -167,7 +168,16 @@ class UserProfileScreen extends StatelessWidget {
                         builder: (_) => const ComplaintsScreen()),
                   ),
                 ),
-                const Divider(height: 1, indent: 56),
+                const Divider(height: 1, indent: 56, color: Color(0xFFE0E0E0)),
+                // Change Password
+                _MenuTile(
+                  icon: Icons.lock_reset_rounded,
+                  label: 'Change Password',
+                  subtitle: 'Update your login password',
+                  iconColor: theme.primary,
+                  onTap: () => showChangePasswordSheet(context),
+                ),
+                const Divider(height: 1, indent: 56,color: Color(0xFFE0E0E0),),
                 // Role badge
                 _MenuTile(
                   icon: Icons.verified_outlined,
@@ -177,7 +187,7 @@ class UserProfileScreen extends StatelessWidget {
                   trailing: null,
                   onTap: null,
                 ),
-                const Divider(height: 1, indent: 56),
+                const Divider(height: 1, indent: 56,color: Color(0xFFE0E0E0),),
                 // Phone
                 _MenuTile(
                   icon: Icons.phone_outlined,
@@ -186,7 +196,7 @@ class UserProfileScreen extends StatelessWidget {
                   iconColor: AppColors.textSecondary,
                   onTap: null,
                 ),
-                const Divider(height: 1, indent: 56),
+                const Divider(height: 1, indent: 56,color: Color(0xFFE0E0E0),),
                 // Logout
                 _MenuTile(
                   icon: Icons.logout_rounded,

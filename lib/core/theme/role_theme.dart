@@ -24,8 +24,8 @@ class RoleTheme {
     switch (role) {
       case UserRole.superAdmin:
         return const RoleTheme(
-          primary: AppColors.purple,
-          secondary: AppColors.blue,
+          primary: Color(0xFF6D28D9), // Violet 700 — matches gradient dark end
+          secondary: Color(0xFFA78BFA), // Violet 400 — matches gradient light end
           gradient: AppColors.superAdminGradient,
           lightBackground: Color(0xFFF5F3FF),
           label: 'Super Admin',
@@ -33,8 +33,8 @@ class RoleTheme {
         );
       case UserRole.admin:
         return const RoleTheme(
-          primary: AppColors.blue,
-          secondary: AppColors.teal,
+          primary: Color(0xFF1E3A8A), // Blue 900 — matches gradient dark end
+          secondary: Color(0xFF3B82F6), // Blue 500 — matches gradient light end
           gradient: AppColors.adminGradient,
           lightBackground: Color(0xFFEFF6FF),
           label: 'Admin',
@@ -42,8 +42,8 @@ class RoleTheme {
         );
       case UserRole.user:
         return const RoleTheme(
-          primary: AppColors.green,
-          secondary: AppColors.teal,
+          primary: Color(0xFF2A2D3E), // Green 600 — matches gradient dark end
+          secondary: Color(0xFFFECB6E), // Green 400 — matches gradient light end
           gradient: AppColors.userGradient,
           lightBackground: Color(0xFFF0FDF4),
           label: 'Resident',

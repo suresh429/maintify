@@ -40,8 +40,8 @@ class ComplaintsScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: theme.gradient,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
                 ),
               ),
             ),
@@ -122,7 +122,7 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
     if (!mounted) return;
     Navigator.pop(context);
     AppUtils.showSnackBar(context, 'Complaint raised successfully!',
-        color: AppColors.green);
+        color: AppColors.paid);
   }
 
   @override
@@ -152,12 +152,12 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
                           horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                         color: selected
-                            ? AppColors.green.withOpacity(0.12)
+                            ? AppColors.paid.withOpacity(0.12)
                             : AppColors.lightGray,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: selected
-                              ? AppColors.green
+                              ? AppColors.paid
                               : Colors.grey.shade300,
                           width: 1.5,
                         ),
@@ -171,7 +171,7 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
                               ? FontWeight.w600
                               : FontWeight.w400,
                           color: selected
-                              ? AppColors.green
+                              ? AppColors.paid
                               : AppColors.textSecondary,
                         ),
                       ),
@@ -387,7 +387,7 @@ class _EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.inbox_outlined,
-                size: 64, color: AppColors.green.withOpacity(0.4)),
+                size: 64, color: AppColors.paid.withOpacity(0.4)),
             const SizedBox(height: 16),
             Text('No Complaints',
                 style:

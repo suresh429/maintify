@@ -79,8 +79,8 @@ class _ApartmentsScreenState extends State<ApartmentsScreen> {
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: AppColors.superAdminGradient,
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
                     ),
                     borderRadius: BorderRadius.circular(10),
                   ),

@@ -8,13 +8,16 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../models/apartment_model.dart';
+import '../../models/bill_model.dart';
 import '../../models/user_model.dart';
-import '../../widgets/bill_card.dart';
 import '../../widgets/shimmer_loading.dart';
 import '../../widgets/apartment_header.dart';
 import 'bills_screen.dart';
 import 'payment_history_screen.dart';
 import 'user_profile_screen.dart';
+import 'monthly_bill_detail_screen.dart';
+import '../../providers/notification_provider.dart';
+import '../shared/notifications_screen.dart';
 
 class UserDashboard extends StatefulWidget {
   const UserDashboard({super.key});
@@ -80,6 +83,9 @@ class _UserDashboardState extends State<UserDashboard> {
   }
 
   PreferredSizeWidget _buildAppBar(RoleTheme theme) {
+    final unread = context
+        .watch<NotificationProvider>()
+        .unreadCount(UserRole.user);
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -88,17 +94,55 @@ class _UserDashboardState extends State<UserDashboard> {
         style: AppTextStyles.heading3(color: Colors.white),
       ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-          onPressed: () {},
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined,
+                    color: Colors.white),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const NotificationsScreen()),
+                ),
+              ),
+              if (unread > 0)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      color: AppColors.overdue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        unread > 9 ? '9+' : '$unread',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ],
       flexibleSpace: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: theme.gradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
           ),
         ),
       ),
@@ -135,7 +179,7 @@ class _UserDashboardState extends State<UserDashboard> {
                 child: _NavTile(
                   item: item,
                   isActive: isActive,
-                  activeColor: theme.primary,
+                  activeColor: theme.secondary,
                   isFirst: i == 0,
                   isLast: i == _navItems.length - 1,
                 ),
@@ -165,8 +209,17 @@ class _UserHome extends StatelessWidget {
 
     if (dashboard.isLoading) return const ShimmerDashboard();
 
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? 'Good morning,'
+        : hour < 17
+            ? 'Good afternoon,'
+            : 'Good evening,';
+
     final allViews = billProvider.userBillViews(userId);
-    final pendingViews = allViews.where((v) => !v.payment.isPaid).toList();
+    final allMonthlySummaries = billProvider.userMonthlySummaries(userId);
+    final pendingMonths =
+        allMonthlySummaries.where((s) => !s.isFullyPaid).toList();
     final overdueViews = allViews.where((v) => v.payment.isOverdue).toList();
     final totalDue = billProvider.totalDueForUser(userId);
     final totalPaid = billProvider.totalPaidForUser(userId);
@@ -195,8 +248,8 @@ class _UserHome extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: theme.gradient,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
@@ -216,11 +269,12 @@ class _UserHome extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Hello,',
+                            Text(greeting,
                                 style: AppTextStyles.bodySmall(
                                     color: Colors.white.withOpacity(0.8))),
                             Text(
-                              user?.name.split(' ').first ?? 'Resident',
+                              AppUtils.displayFirstName(
+                                  user?.name ?? 'Resident'),
                               style:
                                   AppTextStyles.heading2(color: Colors.white),
                             ),
@@ -231,7 +285,7 @@ class _UserHome extends StatelessWidget {
                                     color: Colors.white70, size: 14),
                                 const SizedBox(width: 4),
                                 Text(
-                                  'Unit ${user?.unit ?? 'A-101'}',
+                                  'Unit ${user?.unit ?? '101'}',
                                   style: AppTextStyles.bodySmall(
                                       color: Colors.white.withOpacity(0.85)),
                                 ),
@@ -289,7 +343,7 @@ class _UserHome extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${pendingViews.length} bill${pendingViews.length != 1 ? 's' : ''} pending',
+                                '${pendingMonths.length} month${pendingMonths.length != 1 ? 's' : ''} pending',
                                 style: AppTextStyles.caption(
                                     color: Colors.white.withOpacity(0.7)),
                               ),
@@ -355,7 +409,7 @@ class _UserHome extends StatelessWidget {
                 Expanded(
                   child: _QuickStat(
                     label: 'Pending',
-                    value: '${pendingViews.length}',
+                    value: '${pendingMonths.length}',
                     color: AppColors.pending,
                     icon: Icons.schedule_outlined,
                   ),
@@ -365,8 +419,8 @@ class _UserHome extends StatelessWidget {
                   child: _QuickStat(
                     label: 'Paid',
                     value:
-                        '${allViews.where((v) => v.payment.isPaid).length}',
-                    color: AppColors.green,
+                        '${allMonthlySummaries.where((s) => s.isFullyPaid).length}',
+                    color: AppColors.paid,
                     icon: Icons.check_circle_outline,
                   ),
                 ),
@@ -384,30 +438,34 @@ class _UserHome extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            if (pendingViews.isNotEmpty) ...[
-              Text('Pending Bills', style: AppTextStyles.heading3()),
+            if (pendingMonths.isNotEmpty) ...[
+              Text('Pending Months', style: AppTextStyles.heading3()),
               const SizedBox(height: 14),
-              ...pendingViews.take(3).map((v) => BillCard(view: v)),
+              ...pendingMonths.take(3).map((s) => _PendingMonthCard(
+                    summary: s,
+                    aptId: aptId,
+                    theme: theme,
+                  )),
             ] else
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppColors.green.withOpacity(0.08),
+                  color: AppColors.paid.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(14),
                   border:
-                      Border.all(color: AppColors.green.withOpacity(0.2)),
+                      Border.all(color: AppColors.paid.withOpacity(0.2)),
                 ),
                 child: Row(
                   children: [
                     const Icon(Icons.check_circle_rounded,
-                        color: AppColors.green, size: 32),
+                        color: AppColors.paid, size: 32),
                     const SizedBox(width: 14),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('All Clear!',
                             style: AppTextStyles.subheading(
-                                color: AppColors.green)),
+                                color: AppColors.paid)),
                         Text('No pending bills. Great job!',
                             style: AppTextStyles.bodySmall()),
                       ],
@@ -464,6 +522,109 @@ class _QuickStat extends StatelessWidget {
           const SizedBox(height: 2),
           Text(label, style: AppTextStyles.caption()),
         ],
+      ),
+    );
+  }
+}
+
+class _PendingMonthCard extends StatelessWidget {
+  final UserMonthlySummary summary;
+  final String aptId;
+  final RoleTheme theme;
+
+  const _PendingMonthCard({
+    required this.summary,
+    required this.aptId,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isOverdue = summary.status == BillStatus.overdue;
+    final statusColor = isOverdue ? AppColors.overdue : AppColors.pending;
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => UserMonthlyBillDetailScreen(
+            summary: summary,
+            aptId: aptId,
+          ),
+        ),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: statusColor.withOpacity(0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.calendar_month_outlined,
+                  color: statusColor, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(summary.month, style: AppTextStyles.subheading()),
+                  Text(
+                    AppUtils.formatCurrency(summary.totalAmount),
+                    style:
+                        AppTextStyles.caption(color: AppColors.textPrimary)
+                            .copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    'Due: ${AppUtils.formatDate(summary.dueDate)}',
+                    style: AppTextStyles.caption(color: statusColor),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    isOverdue ? 'Overdue' : 'Pending',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: statusColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text('Pay Now',
+                    style: AppTextStyles.caption(color: theme.primary)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

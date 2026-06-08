@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Maintify M logo — vector drawable.
+  Used in launch_background.xml (< API 31) and windowSplashScreenAnimatedIcon (API 31+).
+  Viewport is 108 × 108 dp (Android 12 adaptive icon standard).
+  The icon artwork sits within the 72 dp safe zone (offset 18 dp on each side).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- M shape: two towers (left & right) joined by a V-notch at the top -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="9.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M22,86 L22,22 L54,56 L86,22 L86,86" />
+
+    <!-- Gold accent bar — aligned to the M base -->
+    <path
+        android:fillColor="#FECB6E"
+        android:pathData="M22,90.5 Q22,93.5 25,93.5 L83,93.5 Q86,93.5 86,90.5 L86,87.5 Q86,84.5 83,84.5 L25,84.5 Q22,84.5 22,87.5 Z" />
+
+</vector>

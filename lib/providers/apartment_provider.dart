@@ -29,8 +29,23 @@ class ApartmentProvider extends ChangeNotifier {
   List<ApartmentModel> get withoutPresident =>
       _apartments.where((a) => !a.hasPresident).toList();
 
-  /// Simulates assigning a president to an apartment.
+  /// Returns the current presidentId for an apartment, or null.
+  String? currentPresidentId(String aptId) => findById(aptId)?.presidentId;
+
+  /// Returns true if [userId] is already a president of any apartment other than [aptId].
+  bool isPresidentElsewhere(String userId, {String? excludingAptId}) {
+    return _apartments.any((a) =>
+        a.presidentId == userId &&
+        (excludingAptId == null || a.id != excludingAptId));
+  }
+
+  /// Assigns [adminUserId] as president of [aptId].
+  /// Throws [StateError] if the user is already president of another apartment.
   Future<void> assignPresident(String aptId, String adminUserId) async {
+    if (isPresidentElsewhere(adminUserId, excludingAptId: aptId)) {
+      throw StateError('User is already president of another apartment');
+    }
+
     _isLoading = true;
     notifyListeners();
     await Future.delayed(const Duration(milliseconds: 700));
@@ -47,23 +62,28 @@ class ApartmentProvider extends ChangeNotifier {
   }
 
   /// Simulates creating a new apartment.
+  /// [id] can be pre-generated so the admin user can be linked before calling this.
+  /// [presidentId] sets the initial president on creation.
   Future<void> createApartment({
+    String? id,
     required String name,
     required String address,
     required String city,
     required int totalFlats,
     List<String> amenities = const [],
+    String? presidentId,
   }) async {
     _isLoading = true;
     notifyListeners();
     await Future.delayed(const Duration(milliseconds: 800));
 
     final newApt = ApartmentModel(
-      id: 'apt_${DateTime.now().millisecondsSinceEpoch}',
+      id: id ?? 'apt_${DateTime.now().millisecondsSinceEpoch}',
       name: name,
       address: address,
       city: city,
       totalFlats: totalFlats,
+      presidentId: presidentId,
       amenities: amenities,
       createdAt: DateTime.now(),
     );

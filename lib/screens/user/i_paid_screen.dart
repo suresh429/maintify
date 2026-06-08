@@ -39,7 +39,7 @@ class _IPaidScreenState extends State<IPaidScreen> {
       message:
           'Are you sure you want to report this as paid?\n\nThe admin will verify your payment.',
       confirmText: 'Yes, I Paid',
-      confirmColor: AppColors.green,
+      confirmColor: AppColors.paid,
     );
     if (confirm != true) return;
 
@@ -81,7 +81,7 @@ class _IPaidScreenState extends State<IPaidScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.check_circle_rounded,
-                    color: AppColors.green, size: 44),
+                    color: AppColors.paid, size: 44),
               ),
               const SizedBox(height: 18),
               Text('Payment Reported!',
@@ -96,7 +96,7 @@ class _IPaidScreenState extends State<IPaidScreen> {
               const SizedBox(height: 24),
               CommonButton(
                 text: 'Done',
-                backgroundColor: AppColors.green,
+                backgroundColor: AppColors.paid,
                 onPressed: () => Navigator.pop(ctx),
               ),
             ],
@@ -131,8 +131,8 @@ class _IPaidScreenState extends State<IPaidScreen> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: theme.gradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
             ),
           ),
         ),
@@ -148,8 +148,8 @@ class _IPaidScreenState extends State<IPaidScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: theme.gradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
               ),
               borderRadius: BorderRadius.circular(16),
             ),

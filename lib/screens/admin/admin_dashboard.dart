@@ -16,6 +16,10 @@ import 'create_bill_screen.dart';
 import 'manage_users_screen.dart';
 import 'mark_paid_screen.dart';
 import 'admin_complaints_screen.dart';
+import 'transfer_president_screen.dart';
+import '../../widgets/change_password_sheet.dart';
+import '../../providers/notification_provider.dart';
+import '../shared/notifications_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -39,9 +43,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       label: 'Users',
     ),
     _NavItem(
-      icon: Icons.check_circle_outline_rounded,
-      activeIcon: Icons.check_circle_rounded,
-      label: 'Mark Paid',
+      icon: Icons.receipt_long_outlined,
+      activeIcon: Icons.receipt_long_rounded,
+      label: 'Bills',
     ),
     _NavItem(
       icon: Icons.chat_bubble_outline_rounded,
@@ -50,7 +54,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     ),
   ];
 
-  static const _titles = ['Dashboard', 'Manage Users', 'Mark Paid', 'Complaints'];
+  static const _titles = ['Dashboard', 'Manage Users', 'Bills', 'Complaints'];
 
   late final List<Widget> _pages;
 
@@ -83,6 +87,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   PreferredSizeWidget _buildAppBar(RoleTheme theme) {
+    final unread = context
+        .watch<NotificationProvider>()
+        .unreadCount(UserRole.admin);
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -91,9 +98,52 @@ class _AdminDashboardState extends State<AdminDashboard> {
         style: AppTextStyles.heading3(color: Colors.white),
       ),
       actions: [
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined,
+                    color: Colors.white),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const NotificationsScreen()),
+                ),
+              ),
+              if (unread > 0)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      color: AppColors.overdue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        unread > 9 ? '9+' : '$unread',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
         IconButton(
-          icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-          onPressed: () {},
+          icon: const Icon(Icons.settings_outlined, color: Colors.white),
+          tooltip: 'Change Password',
+          onPressed: () => showChangePasswordSheet(context),
         ),
         IconButton(
           icon: const Icon(Icons.logout_outlined, color: Colors.white),
@@ -116,8 +166,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: theme.gradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
           ),
         ),
       ),
@@ -130,8 +180,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: theme.gradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
@@ -225,6 +275,13 @@ class _AdminHome extends StatelessWidget {
 
     if (dashboard.isLoading) return const ShimmerDashboard();
 
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? 'Good morning,'
+        : hour < 17
+            ? 'Good afternoon,'
+            : 'Good evening,';
+
     final stats = dashboard.adminStats(aptId);
     final apt = MockApartments.findById(aptId);
     final president = MockUsers.presidentFor(aptId);
@@ -252,8 +309,8 @@ class _AdminHome extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: theme.gradient,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
@@ -273,12 +330,12 @@ class _AdminHome extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Good morning,',
+                            Text(greeting,
                                 style: AppTextStyles.caption(
                                     color: Colors.white.withOpacity(0.8))),
                             Text(
-                              auth.currentUser?.name.split(' ').first ??
-                                  'Admin',
+                              AppUtils.displayFirstName(
+                                  auth.currentUser?.name ?? 'Admin'),
                               style:
                                   AppTextStyles.heading2(color: Colors.white),
                             ),
@@ -340,6 +397,60 @@ class _AdminHome extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Transfer Presidency action card
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const TransferPresidentScreen()),
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: theme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.swap_horiz_rounded,
+                          color: theme.primary, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Transfer Presidency',
+                              style: AppTextStyles.subheading()),
+                          Text(
+                              'Hand over management to another resident',
+                              style: AppTextStyles.caption()),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded,
+                        color: AppColors.textSecondary),
+                  ],
+                ),
               ),
             ),
 

@@ -5,6 +5,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_text_styles.dart';
 import '../core/constants/app_constants.dart';
 import '../core/utils/app_utils.dart';
+import '../widgets/app_text_field.dart';
 import '../widgets/common_button.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _obscurePass = true;
+  final _forgotEmailCtrl = TextEditingController();
   late AnimationController _animCtrl;
   late Animation<Offset> _slideAnim;
   late Animation<double> _fadeAnim;
@@ -66,6 +68,7 @@ class _LoginScreenState extends State<LoginScreen>
   void dispose() {
     _emailCtrl.dispose();
     _passCtrl.dispose();
+    _forgotEmailCtrl.dispose();
     _animCtrl.dispose();
     super.dispose();
   }
@@ -89,6 +92,105 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  void _showForgotPassword() {
+    _forgotEmailCtrl.clear();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.lock_reset_rounded,
+                        color: AppColors.blue, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Reset Password',
+                          style: AppTextStyles.subheading()),
+                      Text('Enter your email to receive a new password',
+                          style: AppTextStyles.caption()),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              AppTextField(
+                label: 'Registered Email',
+                controller: _forgotEmailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                prefixIcon: const Icon(Icons.email_outlined),
+                hint: 'e.g., user@apartment.com',
+              ),
+              const SizedBox(height: 20),
+              StatefulBuilder(
+                builder: (stCtx, setSt) => CommonButton(
+                  text: 'Reset Password',
+                  gradient: const [Color(0xFF1E3A8A), Color(0xFF06B6D4)],
+                  onPressed: () {
+                    final email = _forgotEmailCtrl.text.trim();
+                    if (email.isEmpty || !email.contains('@')) {
+                      AppUtils.showSnackBar(ctx, 'Enter a valid email',
+                          isError: true);
+                      return;
+                    }
+                    final auth = context.read<AuthProvider>();
+                    final newPass = auth.generateForgotPassword(email);
+                    Navigator.pop(ctx);
+                    if (newPass == null) {
+                      AppUtils.showSnackBar(
+                          context, 'No account found with that email.',
+                          isError: true);
+                    } else {
+                      AppUtils.showGeneratedCredentials(
+                        context,
+                        name: email,
+                        email: email,
+                        password: newPass,
+                        role: 'Reset Password',
+                      );
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Color _quickColor(String hex) => Color(int.parse('FF$hex', radix: 16));
 
   IconData _quickIcon(String icon) {
@@ -107,14 +209,17 @@ class _LoginScreenState extends State<LoginScreen>
     return Scaffold(
       body: Stack(
         children: [
-          // Gradient header
+          // Gradient header (Professional Dark Navy)
           Container(
             height: MediaQuery.of(context).size.height * 0.38,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF1E3A8A), Color(0xFF06B6D4)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF141E30), // top (dark navy)
+                  Color(0xFF243B55), // bottom (slightly lighter navy)
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
               ),
             ),
           ),
@@ -199,17 +304,12 @@ class _LoginScreenState extends State<LoginScreen>
                               key: _formKey,
                               child: Column(
                                 children: [
-                                  TextFormField(
+                                  AppTextField(
+                                    label: 'Email Address',
                                     controller: _emailCtrl,
                                     keyboardType: TextInputType.emailAddress,
-                                    style: AppTextStyles.bodyLarge(),
-                                    decoration: InputDecoration(
-                                      labelText: 'Email Address',
-                                      prefixIcon: const Icon(
-                                          Icons.email_outlined,
-                                          size: 20),
-                                      labelStyle: AppTextStyles.label(),
-                                    ),
+                                    prefixIcon: const Icon(
+                                        Icons.email_outlined, size: 20),
                                     validator: (v) {
                                       if (v == null || v.isEmpty) {
                                         return 'Please enter email';
@@ -221,25 +321,21 @@ class _LoginScreenState extends State<LoginScreen>
                                     },
                                   ),
                                   const SizedBox(height: 16),
-                                  TextFormField(
+                                  AppTextField(
+                                    label: 'Password',
                                     controller: _passCtrl,
                                     obscureText: _obscurePass,
-                                    style: AppTextStyles.bodyLarge(),
-                                    decoration: InputDecoration(
-                                      labelText: 'Password',
-                                      prefixIcon: const Icon(
-                                          Icons.lock_outline, size: 20),
-                                      labelStyle: AppTextStyles.label(),
-                                      suffixIcon: IconButton(
-                                        icon: Icon(
-                                          _obscurePass
-                                              ? Icons.visibility_off_outlined
-                                              : Icons.visibility_outlined,
-                                          size: 20,
-                                        ),
-                                        onPressed: () => setState(
-                                            () => _obscurePass = !_obscurePass),
+                                    prefixIcon: const Icon(
+                                        Icons.lock_outline, size: 20),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscurePass
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                        size: 20,
                                       ),
+                                      onPressed: () => setState(
+                                          () => _obscurePass = !_obscurePass),
                                     ),
                                     validator: (v) {
                                       if (v == null || v.isEmpty) {
@@ -251,7 +347,24 @@ class _LoginScreenState extends State<LoginScreen>
                                       return null;
                                     },
                                   ),
-                                  const SizedBox(height: 24),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: _showForgotPassword,
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 4, vertical: 4),
+                                      ),
+                                      child: Text(
+                                        'Forgot Password?',
+                                        style: AppTextStyles.caption(
+                                                color: AppColors.blue)
+                                            .copyWith(
+                                                fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
                                   Consumer<AuthProvider>(
                                     builder: (_, auth, __) => CommonButton(
                                       text: 'Sign In',

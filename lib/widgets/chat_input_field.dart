@@ -110,8 +110,8 @@ class _ChatInputFieldState extends State<ChatInputField> {
                 gradient: _hasText
                     ? LinearGradient(
                         colors: widget.sendGradient,
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
                       )
                     : null,
                 color: _hasText ? null : Colors.grey.shade200,

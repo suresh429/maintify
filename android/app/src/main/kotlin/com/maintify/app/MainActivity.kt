@@ -1,4 +1,4 @@
-package com.maintify.app.maintify
+package com.maintify.app
 
 import io.flutter.embedding.android.FlutterActivity
 

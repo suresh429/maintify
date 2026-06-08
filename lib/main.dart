@@ -8,6 +8,7 @@ import 'providers/dashboard_provider.dart';
 import 'providers/bill_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/complaint_provider.dart';
+import 'providers/notification_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_router.dart';
@@ -40,6 +41,7 @@ class MaintifyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => BillProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ComplaintProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: MaterialApp(
         title: 'Maintify',

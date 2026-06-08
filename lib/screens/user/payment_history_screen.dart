@@ -124,8 +124,8 @@ class _SummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: theme.gradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
@@ -284,11 +284,11 @@ class _PaymentCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.green.withOpacity(0.1),
+                    color: AppColors.paid.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(_categoryIcon,
-                      color: AppColors.green, size: 20),
+                      color: AppColors.paid, size: 20),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -329,7 +329,7 @@ class _PaymentCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppColors.green.withOpacity(0.1),
+                        color: AppColors.paid.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Text(
@@ -338,7 +338,7 @@ class _PaymentCard extends StatelessWidget {
                           fontFamily: 'Poppins',
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.green,
+                          color: AppColors.paid,
                         ),
                       ),
                     ),
@@ -376,7 +376,7 @@ class _PaymentCard extends StatelessWidget {
                     child: _MetaChip(
                       icon: Icons.tag_rounded,
                       label: payment.transactionId!,
-                      color: AppColors.green,
+                      color: AppColors.paid,
                     ),
                   ),
                 ],

@@ -1,6 +1,7 @@
 class AppConstants {
   static const String appName = 'Maintify';
   static const String tagline = 'Manage. Maintain. Simplify.';
+  static const String version = '1.0.0';
 
   // Spacing
   static const double paddingXS = 4.0;

@@ -101,8 +101,8 @@ class _ChatScreenState extends State<ChatScreen> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: _gradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
             ),
           ),
         ),

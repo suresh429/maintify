@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Maintify brand colors -->
+    <color name="splash_background">#141E30</color>
+    <color name="splash_background_end">#243B55</color>
+    <color name="gold_accent">#FECB6E</color>
+</resources>

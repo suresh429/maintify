@@ -1,0 +1,32 @@
+<!--
+  Maintify logo — M + building silhouette + gold accent bar.
+  Use this SVG as the source for exporting PNG assets:
+    logo.png          (512 × 512, transparent background)
+    icon.png          (1024 × 1024, dark navy background, rounded square)
+    logo_android12.png (432 × 432, transparent, for Android 12 splash)
+
+  Export command (requires Inkscape CLI):
+    inkscape logo.svg --export-filename=logo.png --export-width=512 --export-height=512
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
+
+  <!-- Transparent background variant (for logo.png / logo_android12.png) -->
+
+  <!-- M shape: two towers connected by a V-notch at the top -->
+  <path
+    d="M 13,82 L 13,17 L 50,54 L 87,17 L 87,82"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="11.4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Gold accent bar below the M base -->
+  <rect
+    x="13" y="87.5"
+    width="74" height="5.8"
+    rx="2.9"
+    fill="#FECB6E"
+  />
+</svg>

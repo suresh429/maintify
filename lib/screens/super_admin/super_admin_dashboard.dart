@@ -13,6 +13,8 @@ import '../../widgets/shimmer_loading.dart';
 import 'apartments_screen.dart';
 import 'assign_president_screen.dart';
 import 'reports_screen.dart';
+import '../../providers/notification_provider.dart';
+import '../shared/notifications_screen.dart';
 
 class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -73,9 +75,53 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
           style: AppTextStyles.heading3(color: Colors.white),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () {},
+          Consumer<NotificationProvider>(
+            builder: (context, notifProvider, _) {
+              final unread =
+                  notifProvider.unreadCount(UserRole.superAdmin);
+              return SizedBox(
+                width: 48,
+                height: 48,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined,
+                          color: Colors.white),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const NotificationsScreen()),
+                      ),
+                    ),
+                    if (unread > 0)
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: const BoxDecoration(
+                            color: AppColors.overdue,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              unread > 9 ? '9+' : '$unread',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
           ),
           const SizedBox(width: 8),
         ],
@@ -83,8 +129,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: theme.gradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
             ),
           ),
         ),
@@ -106,8 +152,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: theme.gradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
               ),
             ),
             child: Column(
@@ -267,9 +313,17 @@ class _DashboardHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dashboard = context.watch<DashboardProvider>();
+    final auth = context.read<AuthProvider>();
     final theme = RoleTheme.of(UserRole.superAdmin);
 
     if (dashboard.isLoading) return const ShimmerDashboard();
+
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? 'Good morning,'
+        : hour < 17
+            ? 'Good afternoon,'
+            : 'Good evening,';
 
     return RefreshIndicator(
       color: theme.primary,
@@ -286,8 +340,8 @@ class _DashboardHome extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: theme.gradient,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
@@ -304,6 +358,16 @@ class _DashboardHome extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text(greeting,
+                            style: AppTextStyles.caption(
+                                color: Colors.white.withOpacity(0.8))),
+                        Text(
+                          AppUtils.displayFirstName(
+                              auth.currentUser?.name ?? 'Admin'),
+                          style:
+                              AppTextStyles.heading2(color: Colors.white),
+                        ),
+                        const SizedBox(height: 8),
                         Text('Global Overview',
                             style: AppTextStyles.caption(
                                 color: Colors.white.withOpacity(0.8))),
@@ -361,7 +425,7 @@ class _DashboardHome extends StatelessWidget {
                     title: 'Collected',
                     value: AppUtils.formatCurrency(dashboard.totalRevenue),
                     icon: Icons.account_balance_wallet_outlined,
-                    gradient: [const Color(0xFF22C55E), const Color(0xFF16A34A)],
+                    gradient: [const Color(0xFF4ADE80), const Color(0xFF16A34A)],
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -370,7 +434,7 @@ class _DashboardHome extends StatelessWidget {
                     title: 'Pending',
                     value: AppUtils.formatCurrency(dashboard.pendingRevenue),
                     icon: Icons.pending_actions_outlined,
-                    gradient: [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+                    gradient: [const Color(0xFFFBBF24), const Color(0xFFB45309)],
                   ),
                 ),
               ],

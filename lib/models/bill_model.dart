@@ -107,11 +107,23 @@ class BillPayment {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MOCK DATA — Sai Residency (apt1, 10 flats) + Green Valley (apt2, 8 flats)
+// MOCK DATA — Samhith Residency (apt1, 10 flats)
+//
+// Flats and user IDs:
+//   101 → u3  Rohit        102 → u4  Ravi
+//   201 → u5  Chaitanya    202 → u6  Suresh
+//   301 → u9  Sai          302 → u10 Raghu
+//   401 → u11 Ganesh       402 → u2  G. Srikanth (President/Admin)
+//   501 → u13 Sathish      502 → u14 Deepika
+//
+// Bills:
+//   b1: Lift Maintenance  ₹2000  May 2026   ₹200/flat  (mixed payments)
+//   b2: Water Charges     ₹1500  May 2026   ₹150/flat  (mixed payments)
+//   b3: Security Charges  ₹3000  April 2026 ₹300/flat  (mostly overdue)
+//   b4: Cleaning Fund     ₹1000  March 2026 ₹100/flat  (all paid)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class MockBillData {
-  // ── Apt1: Sai Residency bills ─────────────────────────────────────────────
   static final List<BillModel> _bills = [
     BillModel(
       id: 'b1',
@@ -132,7 +144,7 @@ class MockBillData {
       title: 'Water Charges',
       totalAmount: 1500,
       totalFlats: 10,
-      category: 'Utilities',
+      category: 'Water',
       month: 'May 2026',
       dueDate: DateTime(2026, 6, 10),
       createdAt: DateTime(2026, 5, 2),
@@ -161,107 +173,62 @@ class MockBillData {
       dueDate: DateTime(2026, 4, 10),
       createdAt: DateTime(2026, 3, 1),
     ),
-
-    // ── Apt2: Green Valley Towers bills ──────────────────────────────────────
-    BillModel(
-      id: 'g1',
-      apartmentId: 'apt2',
-      createdByAdminId: 'u8',
-      title: 'Monthly Maintenance',
-      totalAmount: 1600,
-      totalFlats: 8,
-      category: 'Maintenance',
-      month: 'May 2026',
-      dueDate: DateTime(2026, 6, 10),
-      createdAt: DateTime(2026, 5, 1),
-    ),
-    BillModel(
-      id: 'g2',
-      apartmentId: 'apt2',
-      createdByAdminId: 'u8',
-      title: 'Lift Repair Fund',
-      totalAmount: 2400,
-      totalFlats: 8,
-      category: 'Maintenance',
-      month: 'April 2026',
-      dueDate: DateTime(2026, 5, 10),
-      createdAt: DateTime(2026, 4, 1),
-    ),
   ];
 
   // ── Payment records ───────────────────────────────────────────────────────
-  // b1: Lift Maintenance ₹200/flat (May 2026, 10 flats)
-  // b2: Water Charges ₹150/flat (May 2026, 10 flats)
-  // b3: Security Charges ₹300/flat (April 2026, overdue for several)
-  // b4: Cleaning Fund ₹100/flat (March 2026, all paid)
+  // b1: Lift Maintenance ₹200/flat — Chaitanya, Suresh, Raghu, Srikanth, Deepika paid
+  // b2: Water Charges ₹150/flat   — Ravi, Chaitanya, Raghu, Srikanth paid
+  // b3: Security Charges ₹300/flat — mostly overdue; Ravi, Suresh, Srikanth paid
+  // b4: Cleaning Fund ₹100/flat   — all 10 paid
   static final List<BillPayment> _payments = [
-    // ── b1: Lift Maintenance ─────────────────
-    BillPayment(id: 'p1_u3',  billId: 'b1', userId: 'u3',  unitNumber: 'A-101', status: BillStatus.pending),
-    BillPayment(id: 'p1_u4',  billId: 'b1', userId: 'u4',  unitNumber: 'A-102', status: BillStatus.pending),
-    BillPayment(id: 'p1_u5',  billId: 'b1', userId: 'u5',  unitNumber: 'B-201', status: BillStatus.paid, paidDate: DateTime(2026, 5, 5), transactionId: 'TXN1B201', adminVerified: true),
-    BillPayment(id: 'p1_u6',  billId: 'b1', userId: 'u6',  unitNumber: 'B-202', status: BillStatus.paid, paidDate: DateTime(2026, 5, 6), transactionId: 'TXN1B202', adminVerified: true),
-    BillPayment(id: 'p1_u9',  billId: 'b1', userId: 'u9',  unitNumber: 'C-301', status: BillStatus.pending),
-    BillPayment(id: 'p1_u10', billId: 'b1', userId: 'u10', unitNumber: 'C-302', status: BillStatus.paid, paidDate: DateTime(2026, 5, 4), transactionId: 'TXN1C302', adminVerified: true),
-    BillPayment(id: 'p1_u11', billId: 'b1', userId: 'u11', unitNumber: 'D-401', status: BillStatus.pending),
-    BillPayment(id: 'p1_u12', billId: 'b1', userId: 'u12', unitNumber: 'D-402', status: BillStatus.pending),
-    BillPayment(id: 'p1_u13', billId: 'b1', userId: 'u13', unitNumber: 'E-501', status: BillStatus.overdue),
-    BillPayment(id: 'p1_u14', billId: 'b1', userId: 'u14', unitNumber: 'E-502', status: BillStatus.paid, paidDate: DateTime(2026, 5, 3), transactionId: 'TXN1E502', adminVerified: true),
 
-    // ── b2: Water Charges ────────────────────
-    BillPayment(id: 'p2_u3',  billId: 'b2', userId: 'u3',  unitNumber: 'A-101', status: BillStatus.pending),
-    BillPayment(id: 'p2_u4',  billId: 'b2', userId: 'u4',  unitNumber: 'A-102', status: BillStatus.paid, paidDate: DateTime(2026, 5, 7), transactionId: 'TXN2A102', adminVerified: true),
-    BillPayment(id: 'p2_u5',  billId: 'b2', userId: 'u5',  unitNumber: 'B-201', status: BillStatus.paid, paidDate: DateTime(2026, 5, 8), transactionId: 'TXN2B201', adminVerified: true),
-    BillPayment(id: 'p2_u6',  billId: 'b2', userId: 'u6',  unitNumber: 'B-202', status: BillStatus.pending),
-    BillPayment(id: 'p2_u9',  billId: 'b2', userId: 'u9',  unitNumber: 'C-301', status: BillStatus.pending),
-    BillPayment(id: 'p2_u10', billId: 'b2', userId: 'u10', unitNumber: 'C-302', status: BillStatus.paid, paidDate: DateTime(2026, 5, 5), transactionId: 'TXN2C302', adminVerified: true),
-    BillPayment(id: 'p2_u11', billId: 'b2', userId: 'u11', unitNumber: 'D-401', status: BillStatus.pending),
-    BillPayment(id: 'p2_u12', billId: 'b2', userId: 'u12', unitNumber: 'D-402', status: BillStatus.paid, paidDate: DateTime(2026, 5, 9), transactionId: 'TXN2D402', adminVerified: true),
-    BillPayment(id: 'p2_u13', billId: 'b2', userId: 'u13', unitNumber: 'E-501', status: BillStatus.pending),
-    BillPayment(id: 'p2_u14', billId: 'b2', userId: 'u14', unitNumber: 'E-502', status: BillStatus.pending),
+    // ── b1: Lift Maintenance (May 2026) ──────────────────────────────────────
+    BillPayment(id: 'p1_u3',  billId: 'b1', userId: 'u3',  unitNumber: '101', status: BillStatus.pending),
+    BillPayment(id: 'p1_u4',  billId: 'b1', userId: 'u4',  unitNumber: '102', status: BillStatus.pending),
+    BillPayment(id: 'p1_u5',  billId: 'b1', userId: 'u5',  unitNumber: '201', status: BillStatus.paid, paidDate: DateTime(2026, 5, 5),  transactionId: 'TXN1201CH',  adminVerified: true),
+    BillPayment(id: 'p1_u6',  billId: 'b1', userId: 'u6',  unitNumber: '202', status: BillStatus.paid, paidDate: DateTime(2026, 5, 6),  transactionId: 'TXN1202SU',  adminVerified: true),
+    BillPayment(id: 'p1_u9',  billId: 'b1', userId: 'u9',  unitNumber: '301', status: BillStatus.pending),
+    BillPayment(id: 'p1_u10', billId: 'b1', userId: 'u10', unitNumber: '302', status: BillStatus.paid, paidDate: DateTime(2026, 5, 4),  transactionId: 'TXN1302RG',  adminVerified: true),
+    BillPayment(id: 'p1_u11', billId: 'b1', userId: 'u11', unitNumber: '401', status: BillStatus.pending),
+    BillPayment(id: 'p1_u2',  billId: 'b1', userId: 'u2',  unitNumber: '402', status: BillStatus.paid, paidDate: DateTime(2026, 5, 3),  transactionId: 'TXN1402SK',  adminVerified: true),
+    BillPayment(id: 'p1_u13', billId: 'b1', userId: 'u13', unitNumber: '501', status: BillStatus.overdue),
+    BillPayment(id: 'p1_u14', billId: 'b1', userId: 'u14', unitNumber: '502', status: BillStatus.paid, paidDate: DateTime(2026, 5, 7),  transactionId: 'TXN1502DK',  adminVerified: true),
 
-    // ── b3: Security Charges (overdue) ────────
-    BillPayment(id: 'p3_u3',  billId: 'b3', userId: 'u3',  unitNumber: 'A-101', status: BillStatus.overdue),
-    BillPayment(id: 'p3_u4',  billId: 'b3', userId: 'u4',  unitNumber: 'A-102', status: BillStatus.paid, paidDate: DateTime(2026, 5, 2), transactionId: 'TXN3A102', adminVerified: true),
-    BillPayment(id: 'p3_u5',  billId: 'b3', userId: 'u5',  unitNumber: 'B-201', status: BillStatus.overdue),
-    BillPayment(id: 'p3_u6',  billId: 'b3', userId: 'u6',  unitNumber: 'B-202', status: BillStatus.paid, paidDate: DateTime(2026, 5, 1), transactionId: 'TXN3B202', adminVerified: true),
-    BillPayment(id: 'p3_u9',  billId: 'b3', userId: 'u9',  unitNumber: 'C-301', status: BillStatus.overdue),
-    BillPayment(id: 'p3_u10', billId: 'b3', userId: 'u10', unitNumber: 'C-302', status: BillStatus.overdue),
-    BillPayment(id: 'p3_u11', billId: 'b3', userId: 'u11', unitNumber: 'D-401', status: BillStatus.overdue),
-    BillPayment(id: 'p3_u12', billId: 'b3', userId: 'u12', unitNumber: 'D-402', status: BillStatus.paid, paidDate: DateTime(2026, 5, 3), transactionId: 'TXN3D402', adminVerified: true),
-    BillPayment(id: 'p3_u13', billId: 'b3', userId: 'u13', unitNumber: 'E-501', status: BillStatus.overdue),
-    BillPayment(id: 'p3_u14', billId: 'b3', userId: 'u14', unitNumber: 'E-502', status: BillStatus.overdue),
+    // ── b2: Water Charges (May 2026) ─────────────────────────────────────────
+    BillPayment(id: 'p2_u3',  billId: 'b2', userId: 'u3',  unitNumber: '101', status: BillStatus.pending),
+    BillPayment(id: 'p2_u4',  billId: 'b2', userId: 'u4',  unitNumber: '102', status: BillStatus.paid, paidDate: DateTime(2026, 5, 8),  transactionId: 'TXN2102RA',  adminVerified: true),
+    BillPayment(id: 'p2_u5',  billId: 'b2', userId: 'u5',  unitNumber: '201', status: BillStatus.paid, paidDate: DateTime(2026, 5, 9),  transactionId: 'TXN2201CH',  adminVerified: true),
+    BillPayment(id: 'p2_u6',  billId: 'b2', userId: 'u6',  unitNumber: '202', status: BillStatus.pending),
+    BillPayment(id: 'p2_u9',  billId: 'b2', userId: 'u9',  unitNumber: '301', status: BillStatus.pending),
+    BillPayment(id: 'p2_u10', billId: 'b2', userId: 'u10', unitNumber: '302', status: BillStatus.paid, paidDate: DateTime(2026, 5, 5),  transactionId: 'TXN2302RG',  adminVerified: true),
+    BillPayment(id: 'p2_u11', billId: 'b2', userId: 'u11', unitNumber: '401', status: BillStatus.pending),
+    BillPayment(id: 'p2_u2',  billId: 'b2', userId: 'u2',  unitNumber: '402', status: BillStatus.paid, paidDate: DateTime(2026, 5, 4),  transactionId: 'TXN2402SK',  adminVerified: true),
+    BillPayment(id: 'p2_u13', billId: 'b2', userId: 'u13', unitNumber: '501', status: BillStatus.pending),
+    BillPayment(id: 'p2_u14', billId: 'b2', userId: 'u14', unitNumber: '502', status: BillStatus.pending),
 
-    // ── b4: Cleaning Fund (all paid) ──────────
-    BillPayment(id: 'p4_u3',  billId: 'b4', userId: 'u3',  unitNumber: 'A-101', status: BillStatus.paid, paidDate: DateTime(2026, 4, 2), transactionId: 'TXN4A101', adminVerified: true),
-    BillPayment(id: 'p4_u4',  billId: 'b4', userId: 'u4',  unitNumber: 'A-102', status: BillStatus.paid, paidDate: DateTime(2026, 4, 3), transactionId: 'TXN4A102', adminVerified: true),
-    BillPayment(id: 'p4_u5',  billId: 'b4', userId: 'u5',  unitNumber: 'B-201', status: BillStatus.paid, paidDate: DateTime(2026, 4, 1), transactionId: 'TXN4B201', adminVerified: true),
-    BillPayment(id: 'p4_u6',  billId: 'b4', userId: 'u6',  unitNumber: 'B-202', status: BillStatus.paid, paidDate: DateTime(2026, 4, 2), transactionId: 'TXN4B202', adminVerified: true),
-    BillPayment(id: 'p4_u9',  billId: 'b4', userId: 'u9',  unitNumber: 'C-301', status: BillStatus.paid, paidDate: DateTime(2026, 4, 4), transactionId: 'TXN4C301', adminVerified: true),
-    BillPayment(id: 'p4_u10', billId: 'b4', userId: 'u10', unitNumber: 'C-302', status: BillStatus.paid, paidDate: DateTime(2026, 4, 5), transactionId: 'TXN4C302', adminVerified: true),
-    BillPayment(id: 'p4_u11', billId: 'b4', userId: 'u11', unitNumber: 'D-401', status: BillStatus.paid, paidDate: DateTime(2026, 4, 3), transactionId: 'TXN4D401', adminVerified: true),
-    BillPayment(id: 'p4_u12', billId: 'b4', userId: 'u12', unitNumber: 'D-402', status: BillStatus.paid, paidDate: DateTime(2026, 4, 6), transactionId: 'TXN4D402', adminVerified: true),
-    BillPayment(id: 'p4_u13', billId: 'b4', userId: 'u13', unitNumber: 'E-501', status: BillStatus.paid, paidDate: DateTime(2026, 4, 1), transactionId: 'TXN4E501', adminVerified: true),
-    BillPayment(id: 'p4_u14', billId: 'b4', userId: 'u14', unitNumber: 'E-502', status: BillStatus.paid, paidDate: DateTime(2026, 4, 2), transactionId: 'TXN4E502', adminVerified: true),
+    // ── b3: Security Charges (April 2026 — overdue) ───────────────────────────
+    BillPayment(id: 'p3_u3',  billId: 'b3', userId: 'u3',  unitNumber: '101', status: BillStatus.overdue),
+    BillPayment(id: 'p3_u4',  billId: 'b3', userId: 'u4',  unitNumber: '102', status: BillStatus.paid, paidDate: DateTime(2026, 5, 2),  transactionId: 'TXN3102RA',  adminVerified: true),
+    BillPayment(id: 'p3_u5',  billId: 'b3', userId: 'u5',  unitNumber: '201', status: BillStatus.overdue),
+    BillPayment(id: 'p3_u6',  billId: 'b3', userId: 'u6',  unitNumber: '202', status: BillStatus.paid, paidDate: DateTime(2026, 5, 1),  transactionId: 'TXN3202SU',  adminVerified: true),
+    BillPayment(id: 'p3_u9',  billId: 'b3', userId: 'u9',  unitNumber: '301', status: BillStatus.overdue),
+    BillPayment(id: 'p3_u10', billId: 'b3', userId: 'u10', unitNumber: '302', status: BillStatus.overdue),
+    BillPayment(id: 'p3_u11', billId: 'b3', userId: 'u11', unitNumber: '401', status: BillStatus.overdue),
+    BillPayment(id: 'p3_u2',  billId: 'b3', userId: 'u2',  unitNumber: '402', status: BillStatus.paid, paidDate: DateTime(2026, 5, 3),  transactionId: 'TXN3402SK',  adminVerified: true),
+    BillPayment(id: 'p3_u13', billId: 'b3', userId: 'u13', unitNumber: '501', status: BillStatus.overdue),
+    BillPayment(id: 'p3_u14', billId: 'b3', userId: 'u14', unitNumber: '502', status: BillStatus.overdue),
 
-    // ── g1: Green Valley Maintenance ──────────
-    BillPayment(id: 'pg1_u7',  billId: 'g1', userId: 'u7',  unitNumber: 'A-101', status: BillStatus.paid, paidDate: DateTime(2026, 5, 5), transactionId: 'TXNG1A101', adminVerified: true),
-    BillPayment(id: 'pg1_u15', billId: 'g1', userId: 'u15', unitNumber: 'A-102', status: BillStatus.pending),
-    BillPayment(id: 'pg1_u16', billId: 'g1', userId: 'u16', unitNumber: 'B-201', status: BillStatus.paid, paidDate: DateTime(2026, 5, 6), transactionId: 'TXNG1B201', adminVerified: true),
-    BillPayment(id: 'pg1_u17', billId: 'g1', userId: 'u17', unitNumber: 'B-202', status: BillStatus.pending),
-    BillPayment(id: 'pg1_u18', billId: 'g1', userId: 'u18', unitNumber: 'C-301', status: BillStatus.paid, paidDate: DateTime(2026, 5, 4), transactionId: 'TXNG1C301', adminVerified: true),
-    BillPayment(id: 'pg1_u19', billId: 'g1', userId: 'u19', unitNumber: 'C-302', status: BillStatus.pending),
-    BillPayment(id: 'pg1_u20', billId: 'g1', userId: 'u20', unitNumber: 'D-401', status: BillStatus.pending),
-    BillPayment(id: 'pg1_u21', billId: 'g1', userId: 'u21', unitNumber: 'D-402', status: BillStatus.paid, paidDate: DateTime(2026, 5, 7), transactionId: 'TXNG1D402', adminVerified: true),
-
-    // ── g2: Green Valley Lift Repair ──────────
-    BillPayment(id: 'pg2_u7',  billId: 'g2', userId: 'u7',  unitNumber: 'A-101', status: BillStatus.overdue),
-    BillPayment(id: 'pg2_u15', billId: 'g2', userId: 'u15', unitNumber: 'A-102', status: BillStatus.paid, paidDate: DateTime(2026, 4, 28), transactionId: 'TXNG2A102', adminVerified: true),
-    BillPayment(id: 'pg2_u16', billId: 'g2', userId: 'u16', unitNumber: 'B-201', status: BillStatus.overdue),
-    BillPayment(id: 'pg2_u17', billId: 'g2', userId: 'u17', unitNumber: 'B-202', status: BillStatus.paid, paidDate: DateTime(2026, 5, 1), transactionId: 'TXNG2B202', adminVerified: true),
-    BillPayment(id: 'pg2_u18', billId: 'g2', userId: 'u18', unitNumber: 'C-301', status: BillStatus.paid, paidDate: DateTime(2026, 5, 2), transactionId: 'TXNG2C301', adminVerified: true),
-    BillPayment(id: 'pg2_u19', billId: 'g2', userId: 'u19', unitNumber: 'C-302', status: BillStatus.overdue),
-    BillPayment(id: 'pg2_u20', billId: 'g2', userId: 'u20', unitNumber: 'D-401', status: BillStatus.overdue),
-    BillPayment(id: 'pg2_u21', billId: 'g2', userId: 'u21', unitNumber: 'D-402', status: BillStatus.paid, paidDate: DateTime(2026, 5, 3), transactionId: 'TXNG2D402', adminVerified: true),
+    // ── b4: Cleaning Fund (March 2026 — all paid) ─────────────────────────────
+    BillPayment(id: 'p4_u3',  billId: 'b4', userId: 'u3',  unitNumber: '101', status: BillStatus.paid, paidDate: DateTime(2026, 4, 2),  transactionId: 'TXN4101RO',  adminVerified: true),
+    BillPayment(id: 'p4_u4',  billId: 'b4', userId: 'u4',  unitNumber: '102', status: BillStatus.paid, paidDate: DateTime(2026, 4, 3),  transactionId: 'TXN4102RA',  adminVerified: true),
+    BillPayment(id: 'p4_u5',  billId: 'b4', userId: 'u5',  unitNumber: '201', status: BillStatus.paid, paidDate: DateTime(2026, 4, 1),  transactionId: 'TXN4201CH',  adminVerified: true),
+    BillPayment(id: 'p4_u6',  billId: 'b4', userId: 'u6',  unitNumber: '202', status: BillStatus.paid, paidDate: DateTime(2026, 4, 2),  transactionId: 'TXN4202SU',  adminVerified: true),
+    BillPayment(id: 'p4_u9',  billId: 'b4', userId: 'u9',  unitNumber: '301', status: BillStatus.paid, paidDate: DateTime(2026, 4, 4),  transactionId: 'TXN4301SA',  adminVerified: true),
+    BillPayment(id: 'p4_u10', billId: 'b4', userId: 'u10', unitNumber: '302', status: BillStatus.paid, paidDate: DateTime(2026, 4, 5),  transactionId: 'TXN4302RG',  adminVerified: true),
+    BillPayment(id: 'p4_u11', billId: 'b4', userId: 'u11', unitNumber: '401', status: BillStatus.paid, paidDate: DateTime(2026, 4, 3),  transactionId: 'TXN4401GN',  adminVerified: true),
+    BillPayment(id: 'p4_u2',  billId: 'b4', userId: 'u2',  unitNumber: '402', status: BillStatus.paid, paidDate: DateTime(2026, 4, 1),  transactionId: 'TXN4402SK',  adminVerified: true),
+    BillPayment(id: 'p4_u13', billId: 'b4', userId: 'u13', unitNumber: '501', status: BillStatus.paid, paidDate: DateTime(2026, 4, 6),  transactionId: 'TXN4501ST',  adminVerified: true),
+    BillPayment(id: 'p4_u14', billId: 'b4', userId: 'u14', unitNumber: '502', status: BillStatus.paid, paidDate: DateTime(2026, 4, 2),  transactionId: 'TXN4502DK',  adminVerified: true),
   ];
 
   static List<BillModel> get bills => _bills;

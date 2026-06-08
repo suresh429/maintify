@@ -5,9 +5,9 @@ import '../../providers/bill_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
-import '../../widgets/bill_card.dart';
-import '../../widgets/pill_filter_bar.dart';
+import '../../core/utils/app_utils.dart';
 import '../../widgets/shimmer_loading.dart';
+import 'monthly_bill_detail_screen.dart';
 
 class BillsScreen extends StatefulWidget {
   const BillsScreen({super.key});
@@ -17,102 +17,92 @@ class BillsScreen extends StatefulWidget {
 }
 
 class _BillsScreenState extends State<BillsScreen> {
-  String _filter = 'Pending';
-  String _search = '';
-
-  static const _filters = ['Pending', 'Paid', 'All'];
+  String _filter = 'All';
+  static const _filters = ['All', 'Pending', 'Paid'];
 
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final userId = auth.currentUser?.id ?? 'u3';
+    final aptId = auth.currentUser?.apartmentId ?? 'apt1';
     final billProvider = context.watch<BillProvider>();
     final theme = RoleTheme.of(UserRole.user);
 
-    final allViews = billProvider.userBillViews(userId);
-    final pendingViews = allViews.where((v) => !v.payment.isPaid).toList();
-    final paidViews = allViews.where((v) => v.payment.isPaid).toList();
+    if (billProvider.isLoading) return const ShimmerDashboard();
 
-    List<UserBillView> _baseList() {
-      switch (_filter) {
-        case 'Pending':
-          return pendingViews;
-        case 'Paid':
-          return paidViews;
-        default:
-          return allViews;
-      }
-    }
-
-    final baseList = _baseList();
-    final displayed = _search.isEmpty
-        ? baseList
-        : baseList
-            .where((v) =>
-                v.bill.title.toLowerCase().contains(_search.toLowerCase()) ||
-                v.bill.category.toLowerCase().contains(_search.toLowerCase()))
-            .toList();
-
-    final counts = {
-      'Pending': pendingViews.length,
-      'Paid': paidViews.length,
-      'All': allViews.length,
-    };
+    final allSummaries = billProvider.userMonthlySummaries(userId);
+    final displayed = _filter == 'Pending'
+        ? allSummaries.where((s) => !s.isFullyPaid).toList()
+        : _filter == 'Paid'
+            ? allSummaries.where((s) => s.isFullyPaid).toList()
+            : allSummaries;
 
     return Column(
       children: [
-        // Search bar
+        // Filter tabs
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-          child: TextField(
-            onChanged: (v) => setState(() => _search = v),
-            decoration: InputDecoration(
-              hintText: 'Search bills...',
-              hintStyle: AppTextStyles.bodyMedium(),
-              prefixIcon: const Icon(Icons.search_rounded,
-                  color: AppColors.textSecondary),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Row(
+            children: _filters.map((f) {
+              final isActive = _filter == f;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _filter = f),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: isActive
+                          ? LinearGradient(colors: theme.gradient)
+                          : null,
+                      color: isActive ? null : AppColors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      f,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: isActive
+                            ? Colors.white
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '${displayed.length} month${displayed.length != 1 ? 's' : ''}',
+              style: AppTextStyles.caption(),
             ),
           ),
         ),
+        const SizedBox(height: 4),
 
-        // Pill filter
-        PillFilterBar(
-          options: _filters
-              .map((f) => '$f (${counts[f]})')
-              .toList(),
-          selected: '$_filter (${counts[_filter]})',
-          activeColor: theme.primary,
-          onChanged: (val) {
-            // Extract the filter name before the count
-            setState(() => _filter = val.split(' (').first);
-          },
-        ),
-
-        const SizedBox(height: 12),
-
-        // Count label
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Text(
-                '${displayed.length} bill${displayed.length != 1 ? 's' : ''}',
-                style: AppTextStyles.caption(color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 8),
-
-        // List
         Expanded(
           child: displayed.isEmpty
               ? EmptyState(
                   title: _filter == 'Pending'
                       ? 'No pending bills'
                       : _filter == 'Paid'
-                          ? 'No paid bills yet'
+                          ? 'No paid months yet'
                           : 'No bills',
                   subtitle: _filter == 'Pending'
                       ? "You're all caught up!"
@@ -122,12 +112,155 @@ class _BillsScreenState extends State<BillsScreen> {
                       : Icons.receipt_outlined,
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
                   itemCount: displayed.length,
-                  itemBuilder: (_, i) => BillCard(view: displayed[i]),
+                  itemBuilder: (_, i) => _UserMonthlyCard(
+                    summary: displayed.elementAt(i),
+                    aptId: aptId,
+                    theme: theme,
+                  ),
                 ),
         ),
       ],
+    );
+  }
+}
+
+class _UserMonthlyCard extends StatelessWidget {
+  final UserMonthlySummary summary;
+  final String aptId;
+  final RoleTheme theme;
+
+  const _UserMonthlyCard({
+    required this.summary,
+    required this.aptId,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color statusColor;
+    String statusLabel;
+    IconData statusIcon;
+
+    switch (summary.status) {
+      case 'Paid':
+        statusColor = AppColors.paid;
+        statusLabel = 'Paid';
+        statusIcon = Icons.check_circle_rounded;
+        break;
+      case 'Partial':
+        statusColor = AppColors.pending;
+        statusLabel = 'Partial';
+        statusIcon = Icons.timelapse_rounded;
+        break;
+      case 'Overdue':
+        statusColor = AppColors.overdue;
+        statusLabel = 'Overdue';
+        statusIcon = Icons.error_rounded;
+        break;
+      default:
+        statusColor = AppColors.overdue;
+        statusLabel = 'Pending';
+        statusIcon = Icons.schedule_rounded;
+    }
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => UserMonthlyBillDetailScreen(
+            summary: summary,
+            aptId: aptId,
+          ),
+        ),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: summary.status != 'Paid'
+              ? Border.all(color: statusColor.withOpacity(0.2))
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(11),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(statusIcon, color: statusColor, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(summary.month, style: AppTextStyles.subheading()),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${summary.views.length} categor${summary.views.length == 1 ? 'y' : 'ies'} · ${AppUtils.formatCurrency(summary.totalAmount)}',
+                    style: AppTextStyles.caption(),
+                  ),
+                  if (summary.isFullyPaid && summary.paidDate != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      'Paid on ${AppUtils.formatDateTime(summary.paidDate!)}',
+                      style: AppTextStyles.caption(color: AppColors.paid),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      'Due: ${AppUtils.formatDate(summary.dueDate)}',
+                      style: AppTextStyles.caption(color: summary.status == 'Overdue'
+                          ? AppColors.overdue
+                          : AppColors.textSecondary),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    statusLabel,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: statusColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Icon(Icons.chevron_right_rounded,
+                    color: AppColors.textSecondary, size: 18),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
