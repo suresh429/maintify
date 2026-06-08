@@ -22,13 +22,23 @@ class MonthlyBillDetailScreen extends StatelessWidget {
     final theme = RoleTheme.of(UserRole.admin);
     final billProvider = context.watch<BillProvider>();
 
-    // Re-fetch fresh summary so UI updates after markPaid
     final fresh = billProvider.monthlyBillsForApartment(aptId).firstWhere(
           (s) => s.month == summary.month,
           orElse: () => summary,
         );
-
     final flats = fresh.flatList;
+
+    // Total collected = sum of paid payments across all bills in month
+    double collectedAmount = 0;
+    for (final bill in fresh.bills) {
+      final paidCount = fresh.allPayments
+          .where((p) => p.billId == bill.id && p.isPaid)
+          .length;
+      collectedAmount += paidCount * bill.perFlatShare;
+    }
+    final pendingAmount = fresh.totalAmount - collectedAmount;
+    final collectionRate =
+        fresh.totalAmount == 0 ? 0.0 : collectedAmount / fresh.totalAmount;
 
     return Scaffold(
       backgroundColor: AppColors.lightGray,
@@ -53,149 +63,29 @@ class MonthlyBillDetailScreen extends StatelessWidget {
       ),
       body: CustomScrollView(
         slivers: [
-          // Summary header
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: Column(
                 children: [
-                  // Bill categories breakdown
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Bill Breakdown',
-                            style: AppTextStyles.subheading()),
-                        const SizedBox(height: 12),
-                        ...fresh.bills.map((bill) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          theme.primary.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                        _categoryIcon(bill.category),
-                                        color: theme.primary,
-                                        size: 16),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(bill.title,
-                                        style: AppTextStyles.bodyMedium(
-                                            color:
-                                                AppColors.textPrimary)),
-                                  ),
-                                  Text(
-                                    AppUtils.formatCurrency(
-                                        bill.perFlatShare),
-                                    style: AppTextStyles.bodyMedium(
-                                            color: theme.primary)
-                                        .copyWith(
-                                            fontWeight: FontWeight.w600),
-                                  ),
-                                ],
-                              ),
-                            )),
-                        const Divider(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Total per flat',
-                                style: AppTextStyles.subheading()),
-                            Text(
-                              AppUtils.formatCurrency(fresh.perFlatShare),
-                              style: AppTextStyles.subheading(
-                                  color: theme.primary),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
+                  // ── Section 1: Hero Summary ──────────────────────────────
+                  _buildHeroCard(theme, fresh),
                   const SizedBox(height: 14),
 
-                  // Payment progress summary
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Collection Progress',
-                                style: AppTextStyles.subheading()),
-                            Text(
-                              '${fresh.fullyPaidFlats}/${fresh.totalFlats} flats',
-                              style: AppTextStyles.subheading(
-                                  color: theme.primary),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: fresh.totalFlats == 0
-                                ? 0
-                                : fresh.fullyPaidFlats / fresh.totalFlats,
-                            backgroundColor: AppColors.lightGray,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                                fresh.fullyPaidFlats == fresh.totalFlats &&
-                                        fresh.totalFlats > 0
-                                    ? AppColors.green
-                                    : theme.primary),
-                            minHeight: 10,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Due: ${AppUtils.formatDate(fresh.dueDate)}',
-                              style: AppTextStyles.caption(),
-                            ),
-                            Text(
-                              'Collected: ${AppUtils.formatCurrency(fresh.fullyPaidFlats * fresh.perFlatShare)}',
-                              style: AppTextStyles.caption(
-                                  color: AppColors.green),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                  // ── Section 2: Category Breakdown ────────────────────────
+                  _buildCategoryBreakdown(theme, fresh),
+                  const SizedBox(height: 14),
 
+                  // ── Section 3: Collection Progress ───────────────────────
+                  _buildCollectionProgress(
+                    theme,
+                    fresh,
+                    collectedAmount,
+                    pendingAmount,
+                    collectionRate,
+                  ),
                   const SizedBox(height: 16),
+
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text('Flat-wise Status',
@@ -207,7 +97,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
             ),
           ),
 
-          // Per-flat list
+          // ── Section 4: Flat-wise Status ──────────────────────────────────
           SliverList(
             delegate: SliverChildBuilderDelegate(
               (ctx, i) {
@@ -224,6 +114,8 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                     userName: userName,
                     isPaid: isPaid,
                     paidDate: paidDate,
+                    perFlatShare: fresh.perFlatShare,
+                    theme: theme,
                     isLoading: billProvider.isLoading,
                     onMarkPaid: isPaid
                         ? null
@@ -233,9 +125,11 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                                 .adminMarkMonthPaid(
                                     summary.month, aptId, flat.userId);
                             if (!ctx.mounted) return;
-                            AppUtils.showSnackBar(ctx,
-                                '${flat.unitNumber} marked as paid!',
-                                color: AppColors.green);
+                            AppUtils.showSnackBar(
+                              ctx,
+                              '${flat.unitNumber} marked as paid!',
+                              color: AppColors.paid,
+                            );
                           },
                   ),
                 );
@@ -248,31 +142,449 @@ class MonthlyBillDetailScreen extends StatelessWidget {
     );
   }
 
+  // ── Hero Summary Card ───────────────────────────────────────────────────────
+
+  Widget _buildHeroCard(RoleTheme theme, MonthlyBillSummary fresh) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: theme.gradient,
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: theme.primary.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fresh.month,
+                      style: AppTextStyles.caption(
+                          color: Colors.white.withOpacity(0.8)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      AppUtils.formatCurrency(fresh.totalAmount),
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 34,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    Text(
+                      'Apartment Total Bill',
+                      style: AppTextStyles.bodySmall(
+                          color: Colors.white.withOpacity(0.85)),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.receipt_long_rounded,
+                    color: Colors.white, size: 30),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                _miniStat(
+                    Icons.apartment_outlined, '${fresh.totalFlats}', 'Total Flats'),
+                _vertDivider(),
+                _miniStat(
+                    Icons.account_balance_wallet_outlined,
+                    AppUtils.formatCurrency(fresh.perFlatShare),
+                    'Per Flat'),
+                _vertDivider(),
+                _miniStat(
+                    Icons.calendar_today_outlined,
+                    _shortDate(fresh.dueDate),
+                    'Due Date'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniStat(IconData icon, String value, String label) => Expanded(
+        child: Column(
+          children: [
+            Icon(icon, color: Colors.white70, size: 15),
+            const SizedBox(height: 4),
+            Text(value,
+                style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    fontSize: 13),
+                textAlign: TextAlign.center),
+            Text(label,
+                style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 9,
+                    color: Colors.white.withOpacity(0.7)),
+                textAlign: TextAlign.center),
+          ],
+        ),
+      );
+
+  Widget _vertDivider() =>
+      Container(width: 1, height: 32, color: Colors.white.withOpacity(0.2));
+
+  String _shortDate(DateTime d) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${d.day} ${months[d.month - 1]}';
+  }
+
+  // ── Category Breakdown Card ─────────────────────────────────────────────────
+
+  Widget _buildCategoryBreakdown(RoleTheme theme, MonthlyBillSummary fresh) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecor(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionHeader(Icons.bar_chart_rounded, 'Category Breakdown'),
+          const SizedBox(height: 12),
+
+          // Column headers
+          Padding(
+            padding: const EdgeInsets.only(left: 50),
+            child: Row(
+              children: [
+                Expanded(child: const SizedBox()),
+                _colLabel('Total'),
+                const SizedBox(width: 8),
+                _colLabel('/Flat', color: theme.primary),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Bill rows
+          ...fresh.bills.map((bill) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(_categoryIcon(bill.category),
+                          color: theme.primary, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(bill.title,
+                              style: AppTextStyles.bodyMedium(
+                                      color: AppColors.textPrimary)
+                                  .copyWith(fontWeight: FontWeight.w500),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                          Text(bill.category,
+                              style: AppTextStyles.caption()),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      AppUtils.formatCurrency(bill.totalAmount),
+                      style: AppTextStyles.bodyMedium(
+                              color: AppColors.textPrimary)
+                          .copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 52,
+                      child: Text(
+                        AppUtils.formatCurrency(bill.perFlatShare),
+                        style: AppTextStyles.caption(color: theme.primary)
+                            .copyWith(fontWeight: FontWeight.w600),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+
+          const Divider(height: 16),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Apartment Total', style: AppTextStyles.subheading()),
+              Text(AppUtils.formatCurrency(fresh.totalAmount),
+                  style: AppTextStyles.subheading(color: theme.primary)
+                      .copyWith(fontSize: 16)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Per Flat Share', style: AppTextStyles.caption()),
+              Text(AppUtils.formatCurrency(fresh.perFlatShare),
+                  style: AppTextStyles.caption(color: AppColors.textPrimary)
+                      .copyWith(fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _colLabel(String text, {Color? color}) => Text(
+        text,
+        style: AppTextStyles.caption(
+            color: color ?? AppColors.textSecondary),
+      );
+
+  // ── Collection Progress Card ────────────────────────────────────────────────
+
+  Widget _buildCollectionProgress(
+    RoleTheme theme,
+    MonthlyBillSummary fresh,
+    double collectedAmount,
+    double pendingAmount,
+    double collectionRate,
+  ) {
+    final isComplete = collectionRate >= 1.0;
+    final barColor = isComplete ? AppColors.paid : theme.primary;
+    final pendingFlats = fresh.totalFlats - fresh.fullyPaidFlats;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecor(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionHeader(Icons.trending_up_rounded, 'Collection Progress'),
+          const SizedBox(height: 14),
+
+          // Collected / Pending blocks
+          Row(
+            children: [
+              Expanded(
+                child: _amountBlock('Collected',
+                    AppUtils.formatCurrency(collectedAmount), AppColors.paid,
+                    Icons.check_circle_outline),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _amountBlock('Pending',
+                    AppUtils.formatCurrency(pendingAmount), AppColors.pending,
+                    Icons.schedule_outlined),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Progress bar
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: collectionRate,
+                    backgroundColor: AppColors.lightGray,
+                    valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                    minHeight: 10,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '${(collectionRate * 100).toInt()}%',
+                style: AppTextStyles.label(color: barColor)
+                    .copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${AppUtils.formatCurrency(collectedAmount)} of ${AppUtils.formatCurrency(fresh.totalAmount)}',
+            style: AppTextStyles.caption(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 14),
+
+          // Stat pills
+          Row(
+            children: [
+              Expanded(
+                  child: _statPill('${fresh.fullyPaidFlats}', 'Paid Flats',
+                      AppColors.paid, Icons.check_circle_outline)),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: _statPill('$pendingFlats', 'Pending',
+                      AppColors.pending, Icons.schedule_outlined)),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: _statPill(AppUtils.formatDate(fresh.dueDate),
+                      'Due Date', AppColors.blue, Icons.calendar_today_outlined,
+                      compact: true)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _amountBlock(
+      String label, String value, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: AppTextStyles.caption(color: color)),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statPill(String value, String label, Color color, IconData icon,
+      {bool compact = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: compact ? 9 : 12,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 9,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Shared helpers ──────────────────────────────────────────────────────────
+
+  BoxDecoration _cardDecor() => BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      );
+
+  Widget _sectionHeader(IconData icon, String title) => Row(
+        children: [
+          Icon(icon, size: 18, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          Text(title, style: AppTextStyles.subheading()),
+        ],
+      );
+
   IconData _categoryIcon(String category) {
     switch (category) {
-      case 'Water':
-        return Icons.water_drop_outlined;
-      case 'Lift':
-        return Icons.elevator_outlined;
-      case 'Security':
-        return Icons.security_outlined;
-      case 'Maintenance':
-        return Icons.build_outlined;
-      case 'Parking':
-        return Icons.local_parking_outlined;
-      case 'Amenities':
-        return Icons.fitness_center_outlined;
-      default:
-        return Icons.receipt_outlined;
+      case 'Water':      return Icons.water_drop_outlined;
+      case 'Lift':       return Icons.elevator_outlined;
+      case 'Security':   return Icons.security_outlined;
+      case 'Maintenance':return Icons.build_outlined;
+      case 'Parking':    return Icons.local_parking_outlined;
+      case 'Amenities':  return Icons.fitness_center_outlined;
+      default:           return Icons.receipt_outlined;
     }
   }
 }
+
+// ── Flat Payment Card ─────────────────────────────────────────────────────────
 
 class _FlatPaymentCard extends StatelessWidget {
   final String unitNumber;
   final String? userName;
   final bool isPaid;
   final DateTime? paidDate;
+  final double perFlatShare;
+  final RoleTheme theme;
   final bool isLoading;
   final VoidCallback? onMarkPaid;
 
@@ -281,6 +593,8 @@ class _FlatPaymentCard extends StatelessWidget {
     this.userName,
     required this.isPaid,
     this.paidDate,
+    required this.perFlatShare,
+    required this.theme,
     required this.isLoading,
     this.onMarkPaid,
   });
@@ -293,7 +607,7 @@ class _FlatPaymentCard extends StatelessWidget {
         color: AppColors.white,
         borderRadius: BorderRadius.circular(14),
         border: isPaid
-            ? Border.all(color: AppColors.green.withOpacity(0.3))
+            ? Border.all(color: AppColors.paid.withOpacity(0.25))
             : null,
         boxShadow: [
           BoxShadow(
@@ -308,7 +622,7 @@ class _FlatPaymentCard extends StatelessWidget {
           // Unit badge
           Container(
             padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.blue.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
@@ -320,36 +634,64 @@ class _FlatPaymentCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
+
+          // Name + share + status
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (userName != null)
-                  Text(userName!,
-                      style: AppTextStyles.bodyMedium(
-                          color: AppColors.textPrimary)
-                          .copyWith(fontWeight: FontWeight.w500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                if (isPaid && paidDate != null)
                   Text(
-                    'Paid on ${AppUtils.formatDateTime(paidDate!)}',
-                    style:
-                        AppTextStyles.caption(color: AppColors.green),
+                    userName!,
+                    style: AppTextStyles.bodyMedium(
+                            color: AppColors.textPrimary)
+                        .copyWith(fontWeight: FontWeight.w500),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                  )
-                else
-                  Text('Payment pending',
-                      style: AppTextStyles.caption(
-                          color: AppColors.textSecondary)),
+                  ),
+                Row(
+                  children: [
+                    // Per-flat share badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: theme.primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        AppUtils.formatCurrency(perFlatShare),
+                        style: AppTextStyles.caption(color: theme.primary)
+                            .copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: isPaid && paidDate != null
+                          ? Text(
+                              'Paid ${AppUtils.formatDateTime(paidDate!)}',
+                              style: AppTextStyles.caption(
+                                  color: AppColors.paid),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            )
+                          : Text(
+                              'Pending',
+                              style: AppTextStyles.caption(
+                                  color: AppColors.textSecondary),
+                            ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
           const SizedBox(width: 8),
+
+          // Action
           if (isPaid)
             const Icon(Icons.check_circle_rounded,
-                color: AppColors.green, size: 24)
+                color: AppColors.paid, size: 26)
           else
             GestureDetector(
               onTap: isLoading ? null : onMarkPaid,
@@ -357,9 +699,7 @@ class _FlatPaymentCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.green, AppColors.teal],
-                  ),
+                  gradient: LinearGradient(colors: theme.gradient),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(

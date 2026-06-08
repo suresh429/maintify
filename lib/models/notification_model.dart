@@ -5,6 +5,7 @@ class NotificationType {
   static const String payment = 'payment';
   static const String complaint = 'complaint';
   static const String system = 'system';
+  static const String meeting = 'meeting';
 }
 
 class NotificationModel {

@@ -17,6 +17,8 @@ import 'payment_history_screen.dart';
 import 'user_profile_screen.dart';
 import 'monthly_bill_detail_screen.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/meeting_provider.dart';
+import '../../models/meeting_model.dart';
 import '../shared/notifications_screen.dart';
 
 class UserDashboard extends StatefulWidget {
@@ -226,6 +228,8 @@ class _UserHome extends StatelessWidget {
 
     final apt = MockApartments.findById(aptId);
     final president = MockUsers.presidentFor(aptId);
+    final upcomingMeetings =
+        context.watch<MeetingProvider>().upcomingMeetings(aptId);
 
     return RefreshIndicator(
       color: theme.primary,
@@ -400,6 +404,12 @@ class _UserHome extends StatelessWidget {
                   ],
                 ),
               ),
+            ],
+
+            if (upcomingMeetings.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _UpcomingMeetingsBanner(
+                  meetings: upcomingMeetings, theme: theme),
             ],
 
             const SizedBox(height: 24),
@@ -625,6 +635,123 @@ class _PendingMonthCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Upcoming meetings banner ──────────────────────────────────────────────────
+
+class _UpcomingMeetingsBanner extends StatelessWidget {
+  final List<MeetingModel> meetings;
+  final RoleTheme theme;
+
+  const _UpcomingMeetingsBanner(
+      {required this.meetings, required this.theme});
+
+  String _formatDateTime(DateTime dt) {
+    const months = [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final min = dt.minute.toString().padLeft(2, '0');
+    final period = dt.hour < 12 ? 'AM' : 'PM';
+    return '${dt.day} ${months[dt.month]}  ·  $hour:$min $period';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final next = meetings.first;
+    final days = next.scheduledAt.difference(DateTime.now()).inDays;
+    final urgency = days == 0
+        ? 'Today'
+        : days == 1
+            ? 'Tomorrow'
+            : 'In $days days';
+    final urgencyColor = days <= 1 ? AppColors.overdue : AppColors.purple;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.purple.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.purple.withOpacity(0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.event_rounded,
+                  color: AppColors.purple, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                'Upcoming Meeting',
+                style: AppTextStyles.subheading(color: AppColors.purple),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: urgencyColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  urgency,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: urgencyColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(next.title,
+              style: AppTextStyles.bodyMedium(color: AppColors.textPrimary)
+                  .copyWith(fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 3),
+          Text(next.description,
+              style: AppTextStyles.caption(),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.schedule_outlined,
+                  size: 13, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(
+                _formatDateTime(next.scheduledAt),
+                style: AppTextStyles.caption(color: AppColors.textSecondary),
+              ),
+              if (meetings.length > 1) ...[
+                const Spacer(),
+                Text(
+                  '+${meetings.length - 1} more',
+                  style: AppTextStyles.caption(color: AppColors.purple),
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }

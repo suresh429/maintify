@@ -15,6 +15,7 @@ import 'assign_president_screen.dart';
 import 'reports_screen.dart';
 import '../../providers/notification_provider.dart';
 import '../shared/notifications_screen.dart';
+import '../../widgets/logout_sheet.dart';
 
 class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -285,13 +286,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
             title: Text('Logout',
                 style: AppTextStyles.bodyLarge(color: AppColors.overdue)),
             onTap: () async {
-              final confirm = await AppUtils.showConfirmDialog(
-                context,
-                title: 'Logout',
-                message: 'Are you sure you want to logout?',
-                confirmText: 'Logout',
-                confirmColor: AppColors.overdue,
-              );
+              final confirm =
+                  await showLogoutSheet(context, UserRole.superAdmin);
               if (confirm == true && mounted) {
                 context.read<AuthProvider>().logout();
                 Navigator.pushReplacementNamed(context, '/login');

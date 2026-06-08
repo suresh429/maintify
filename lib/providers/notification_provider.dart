@@ -30,4 +30,9 @@ class NotificationProvider extends ChangeNotifier {
     }
     if (changed) notifyListeners();
   }
+
+  void addNotification(NotificationModel notification) {
+    _notifications.insert(0, notification);
+    notifyListeners();
+  }
 }

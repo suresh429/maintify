@@ -11,6 +11,7 @@ import '../../providers/bill_provider.dart';
 import 'complaints_screen.dart';
 import 'i_paid_screen.dart';
 import '../../widgets/change_password_sheet.dart';
+import '../../widgets/logout_sheet.dart';
 
 class UserProfileScreen extends StatelessWidget {
   const UserProfileScreen({super.key});
@@ -205,13 +206,8 @@ class UserProfileScreen extends StatelessWidget {
                   iconColor: AppColors.overdue,
                   labelColor: AppColors.overdue,
                   onTap: () async {
-                    final confirm = await AppUtils.showConfirmDialog(
-                      context,
-                      title: 'Logout',
-                      message: 'Are you sure you want to logout?',
-                      confirmText: 'Logout',
-                      confirmColor: AppColors.overdue,
-                    );
+                    final confirm =
+                        await showLogoutSheet(context, UserRole.user);
                     if (confirm == true && context.mounted) {
                       context.read<AuthProvider>().logout();
                       Navigator.pushReplacementNamed(context, '/login');

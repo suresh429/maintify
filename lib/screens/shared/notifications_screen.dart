@@ -115,6 +115,8 @@ class _NotificationTile extends StatelessWidget {
         return Icons.payments_outlined;
       case NotificationType.complaint:
         return Icons.chat_bubble_outline_rounded;
+      case NotificationType.meeting:
+        return Icons.event_rounded;
       default:
         return Icons.info_outline_rounded;
     }
@@ -128,6 +130,8 @@ class _NotificationTile extends StatelessWidget {
         return AppColors.paid;
       case NotificationType.complaint:
         return AppColors.blue;
+      case NotificationType.meeting:
+        return AppColors.purple;
       default:
         return AppColors.purple;
     }
