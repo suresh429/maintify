@@ -29,10 +29,13 @@ class UserProvider extends ChangeNotifier {
   void startListening() {
     _sub?.cancel();
     _sub = _fs.streamUsers().listen((list) {
+      debugPrint('[REALTIME] Users updated: ${list.length} doc(s)');
       _users = list;
       MockUsers.replaceAll(list); // keep statics in sync for DashboardProvider
       notifyListeners();
-    }, onError: (_) {});
+    }, onError: (e) {
+      debugPrint('[REALTIME] Users stream ERROR: $e');
+    });
   }
 
   @override

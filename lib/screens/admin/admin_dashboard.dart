@@ -216,8 +216,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildFloatingNav(RoleTheme theme) {
+    // viewPadding.bottom is the system navigation bar height (3-button nav ~48 dp,
+    // gesture nav 0–15 dp).  Unlike padding.bottom, viewPadding is NOT zeroed-out
+    // by Scaffold, so we must add it here to keep the floating nav above the bar.
+    final sysNavHeight = MediaQuery.of(context).viewPadding.bottom;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 16 + sysNavHeight),
       child: Container(
         height: 64,
         decoration: BoxDecoration(

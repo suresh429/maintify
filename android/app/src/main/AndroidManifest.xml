@@ -1,8 +1,23 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        POST_NOTIFICATIONS  — Android 13+ (API 33+) requires this declared in the
+        manifest AND granted at runtime before any notification is shown.
+        Without it the permission dialog never appears and all FCM messages are
+        silently dropped on Android 13+ devices.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- Standard permissions required by firebase_messaging -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+
     <application
         android:label="maintify"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -25,7 +40,24 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- Firebase Cloud Messaging -->
+
+        <!--
+            Default FCM notification channel.
+            firebase_messaging auto-creates "fcm_fallback_notification_channel"
+            (HIGH importance) when the app starts. Declaring it here ensures
+            background / terminated FCM messages are always posted to a channel
+            that actually exists, preventing silent drops on Android 8+.
+        -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="fcm_fallback_notification_channel"/>
+
+        <!-- Use the app launcher icon for notification tray icon -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher"/>
+
+        <!-- Firebase Cloud Messaging service -->
         <service
             android:name="com.google.firebase.messaging.FirebaseMessagingService"
             android:exported="false">
@@ -40,6 +72,7 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.

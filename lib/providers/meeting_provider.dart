@@ -21,9 +21,12 @@ class MeetingProvider extends ChangeNotifier {
   void startListening(String aptId) {
     _sub?.cancel();
     _sub = _fs.streamMeetingsForApartment(aptId).listen((list) {
+      debugPrint('[REALTIME] Meetings updated (apt $aptId): ${list.length} doc(s)');
       _meetings = list;
       notifyListeners();
-    }, onError: (_) {});
+    }, onError: (e) {
+      debugPrint('[REALTIME] Meetings stream ERROR (apt $aptId): $e');
+    });
   }
 
   @override
@@ -70,17 +73,18 @@ class MeetingProvider extends ChangeNotifier {
       'createdByAdminId': adminId,
     });
 
-    // Push a notification to all users in the apartment
+    // Notify all residents — fetched from Firestore inside addAndPersistNotification.
+    debugPrint('[FLOW] Meeting created — triggering notification to residents (apt: $aptId)');
     final dateStr =
         '${scheduledAt.day} ${_monthName(scheduledAt.month)} ${scheduledAt.year}'
         ' at ${_timeStr(scheduledAt)}';
 
     await notificationProvider.addAndPersistNotification(
       title: 'Meeting Scheduled: $title',
-      body:
-          'A meeting has been scheduled on $dateStr. $description',
+      body: 'A meeting has been scheduled on $dateStr. $description',
       type: NotificationType.meeting,
       targetRole: UserRole.user,
+      aptId: aptId,
     );
 
     // Optimistic local update

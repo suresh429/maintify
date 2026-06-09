@@ -26,12 +26,70 @@ class DbSeeder {
   static Future<void> seedIfNeeded() async {
     try {
       final meta = await _db.collection('_meta').doc('seeded').get();
-      if (meta.exists) return;
+      if (meta.exists) {
+        // Full seed already ran — only repair the superAdmin doc if missing.
+        await reseedSuperAdmin();
+        return;
+      }
       if (kDebugMode) debugPrint('[DbSeeder] Seeding Firestore...');
       await _seed();
       if (kDebugMode) debugPrint('[DbSeeder] Done.');
     } catch (e) {
       if (kDebugMode) debugPrint('[DbSeeder] Error: $e');
+    }
+  }
+
+  /// Recreates the superAdmin Firestore document if it was accidentally deleted.
+  ///
+  /// Safe to call on every launch:
+  /// - If the doc already exists → returns immediately without signing in.
+  /// - If the doc is missing → signs in as superAdmin to get the Firebase Auth
+  ///   UID, writes the document, and stays signed in (so the app opens on the
+  ///   SuperAdmin dashboard automatically).
+  static Future<void> reseedSuperAdmin() async {
+    try {
+      // Check via email query — no sign-in required.
+      final existing = await _db
+          .collection('users')
+          .where('email', isEqualTo: 'superadmin@test.com')
+          .where('role', isEqualTo: 'superAdmin')
+          .limit(1)
+          .get();
+
+      if (existing.docs.isNotEmpty) {
+        // Doc is present — nothing to fix.
+        return;
+      }
+
+      // Doc is missing. Sign in to retrieve the real Firebase Auth UID.
+      if (kDebugMode) {
+        debugPrint('[DbSeeder] SuperAdmin doc missing — recreating...');
+      }
+
+      final cred = await _auth.signInWithEmailAndPassword(
+        email: 'superadmin@test.com',
+        password: '123456',
+      );
+      final uid = cred.user!.uid;
+
+      await _db.collection('users').doc(uid).set({
+        'name': 'Admin System',
+        'email': 'superadmin@test.com',
+        'phone': '+91 98765 00001',
+        'role': 'superAdmin',
+        'apartmentId': null,
+        'unit': 'HQ',
+        'avatarInitials': 'SA',
+        'isActive': true,
+        'isFirstLogin': false,
+        'joinedAt': Timestamp.fromDate(DateTime(2021, 1, 1)),
+      });
+
+      if (kDebugMode) {
+        debugPrint('[DbSeeder] SuperAdmin doc recreated — uid: $uid');
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('[DbSeeder] reseedSuperAdmin error: $e');
     }
   }
 

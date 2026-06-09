@@ -8,6 +8,7 @@ import '../../models/complaint_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/complaint_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../widgets/bottom_sheet_container.dart';
 import '../../widgets/common_button.dart';
 import '../shared/chat_screen.dart';
@@ -118,6 +119,7 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
       unit: widget.user.unit,
       title: _titleCtrl.text.trim(),
       category: _category,
+      notificationProvider: context.read<NotificationProvider>(),
     );
     if (!mounted) return;
     Navigator.pop(context);

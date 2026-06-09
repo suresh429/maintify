@@ -78,7 +78,8 @@ class _StreamStarterState extends State<_StreamStarter> {
     // Start all Firestore listeners
     context.read<ApartmentProvider>().startListening();
     context.read<UserProvider>().startListening();
-    context.read<NotificationProvider>().startListening(role);
+    // Each user only sees notifications written with their own userId.
+    context.read<NotificationProvider>().startListening(user.id);
     context.read<MeetingProvider>().startListening(aptId);
 
     switch (role) {

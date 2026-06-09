@@ -20,9 +20,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final role = context.read<AuthProvider>().role;
-      if (role != null) {
-        context.read<NotificationProvider>().markAllRead(role);
+      final userId = context.read<AuthProvider>().currentUser?.id;
+      if (userId != null) {
+        context.read<NotificationProvider>().markAllRead(userId);
       }
     });
   }

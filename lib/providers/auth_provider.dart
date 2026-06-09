@@ -37,9 +37,12 @@ class AuthProvider extends ChangeNotifier {
     _currentUser = result.user;
     notifyListeners();
 
-    // Initialise FCM in background — don't await to keep login fast
+    // Initialise FCM in background — don't await to keep login fast.
+    // Errors are caught and logged; a failure here must never block login.
     if (_currentUser != null) {
-      FcmService().init(_currentUser!.id).ignore();
+      FcmService().init(_currentUser!.id).catchError((e) {
+        debugPrint('[FCM] init error for ${_currentUser?.id}: $e');
+      });
     }
 
     return true;

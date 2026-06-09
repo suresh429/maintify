@@ -24,12 +24,32 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   String _search = '';
   String _filter = 'All';
 
-  void _showAddMemberSheet(String aptId, int maxFlats) {
-    showModalBottomSheet(
+  void _showAddMemberSheet(String aptId, int maxFlats) async {
+    debugPrint('[FLOW] Add member sheet opened');
+
+    final result = await showModalBottomSheet<
+        ({String name, String email, String password})>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _AddMemberSheet(aptId: aptId, maxFlats: maxFlats),
+    );
+
+    if (result == null) return; // user cancelled
+    debugPrint('[FLOW] BottomSheet dismissed');
+
+    // Wait for the sheet close animation to complete before showing dialog.
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    if (!mounted) return;
+    debugPrint('[FLOW] Showing password dialog');
+
+    await AppUtils.showGeneratedCredentials(
+      context,
+      name: result.name,
+      email: result.email,
+      password: result.password,
+      role: 'Resident',
     );
   }
 
@@ -246,33 +266,33 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final name = _nameCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+    final flatNumber = _flatCtrl.text.trim();
+
     setState(() => _isSaving = true);
+    debugPrint('[FLOW] Add member started');
     try {
       final password = context.read<UserProvider>().addMember(
-            flatNumber: _flatCtrl.text.trim(),
-            name: _nameCtrl.text.trim(),
-            email: _emailCtrl.text.trim(),
+            flatNumber: flatNumber,
+            name: name,
+            email: email,
             aptId: widget.aptId,
             maxFlats: widget.maxFlats,
           );
+      debugPrint('[FLOW] Add member success');
       if (!mounted) return;
-      // Show credentials before closing sheet
-      await AppUtils.showGeneratedCredentials(
-        context,
-        name: _nameCtrl.text.trim(),
-        email: _emailCtrl.text.trim(),
-        password: password,
-        role: 'Resident',
-      );
-      if (!mounted) return;
-      Navigator.pop(context);
+      Navigator.of(context).pop((name: name, email: email, password: password));
     } catch (e) {
-      setState(() => _isSaving = false);
-      AppUtils.showSnackBar(
-        context,
-        e.toString().replaceFirst('Exception: ', ''),
-        isError: true,
-      );
+      debugPrint('[ERROR] Add member failed: $e');
+      if (mounted) {
+        setState(() => _isSaving = false);
+        AppUtils.showSnackBar(
+          context,
+          e.toString().replaceFirst('Exception: ', ''),
+          isError: true,
+        );
+      }
     }
   }
 
@@ -436,7 +456,7 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
 
                 // Action buttons
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                  padding: EdgeInsets.fromLTRB(20, 0, 20, 28 + MediaQuery.of(context).viewPadding.bottom),
                   child: Row(
                     children: [
                       Expanded(

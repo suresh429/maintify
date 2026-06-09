@@ -26,7 +26,7 @@ class _LogoutSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = RoleTheme.of(role);
-    final bottomPad = MediaQuery.of(context).padding.bottom;
+    final bottomPad = MediaQuery.of(context).viewPadding.bottom;
 
     return Container(
       decoration: const BoxDecoration(

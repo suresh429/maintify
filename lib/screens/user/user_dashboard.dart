@@ -152,8 +152,9 @@ class _UserDashboardState extends State<UserDashboard> {
   }
 
   Widget _buildFloatingNav(RoleTheme theme) {
+    final sysNavHeight = MediaQuery.of(context).viewPadding.bottom;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 16 + sysNavHeight),
       child: Container(
         height: 64,
         decoration: BoxDecoration(

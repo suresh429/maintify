@@ -5,6 +5,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../models/complaint_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/complaint_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../widgets/bottom_sheet_container.dart';
 import '../../widgets/chat_bubble.dart';
 import '../../widgets/chat_input_field.dart';
@@ -182,6 +183,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       senderName: user.name,
                       isFromAdmin: widget.isAdminView,
                       content: text,
+                      notificationProvider:
+                          context.read<NotificationProvider>(),
                     );
                 _scrollToBottom();
               },

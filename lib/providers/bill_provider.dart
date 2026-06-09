@@ -2,8 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/bill_model.dart';
+import '../models/notification_model.dart';
 import '../models/user_model.dart';
 import '../core/services/firestore_service.dart';
+import '../core/theme/role_theme.dart';
+import 'notification_provider.dart';
 
 // ── Monthly grouping data classes (unchanged — UI depends on these) ───────────
 
@@ -151,27 +154,38 @@ class BillProvider extends ChangeNotifier {
     _paymentSub?.cancel();
 
     _billSub = _fs.streamBillsForApartment(aptId).listen((bills) {
+      debugPrint('[REALTIME] Bills updated: ${bills.length} doc(s) for apt $aptId');
       _bills = bills;
       MockBillData.replaceAll(_bills, _payments);
       notifyListeners();
-    }, onError: (_) {});
+    }, onError: (e) {
+      // Errors here are almost always a missing Firestore composite index.
+      // Run: firebase deploy --only firestore:indexes  to deploy firestore.indexes.json
+      debugPrint('[REALTIME] Bills stream ERROR (apt $aptId): $e');
+    });
 
     _paymentSub =
         _fs.streamPaymentsForApartment(aptId).listen((payments) {
+      debugPrint('[REALTIME] Payments updated: ${payments.length} doc(s) for apt $aptId');
       _payments = payments;
       MockBillData.replaceAll(_bills, _payments);
       notifyListeners();
-    }, onError: (_) {});
+    }, onError: (e) {
+      debugPrint('[REALTIME] Payments stream ERROR (apt $aptId): $e');
+    });
   }
 
   /// For super admin: listen to ALL bills across all apartments.
   void startListeningAll() {
     _billSub?.cancel();
     _billSub = _fs.streamAllBills().listen((bills) {
+      debugPrint('[REALTIME] All-bills updated: ${bills.length} doc(s)');
       _bills = bills;
       MockBillData.replaceAll(_bills, _payments);
       notifyListeners();
-    }, onError: (_) {});
+    }, onError: (e) {
+      debugPrint('[REALTIME] All-bills stream ERROR: $e');
+    });
   }
 
   @override
@@ -209,7 +223,11 @@ class BillProvider extends ChangeNotifier {
       try {
         final bill = _bills.firstWhere((b) => b.id == payment.billId);
         result.add(_UserBillView(bill: bill, payment: payment));
-      } catch (_) {}
+      } catch (_) {
+        // Bill not found in cache — usually means the bills stream hasn't
+        // loaded yet or failed (check '[REALTIME] Bills stream ERROR' logs).
+        debugPrint('[REALTIME] userBillViews: payment ${payment.billId} has no matching bill in cache (${_bills.length} bills loaded)');
+      }
     }
     result.sort((a, b) => b.bill.createdAt.compareTo(a.bill.createdAt));
     return result;
@@ -370,6 +388,7 @@ class BillProvider extends ChangeNotifier {
     required List<({String title, String category, double amount})> lineItems,
     required int totalFlats,
     required List<UserModel> residents,
+    required NotificationProvider notificationProvider,
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -407,6 +426,23 @@ class BillProvider extends ChangeNotifier {
         });
       }
     }
+
+    // In-app notification to all residents about the new bill
+    final totalAmount =
+        lineItems.fold(0.0, (sum, item) => sum + item.amount);
+    // residents list is already available — pass IDs directly, no extra Firestore query.
+    final residentIds = residents.map((u) => u.id).toList();
+    debugPrint('[FLOW] Bill created — triggering notification for ${residentIds.length} resident(s) (apt: $apartmentId)');
+    await notificationProvider.addAndPersistNotification(
+      title: 'New Bill for $month',
+      body: 'Monthly maintenance bill generated. '
+          '₹${(totalAmount / totalFlats).toStringAsFixed(0)} per flat due by '
+          '${dueDate.day}/${dueDate.month}/${dueDate.year}.',
+      type: NotificationType.bill,
+      targetRole: UserRole.user,
+      aptId: apartmentId,
+      targetUserIds: residentIds,
+    );
 
     _isLoading = false;
     notifyListeners();

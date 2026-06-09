@@ -21,6 +21,7 @@ class ApartmentProvider extends ChangeNotifier {
   void startListening() {
     _sub?.cancel();
     _sub = _fs.streamApartments().listen((list) {
+      debugPrint('[REALTIME] Apartments updated: ${list.length} doc(s)');
       _apartments = list;
       MockApartments.replaceAll(list); // keep statics in sync
       notifyListeners();
@@ -30,7 +31,9 @@ class ApartmentProvider extends ChangeNotifier {
           _migratePendingPresident(apt);
         }
       }
-    }, onError: (_) {});
+    }, onError: (e) {
+      debugPrint('[REALTIME] Apartments stream ERROR: $e');
+    });
   }
 
   /// Finds the real admin user for [apt] and updates the apartment document.

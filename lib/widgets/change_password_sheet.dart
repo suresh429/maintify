@@ -309,7 +309,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
 
                   // Action buttons
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                    padding: EdgeInsets.fromLTRB(20, 0, 20, 32 + MediaQuery.of(context).viewPadding.bottom),
                     child: Row(
                       children: [
                         if (!widget.isFirstLogin) ...[

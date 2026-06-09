@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../../models/user_model.dart';
 import '../../models/apartment_model.dart';
 import '../../models/bill_model.dart';
@@ -28,6 +29,19 @@ class FirestoreService {
       .where('apartmentId', isEqualTo: aptId)
       .snapshots()
       .map((s) => s.docs.map(UserModel.fromFirestore).toList());
+
+  /// One-time fetch — used to resolve notification targets without a stream.
+  Future<List<UserModel>> getUsersForApartment(String aptId,
+      {UserRole? role}) async {
+    var query = _db
+        .collection('users')
+        .where('apartmentId', isEqualTo: aptId);
+    if (role != null) {
+      query = query.where('role', isEqualTo: role.name);
+    }
+    final snap = await query.get();
+    return snap.docs.map(UserModel.fromFirestore).toList();
+  }
 
   Future<UserModel?> getUser(String uid) async {
     final doc = await _db.collection('users').doc(uid).get();
@@ -207,11 +221,13 @@ class FirestoreService {
 
   // ─────────────────────────────────── NOTIFICATIONS ───────────────────────────
 
-  Stream<List<NotificationModel>> streamNotificationsForRole(
-          UserRole role) =>
+  /// Real-time stream of notifications for a specific user.
+  /// Query: userId == currentUserId, ordered by createdAt desc.
+  /// Requires composite index: userId ASC + createdAt DESC (see firestore.indexes.json).
+  Stream<List<NotificationModel>> streamNotificationsForUser(String userId) =>
       _db
           .collection('notifications')
-          .where('targetRole', isEqualTo: role.name)
+          .where('userId', isEqualTo: userId)
           .orderBy('createdAt', descending: true)
           .limit(50)
           .snapshots()
@@ -223,10 +239,10 @@ class FirestoreService {
   Future<void> markNotificationRead(String id) =>
       _db.collection('notifications').doc(id).update({'isRead': true});
 
-  Future<void> markAllNotificationsRead(UserRole role) async {
+  Future<void> markAllNotificationsReadForUser(String userId) async {
     final snap = await _db
         .collection('notifications')
-        .where('targetRole', isEqualTo: role.name)
+        .where('userId', isEqualTo: userId)
         .where('isRead', isEqualTo: false)
         .get();
     final batch = _db.batch();
@@ -234,5 +250,35 @@ class FirestoreService {
       batch.update(doc.reference, {'isRead': true});
     }
     await batch.commit();
+  }
+
+  /// Deletes legacy notification documents that have a `targetRole` field but
+  /// no `userId` field.  These are docs written before the per-user refactor;
+  /// they will never match `where('userId', isEqualTo: ...)` queries.
+  ///
+  /// Safe to call on every login — it is a no-op when there is nothing to delete.
+  Future<void> cleanupLegacyNotifications() async {
+    // Query by the three known targetRole values — only legacy docs have this
+    // field (new docs omit targetRole entirely).
+    final snap = await _db
+        .collection('notifications')
+        .where('targetRole', whereIn: ['user', 'admin', 'superAdmin'])
+        .limit(200)
+        .get();
+
+    final toDelete =
+        snap.docs.where((d) => (d.data()['userId'] as String?) == null).toList();
+
+    if (toDelete.isEmpty) {
+      debugPrint('[CLEANUP] No legacy notification docs found — nothing to delete');
+      return;
+    }
+
+    final batch = _db.batch();
+    for (final doc in toDelete) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+    debugPrint('[CLEANUP] Deleted ${toDelete.length} legacy notification doc(s) (had targetRole, missing userId)');
   }
 }
