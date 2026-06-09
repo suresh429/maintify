@@ -23,8 +23,8 @@ class _BillsScreenState extends State<BillsScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
-    final userId = auth.currentUser?.id ?? 'u3';
-    final aptId = auth.currentUser?.apartmentId ?? 'apt1';
+    final userId = auth.currentUser?.id ?? '';
+    final aptId = auth.currentUser?.apartmentId ?? '';
     final billProvider = context.watch<BillProvider>();
     final theme = RoleTheme.of(UserRole.user);
 

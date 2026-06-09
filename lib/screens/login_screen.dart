@@ -158,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen>
                 builder: (stCtx, setSt) => CommonButton(
                   text: 'Reset Password',
                   gradient: const [Color(0xFF1E3A8A), Color(0xFF06B6D4)],
-                  onPressed: () {
+                  onPressed: () async {
                     final email = _forgotEmailCtrl.text.trim();
                     if (email.isEmpty || !email.contains('@')) {
                       AppUtils.showSnackBar(ctx, 'Enter a valid email',
@@ -166,9 +166,10 @@ class _LoginScreenState extends State<LoginScreen>
                       return;
                     }
                     final auth = context.read<AuthProvider>();
-                    final newPass = auth.generateForgotPassword(email);
+                    final result = await auth.generateForgotPassword(email);
+                    if (!ctx.mounted) return;
                     Navigator.pop(ctx);
-                    if (newPass == null) {
+                    if (result == null) {
                       AppUtils.showSnackBar(
                           context, 'No account found with that email.',
                           isError: true);
@@ -177,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen>
                         context,
                         name: email,
                         email: email,
-                        password: newPass,
+                        password: result,
                         role: 'Reset Password',
                       );
                     }

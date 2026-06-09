@@ -112,7 +112,7 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
     if (!_formKey.currentState!.validate()) return;
     final prov = context.read<ComplaintProvider>();
     await prov.createComplaint(
-      apartmentId: widget.user.apartmentId ?? 'apt1',
+      apartmentId: widget.user.apartmentId ?? '',
       userId: widget.user.id,
       userName: widget.user.name,
       unit: widget.user.unit,

@@ -160,22 +160,24 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                                   color: Colors.white, size: 20),
                             ),
                             const SizedBox(width: 14),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.isFirstLogin
-                                      ? 'Set New Password'
-                                      : 'Change Password',
-                                  style: AppTextStyles.subheading(),
-                                ),
-                                Text(
-                                  widget.isFirstLogin
-                                      ? 'Temporary password — must be changed to continue'
-                                      : 'Keep your account secure',
-                                  style: AppTextStyles.caption(),
-                                ),
-                              ],
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.isFirstLogin
+                                        ? 'Set New Password'
+                                        : 'Change Password',
+                                    style: AppTextStyles.subheading(),
+                                  ),
+                                  Text(
+                                    widget.isFirstLogin
+                                        ? 'Temporary password — must be changed to continue'
+                                        : 'Keep your account secure',
+                                    style: AppTextStyles.caption(),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),

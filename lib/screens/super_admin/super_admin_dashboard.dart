@@ -7,7 +7,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../models/apartment_model.dart';
-import '../../models/user_model.dart';
+import '../../providers/apartment_provider.dart';
 import '../../widgets/dashboard_card.dart';
 import '../../widgets/shimmer_loading.dart';
 import 'apartments_screen.dart';
@@ -311,6 +311,7 @@ class _DashboardHome extends StatelessWidget {
     final dashboard = context.watch<DashboardProvider>();
     final auth = context.read<AuthProvider>();
     final theme = RoleTheme.of(UserRole.superAdmin);
+    final aptProvider = context.watch<ApartmentProvider>();
 
     if (dashboard.isLoading) return const ShimmerDashboard();
 
@@ -479,7 +480,7 @@ class _DashboardHome extends StatelessWidget {
             Text('Properties', style: AppTextStyles.heading3()),
             const SizedBox(height: 14),
 
-            ...MockApartments.all.map((apt) => _ApartmentCard(apt: apt)),
+            ...aptProvider.apartments.map((apt) => _ApartmentCard(apt: apt)),
 
             const SizedBox(height: 20),
           ],
@@ -516,7 +517,7 @@ class _ApartmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final president = MockUsers.presidentFor(apt.id);
+    final presidentDisplayName = apt.presidentName ?? 'Unassigned';
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -589,7 +590,7 @@ class _ApartmentCard extends StatelessWidget {
               const SizedBox(width: 16),
               _stat(
                 Icons.person_outline,
-                president?.name ?? 'Unassigned',
+                presidentDisplayName,
                 apt.hasPresident
                     ? AppColors.textPrimary
                     : AppColors.overdue,

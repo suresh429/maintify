@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/app_utils.dart';
-import '../../models/apartment_model.dart';
-import '../../models/user_model.dart';
-import '../../models/bill_model.dart';
+import '../../providers/bill_provider.dart';
+import '../../providers/apartment_provider.dart';
+import '../../providers/user_provider.dart';
 
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Global totals from payment records
+    final billProvider = context.watch<BillProvider>();
+    final aptProvider = context.watch<ApartmentProvider>();
+    final userProvider = context.watch<UserProvider>();
+
+    // Global totals from all apartments
     double totalCollected = 0;
     double totalPending = 0;
-    for (final bill in MockBillData.bills) {
-      for (final p in MockBillData.paymentsForBill(bill.id)) {
-        if (p.isPaid) {
-          totalCollected += bill.perFlatShare;
-        } else {
-          totalPending += bill.perFlatShare;
-        }
-      }
+    for (final apt in aptProvider.apartments) {
+      totalCollected += billProvider.collectedForApartment(apt.id);
+      totalPending += billProvider.pendingForApartment(apt.id);
     }
     final collectionRate = (totalCollected + totalPending) == 0
         ? 0.0
@@ -119,22 +119,16 @@ class ReportsScreen extends StatelessWidget {
           Text('Per Apartment', style: AppTextStyles.heading3()),
           const SizedBox(height: 14),
 
-          ...MockApartments.all.map((apt) {
-            final bills = MockBillData.billsForApartment(apt.id);
-            double collected = 0;
-            double pending = 0;
+          ...aptProvider.apartments.map((apt) {
+            final bills = billProvider.billsForApartment(apt.id);
+            final collected = billProvider.collectedForApartment(apt.id);
+            final pending = billProvider.pendingForApartment(apt.id);
             int paidPayments = 0;
             int totalPayments = 0;
-
             for (final bill in bills) {
-              for (final p in MockBillData.paymentsForBill(bill.id)) {
+              for (final p in billProvider.paymentsForBill(bill.id)) {
                 totalPayments++;
-                if (p.isPaid) {
-                  paidPayments++;
-                  collected += bill.perFlatShare;
-                } else {
-                  pending += bill.perFlatShare;
-                }
+                if (p.isPaid) paidPayments++;
               }
             }
             final rate =
@@ -232,18 +226,18 @@ class ReportsScreen extends StatelessWidget {
           Text('Resident Activity', style: AppTextStyles.heading3()),
           const SizedBox(height: 14),
 
-          ...MockUsers.residents.map((user) {
-            final payments = MockBillData.paymentsForUser(user.id);
+          ...userProvider.residents.map((user) {
+            final payments = billProvider.paymentsForUser(user.id);
             final paid = payments.where((p) => p.isPaid).length;
             final total = payments.length;
-            final totalPaidAmt = payments
-                .where((p) => p.isPaid)
-                .fold(0.0, (s, p) {
-              final bill = MockBillData.bills.firstWhere(
-                  (b) => b.id == p.billId,
-                  orElse: () => MockBillData.bills.first);
-              return s + bill.perFlatShare;
-            });
+            double totalPaidAmt = 0;
+            for (final p in payments.where((p) => p.isPaid)) {
+              final aptBills = billProvider.billsForApartment(user.apartmentId ?? '');
+              try {
+                final bill = aptBills.firstWhere((b) => b.id == p.billId);
+                totalPaidAmt += bill.perFlatShare;
+              } catch (_) {}
+            }
 
             return Container(
               margin: const EdgeInsets.only(bottom: 10),

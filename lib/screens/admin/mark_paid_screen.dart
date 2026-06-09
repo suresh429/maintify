@@ -15,7 +15,7 @@ class MarkPaidScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
-    final aptId = auth.currentUser?.apartmentId ?? 'apt1';
+    final aptId = auth.currentUser?.apartmentId ?? '';
     final billProvider = context.watch<BillProvider>();
     final theme = RoleTheme.of(UserRole.admin);
 

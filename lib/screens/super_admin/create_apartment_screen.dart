@@ -85,7 +85,8 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
         unit: _presidentFlatCtrl.text.trim(),
       );
 
-      // 2. Create apartment with presidentId already set
+      // 2. Create apartment — presidentId is set to null until the admin's
+      // first login creates their real users/ document and patches the apt.
       await aptProvider.createApartment(
         id: aptId,
         name: aptName,
@@ -93,7 +94,7 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
         city: _cityCtrl.text.trim(),
         totalFlats: int.parse(_flatsCtrl.text.trim()),
         amenities: List.from(_amenities),
-        presidentId: adminResult.id,
+        presidentName: _presidentNameCtrl.text.trim(),
       );
 
       if (!mounted) return;

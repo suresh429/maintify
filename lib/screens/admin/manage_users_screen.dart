@@ -36,7 +36,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
-    final aptId = auth.currentUser?.apartmentId ?? 'apt1';
+    final aptId = auth.currentUser?.apartmentId ?? '';
     final userProvider = context.watch<UserProvider>();
     final billProvider = context.watch<BillProvider>();
     final aptProvider = context.watch<ApartmentProvider>();

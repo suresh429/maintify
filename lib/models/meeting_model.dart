@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class MeetingModel {
   final String id;
   final String title;
@@ -14,6 +16,27 @@ class MeetingModel {
     required this.createdByAdminId,
     required this.apartmentId,
   });
+
+  factory MeetingModel.fromFirestore(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    return MeetingModel(
+      id: doc.id,
+      title: d['title'] as String? ?? '',
+      description: d['description'] as String? ?? '',
+      scheduledAt:
+          (d['scheduledAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdByAdminId: d['createdByAdminId'] as String? ?? '',
+      apartmentId: d['apartmentId'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'title': title,
+        'description': description,
+        'scheduledAt': Timestamp.fromDate(scheduledAt),
+        'createdByAdminId': createdByAdminId,
+        'apartmentId': apartmentId,
+      };
 }
 
 class MockMeetings {

@@ -29,103 +29,139 @@ flutter pub get
 
 ## Architecture
 
-**Maintify** is a Flutter apartment maintenance management app. **No backend — mock data only.** Uses Provider + ChangeNotifier for state management, portrait-only orientation.
+**Maintify** is a Flutter apartment maintenance management app backed by **Firebase (Firestore + Auth)**. Uses Provider + ChangeNotifier for state management, portrait-only orientation.
 
 ### Role System
 
-Three roles drive the entire app structure: `superAdmin`, `admin` (apartment president), and `user` (resident). Role is determined at login via `AuthProvider`. `DashboardRouter` (`lib/screens/dashboard_router.dart`) watches `AuthProvider` and routes accordingly.
+Three roles drive the entire app structure: `superAdmin`, `admin` (apartment president), and `user` (resident). `UserRole` is defined in `lib/core/theme/role_theme.dart` — **not** in `user_model.dart`. Role is determined at login via `AuthProvider`. `DashboardRouter` (`lib/screens/dashboard_router.dart`) watches `AuthProvider` and routes accordingly.
 
-**Mock credentials** (password: `123456`):
+**Test credentials** (password: `123456`, seeded via `DbSeeder` on first launch):
 - `superadmin@test.com` → SuperAdmin
 - `admin@test.com` → Admin (G. Srikanth, Flat 402, Samhith Residency)
 - `user@test.com` → User (Rohit, Flat 101)
 
-**First-login flow:** New users (created via admin/super-admin) have `isFirstLogin: true` and an auto-generated password. `DashboardRouter` wraps their dashboard in `_FirstLoginWrapper`, which opens a non-dismissible `showChangePasswordSheet(isFirstLogin: true)` via `addPostFrameCallback`. After password change, `isFirstLogin` becomes false and the wrapper is removed.
+**First-login flow:** New users have `isFirstLogin: true` and an auto-generated password. `DashboardRouter` wraps their dashboard in `_FirstLoginWrapper`, which opens a non-dismissible `showChangePasswordSheet(isFirstLogin: true)` via `addPostFrameCallback`. After password change, `isFirstLogin` becomes false in both Firebase Auth and the Firestore user doc.
 
 ### Provider Stack
 
-All 6 providers registered at root in `main.dart`:
+All 8 providers registered at root in `main.dart`:
 
 | Provider | Responsibility |
 |---|---|
-| `AuthProvider` | Login/logout, current user, role, `changePassword`, `generateForgotPassword` |
-| `ApartmentProvider` | Apartment CRUD, president assignment |
-| `DashboardProvider` | Aggregated stats for admin/superadmin dashboards |
-| `BillProvider` | Bills (apartment-wide) and payments (per-flat) |
-| `UserProvider` | Member filtering, search, `createAdmin`, `addMember` |
+| `AuthProvider` | Login/logout, current user, role, `changePassword`, `generateForgotPassword` — delegates to `FirebaseAuthService` |
+| `ApartmentProvider` | Apartment CRUD, president assignment (batch writes), `pending_*` migration |
+| `DashboardProvider` | Aggregated stats — reads from `MockXxx` statics (kept in sync by other providers via `replaceAll()`) |
+| `BillProvider` | Bills (apartment-wide) and payments (per-flat), Firestore streams |
+| `UserProvider` | Member filtering, search, `createAdmin`, `addMember` — writes to `pending_users` collection |
 | `ComplaintProvider` | Complaint lifecycle + message threads |
+| `MeetingProvider` | Meeting CRUD, schedules notifications via `NotificationProvider` |
+| `NotificationProvider` | In-app notifications, Firestore-backed, `startListening(role)` |
 
-Providers simulate network delays (typically 400–1200ms) and expose `isLoading`/`initialized` flags for shimmer states.
+Providers that use Firestore streams call `startListening(...)` from `DashboardRouter` after login. They cache data locally and call `notifyListeners()` on stream updates.
 
-### Data Layer
+### Data Layer: Firestore + Mock Static Sync
 
-Mock data lives as static lists in model files. **No persistence — resets on restart.**
+All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `MockBillData`) exist **only for `DashboardProvider`**, which cannot hold Firestore streams of its own. Every provider's stream listener calls `MockFoo.replaceAll(list)` to keep statics in sync.
 
-- `lib/models/user_model.dart` — `MockUsers`: 11 users (1 super-admin, 1 admin, 9 residents), all in `apt1`
-- `lib/models/apartment_model.dart` — `MockApartments`: 1 apartment — "Samhith Residency", Hyderabad, 10 flats, `presidentId: 'u2'`
-- `lib/models/bill_model.dart` — `MockBillData` (4 bills), `MockPayments`
-- `lib/models/complaint_model.dart` — `MockComplaints`
+**Key Firestore collections:**
+- `users/` — real Firebase Auth UID as document ID
+- `pending_users/` — admin-created users before their first login (no Auth account yet)
+- `apartments/`, `bills/`, `payments/`, `complaints/`, `meetings/`, `notifications/`
+- `_meta/seeded` — guards `DbSeeder` from re-running
 
-Cross-provider consistency: mutations call both the provider's `_list` AND the static `MockFoo.all` so that other providers reading the static stay in sync (e.g. `MockUsers.all.add(newUser)` in `addMember`).
+**`DashboardProvider` important note:** Its stats getters read from `MockXxx` statics only. This is intentional — it's kept accurate because `UserProvider`, `ApartmentProvider`, and `BillProvider` all call `replaceAll()` in their stream listeners.
 
 **Bill logic:** `BillModel` is apartment-wide; `BillPayment` is per-flat. `perFlatShare = totalAmount / totalFlats`. Creating a bill auto-generates a `BillPayment` for each flat.
 
-**Flat capacity:** `UserProvider.memberCountForApartment(aptId)` is checked against `ApartmentModel.totalFlats` before adding members. The UI hides the Add button when full.
+### Authentication & User Creation Flow
 
-### Authentication & Password System
+Login goes through `FirebaseAuthService.signIn()`:
+1. Tries normal Firebase Auth sign-in
+2. If `user-not-found` / `invalid-credential` → calls `_promotePendingUser()`:
+   - Finds user in `pending_users` by email + tempPassword
+   - Creates Firebase Auth account → gets real UID
+   - Writes `users/{realUid}` doc (drops `tempPassword`, sets `isFirstLogin: true`)
+   - **If role == admin**: patches `apartments/{aptId}` with `presidentId: realUid, presidentName: name`
+   - Deletes the `pending_users` doc
 
-- `UserModel` stores `password` (plain text for mock), `isFirstLogin`
-- `AuthProvider.login()` does live lookup via `MockUsers.findByEmail` + password match
-- `AuthProvider.changePassword({currentPassword, newPassword})` — validates current, updates both `_currentUser` and `MockUsers.all`
-- `AuthProvider.generateForgotPassword(email)` — generates a new password and updates `MockUsers`; shown to super-admin/admin in a credentials dialog
-- `UserProvider.createAdmin(...)` → returns `({String id, String password})` with auto-generated password, sets `isFirstLogin: true`
-- `UserProvider.addMember(...)` → returns `String` (password), sets `isFirstLogin: true`
-- Password generation lives in `AppUtils`: `generateAdminPassword(aptName)` → `"Adm@Samh1th#X9"`, `generateUserPassword(name, flatNo)` → `"Usr@Rav102#K7"`
-- After creation, `AppUtils.showGeneratedCredentials(context, {...})` shows a dialog with Copy Password button
+`UserProvider.createAdmin(...)` and `addMember(...)` write to `pending_users` (not `users`). They return a generated password to show in `AppUtils.showGeneratedCredentials()`. Password generation lives in `AppUtils`: `generateAdminPassword(aptName)`, `generateUserPassword(name, flatNo)`.
+
+### President Assignment
+
+President data is **denormalized** into the apartment document for consistent reads:
+
+```
+apartments/{id}:
+  presidentId: <real Firebase UID or null>
+  presidentName: <display name>
+```
+
+**All screens read `apt.presidentName ?? 'Unassigned'` directly** — never do cross-collection `userProvider.findById(apt.presidentId!)` for display.
+
+`ApartmentProvider.assignPresident(aptId, newPresidentId, newPresidentName, {oldPresidentId})` uses a single `WriteBatch` via `FirestoreService.assignPresidentBatch()` to atomically: promote new president, demote old president, update apartment fields.
+
+**`createApartment()` never accepts `presidentId`** — the initial president is stored as `presidentName` only (null presidentId) because the admin doesn't have a real UID until first login.
+
+**Migration:** `ApartmentProvider.startListening()` detects any apartment with a `pending_*` presidentId and auto-heals it by querying `users/` for the real admin.
+
+### Service Layer (`lib/core/services/`)
+
+| Service | Purpose |
+|---|---|
+| `FirestoreService` | Singleton — all collection reads/writes. Providers never import `FirebaseFirestore` directly. |
+| `FirebaseAuthService` | Wraps `FirebaseAuth`. Handles sign-in, pending-user promotion, password change, reset email. |
+| `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). |
+| `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded`. |
 
 ### Screen Layout
 
 ```
 screens/
-├── login_screen.dart          ← AppTextField fields + Forgot Password bottom sheet
-├── dashboard_router.dart      ← Role router + _FirstLoginWrapper
-├── admin/                     ← 7 screens (dashboard, bills, complaints, users, mark-paid, monthly-bill-detail, transfer-president)
-├── super_admin/               ← 6 screens (dashboard, apartments, reports, assign-admin, assign-president, create-apartment)
-├── user/                      ← 6 screens (bills, payments, complaints, profile)
+├── login_screen.dart              ← AppTextField + Forgot Password bottom sheet
+├── dashboard_router.dart          ← Role router + _FirstLoginWrapper + provider startListening calls
+├── splash_screen.dart
+├── admin/                         ← 7 screens: dashboard, create-bill, complaints, manage-users,
+│                                    mark-paid, monthly-bill-detail, transfer-president
+├── super_admin/                   ← 6 screens: dashboard, apartments, reports, assign-admin,
+│                                    assign-president, create-apartment
+├── user/                          ← 6 screens: dashboard, bills, monthly-bill-detail,
+│                                    payment-history, complaints, profile
 └── shared/
-    └── chat_screen.dart       ← Complaint message threads
+    ├── chat_screen.dart           ← Complaint message threads
+    └── notifications_screen.dart
 ```
 
 ### Design System
 
 - **Theme:** Material 3, Poppins font (via `google_fonts`)
 - **Colors:** `lib/core/theme/app_colors.dart`
-  - `AppColors.paid` = `#22C55E` — green, **status indicators only** (paid bills, success)
-  - `AppColors.green` = `#C39A51` — golden/amber, **not for status**
+  - `AppColors.paid` = `#22C55E` — green, **status indicators only** (paid bills, success snackbars)
+  - `AppColors.green` = `#C39A51` — golden/amber, **not for payment status**
   - Role gradients: `superAdminGradient` (violet), `adminGradient` (blue), `userGradient` (gold → dark navy)
 - **Role theming:** `RoleTheme.of(UserRole.x)` → `.gradient`, `.primary`, `.secondary`
-- **Spacing:** `AppConstants` in `lib/core/constants/app_constants.dart`
-- **Loading states:** `ShimmerLoading` widget
+- **Spacing/constants:** `AppConstants` in `lib/core/constants/app_constants.dart`
 
 ### Widget Library (`lib/widgets/`)
 
-14 shared widgets — always check before building a new component:
+Always check before building a new component:
 
 | Widget | Purpose |
 |---|---|
-| `AppTextField` | **Universal form field** — `OutlineInputBorder` + floating label. Use for ALL form inputs. Accepts `focusColor` for role-specific border color. Replaces all bare `TextFormField` usage. |
+| `AppTextField` | **Universal form field** — `OutlineInputBorder` + floating label. Use for ALL form inputs. Accepts `focusColor` for role-specific border color. |
 | `showChangePasswordSheet(context)` | Bottom sheet for changing password. `isFirstLogin: true` makes it non-dismissible. |
 | `CommonButton` | Gradient primary button with loading state |
 | `DashboardCard` | Stat summary card |
 | `BillCard` | Bill display card |
 | `StatusChip` | Paid/Pending/Overdue chip |
 | `UserTile` | Member list item |
-| `ApartmentHeader` | Apartment info banner |
+| `ApartmentHeader` | Apartment info banner (shows presidentName) |
 | `MaintifyLogo` | App logo widget |
 | `ShimmerLoading` | Loading skeleton |
 | `BottomSheetContainer` | Standard bottom sheet wrapper |
 | `PillFilterBar` | Horizontal filter pill row |
 | `ChatBubble` / `ChatInputField` | Complaint chat UI |
+| `ScheduleMeetingSheet` | Bottom sheet for scheduling meetings |
+| `LogoutSheet` | Confirmation bottom sheet for logout |
 
 ### Bottom Sheet Rules
 
@@ -133,7 +169,7 @@ All bottom sheets must use:
 ```dart
 showModalBottomSheet(
   isScrollControlled: true,
-  ...
+  backgroundColor: Colors.transparent,
   builder: (_) => Padding(
     padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
     child: SingleChildScrollView(...),

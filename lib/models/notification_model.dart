@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/theme/role_theme.dart';
 
 class NotificationType {
@@ -26,6 +27,40 @@ class NotificationModel {
     required this.isRead,
     required this.targetRole,
   });
+
+  factory NotificationModel.fromFirestore(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    UserRole role;
+    switch (d['targetRole'] as String?) {
+      case 'superAdmin':
+        role = UserRole.superAdmin;
+        break;
+      case 'admin':
+        role = UserRole.admin;
+        break;
+      default:
+        role = UserRole.user;
+    }
+    return NotificationModel(
+      id: doc.id,
+      title: d['title'] as String? ?? '',
+      body: d['body'] as String? ?? '',
+      type: d['type'] as String? ?? NotificationType.system,
+      createdAt:
+          (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isRead: d['isRead'] as bool? ?? false,
+      targetRole: role,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'title': title,
+        'body': body,
+        'type': type,
+        'createdAt': Timestamp.fromDate(createdAt),
+        'isRead': isRead,
+        'targetRole': targetRole.name,
+      };
 
   NotificationModel copyWith({bool? isRead}) {
     return NotificationModel(

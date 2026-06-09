@@ -7,8 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
-import '../../models/apartment_model.dart';
-import '../../models/user_model.dart';
+import '../../providers/apartment_provider.dart';
 import '../../widgets/dashboard_card.dart';
 import '../../widgets/shimmer_loading.dart';
 import '../../widgets/apartment_header.dart';
@@ -269,8 +268,9 @@ class _AdminHome extends StatelessWidget {
     final dashboard = context.watch<DashboardProvider>();
     final auth = context.read<AuthProvider>();
     final billProvider = context.watch<BillProvider>();
+    final aptProvider = context.watch<ApartmentProvider>();
     final theme = RoleTheme.of(UserRole.admin);
-    final aptId = auth.currentUser?.apartmentId ?? 'apt1';
+    final aptId = auth.currentUser?.apartmentId ?? '';
 
     if (dashboard.isLoading) return const ShimmerDashboard();
 
@@ -282,8 +282,7 @@ class _AdminHome extends StatelessWidget {
             : 'Good evening,';
 
     final stats = dashboard.adminStats(aptId);
-    final apt = MockApartments.findById(aptId);
-    final president = MockUsers.presidentFor(aptId);
+    final apt = aptProvider.findById(aptId);
     final recentBills = billProvider.billsForApartment(aptId).take(5).toList();
     final upcomingMeetings =
         context.watch<MeetingProvider>().upcomingMeetings(aptId);
@@ -300,7 +299,7 @@ class _AdminHome extends StatelessWidget {
             ApartmentHeader(
               apartmentName: apt?.name ?? 'My Apartment',
               presidentName:
-                  president?.name ?? auth.currentUser?.name ?? 'You',
+                  apt?.presidentName ?? auth.currentUser?.name ?? 'You',
               role: UserRole.admin,
             ),
 

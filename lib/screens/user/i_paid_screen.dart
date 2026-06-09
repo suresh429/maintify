@@ -45,7 +45,7 @@ class _IPaidScreenState extends State<IPaidScreen> {
 
     setState(() => _isSubmitting = true);
     final auth = context.read<AuthProvider>();
-    final userId = auth.currentUser?.id ?? 'u3';
+    final userId = auth.currentUser?.id ?? '';
     final billProvider = context.read<BillProvider>();
     final txnId =
         _txnCtrl.text.trim().isEmpty ? null : _txnCtrl.text.trim();
@@ -109,7 +109,7 @@ class _IPaidScreenState extends State<IPaidScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
-    final userId = auth.currentUser?.id ?? 'u3';
+    final userId = auth.currentUser?.id ?? '';
     final billProvider = context.watch<BillProvider>();
     final theme = RoleTheme.of(UserRole.user);
 

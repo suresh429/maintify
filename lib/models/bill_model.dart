@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // BILL MODEL
 // A bill is created at the apartment level by the Admin (President).
@@ -37,6 +39,36 @@ class BillModel {
     required this.dueDate,
     required this.createdAt,
   });
+
+  factory BillModel.fromFirestore(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    return BillModel(
+      id: doc.id,
+      apartmentId: d['apartmentId'] as String? ?? '',
+      createdByAdminId: d['createdByAdminId'] as String? ?? '',
+      title: d['title'] as String? ?? '',
+      totalAmount: (d['totalAmount'] as num?)?.toDouble() ?? 0,
+      totalFlats: (d['totalFlats'] as int?) ?? 1,
+      category: d['category'] as String? ?? '',
+      month: d['month'] as String? ?? '',
+      dueDate:
+          (d['dueDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt:
+          (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'apartmentId': apartmentId,
+        'createdByAdminId': createdByAdminId,
+        'title': title,
+        'totalAmount': totalAmount,
+        'totalFlats': totalFlats,
+        'category': category,
+        'month': month,
+        'dueDate': Timestamp.fromDate(dueDate),
+        'createdAt': Timestamp.fromDate(createdAt),
+      };
 
   /// Core bill-split computation.
   double get perFlatShare => totalAmount / totalFlats;
@@ -86,6 +118,31 @@ class BillPayment {
   bool get isPaid => status == BillStatus.paid;
   bool get isPending => status == BillStatus.pending;
   bool get isOverdue => status == BillStatus.overdue;
+
+  factory BillPayment.fromFirestore(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    return BillPayment(
+      id: doc.id,
+      billId: d['billId'] as String? ?? '',
+      userId: d['userId'] as String? ?? '',
+      unitNumber: d['unitNumber'] as String? ?? '',
+      status: d['status'] as String? ?? BillStatus.pending,
+      paidDate: (d['paidDate'] as Timestamp?)?.toDate(),
+      transactionId: d['transactionId'] as String?,
+      adminVerified: d['adminVerified'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toMap({String? apartmentId}) => {
+        'billId': billId,
+        'userId': userId,
+        'unitNumber': unitNumber,
+        'status': status,
+        'paidDate': paidDate != null ? Timestamp.fromDate(paidDate!) : null,
+        'transactionId': transactionId,
+        'adminVerified': adminVerified,
+        if (apartmentId != null) 'apartmentId': apartmentId,
+      };
 
   BillPayment copyWith({
     String? status,
@@ -250,5 +307,17 @@ class MockBillData {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Syncs static lists with Firestore-loaded data so DashboardProvider
+  /// derives correct aggregates without requiring its own Firestore subscription.
+  static void replaceAll(
+      List<BillModel> bills, List<BillPayment> payments) {
+    _bills
+      ..clear()
+      ..addAll(bills);
+    _payments
+      ..clear()
+      ..addAll(payments);
   }
 }

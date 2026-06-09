@@ -116,11 +116,7 @@ class DashboardProvider extends ChangeNotifier {
 
   Future<void> initialize() async {
     if (_initialized) return;
-    _isLoading = true;
-    notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 1200));
     _initialized = true;
-    _isLoading = false;
     notifyListeners();
   }
 

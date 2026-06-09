@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/theme/role_theme.dart';
 
 class UserModel {
@@ -39,6 +40,49 @@ class UserModel {
         return 'Resident';
     }
   }
+
+  /// Firestore role string → UserRole enum
+  static UserRole _roleFromString(String? s) {
+    switch (s) {
+      case 'superAdmin':
+        return UserRole.superAdmin;
+      case 'admin':
+        return UserRole.admin;
+      default:
+        return UserRole.user;
+    }
+  }
+
+  factory UserModel.fromFirestore(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    return UserModel(
+      id: doc.id,
+      name: d['name'] as String? ?? '',
+      email: d['email'] as String? ?? '',
+      password: '', // never stored in Firestore
+      phone: d['phone'] as String? ?? '',
+      role: _roleFromString(d['role'] as String?),
+      apartmentId: d['apartmentId'] as String?,
+      unit: d['unit'] as String? ?? '',
+      avatarInitials: d['avatarInitials'] as String? ?? '',
+      joinedAt: (d['joinedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isActive: d['isActive'] as bool? ?? true,
+      isFirstLogin: d['isFirstLogin'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'role': role.name,
+        'apartmentId': apartmentId,
+        'unit': unit,
+        'avatarInitials': avatarInitials,
+        'isActive': isActive,
+        'isFirstLogin': isFirstLogin,
+        'joinedAt': Timestamp.fromDate(joinedAt),
+      };
 
   UserModel copyWith({UserRole? role, String? password, bool? isFirstLogin}) {
     return UserModel(
@@ -235,5 +279,13 @@ class MockUsers {
     if (i != -1) {
       all[i] = all[i].copyWith(password: newPassword, isFirstLogin: false);
     }
+  }
+
+  /// Syncs the static list with Firestore-loaded data so DashboardProvider
+  /// continues to derive correct aggregates from the live list.
+  static void replaceAll(List<UserModel> users) {
+    all
+      ..clear()
+      ..addAll(users);
   }
 }

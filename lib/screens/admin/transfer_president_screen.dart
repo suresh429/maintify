@@ -57,12 +57,13 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
 
     setState(() => _isTransferring = true);
 
-    // 1. Update user roles (demote current admin, promote selected user)
-    await userProvider.updatePresidentRoles(currentAdmin.id, _selectedUserId!);
-
-    // 2. Update apartment record
     if (mounted) {
-      await aptProvider.assignPresident(aptId, _selectedUserId!);
+      await aptProvider.assignPresident(
+        aptId,
+        _selectedUserId!,
+        selectedUser.name,
+        oldPresidentId: currentAdmin.id,
+      );
     }
 
     if (!mounted) return;

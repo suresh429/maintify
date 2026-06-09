@@ -14,7 +14,7 @@ class PaymentHistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
-    final userId = auth.currentUser?.id ?? 'u3';
+    final userId = auth.currentUser?.id ?? '';
     final billProvider = context.watch<BillProvider>();
     final theme = RoleTheme.of(UserRole.user);
 

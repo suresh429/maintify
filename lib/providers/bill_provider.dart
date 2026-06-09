@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/bill_model.dart';
 import '../models/user_model.dart';
+import '../core/services/firestore_service.dart';
 
-// ── Monthly grouping data classes ─────────────────────────────────────────────
+// ── Monthly grouping data classes (unchanged — UI depends on these) ───────────
 
 /// Admin view: all bills in a month grouped together with all payment records.
 class MonthlyBillSummary {
@@ -27,7 +30,6 @@ class MonthlyBillSummary {
       ? DateTime.now()
       : bills.map((b) => b.dueDate).reduce((a, b) => a.isAfter(b) ? a : b);
 
-  /// Number of flats that paid ALL bills in this month.
   int get fullyPaidFlats {
     if (bills.isEmpty || totalFlats == 0) return 0;
     final userIds = allPayments.map((p) => p.userId).toSet();
@@ -70,7 +72,6 @@ class MonthlyBillSummary {
     return dates.reduce((a, b) => a.isAfter(b) ? a : b);
   }
 
-  /// Unique flats (userId → unitNumber) from payment records.
   List<({String userId, String unitNumber})> get flatList {
     final seen = <String>{};
     final result = <({String userId, String unitNumber})>[];
@@ -129,14 +130,58 @@ class UserMonthlySummary {
   }
 }
 
+// ── BillProvider ──────────────────────────────────────────────────────────────
+
 class BillProvider extends ChangeNotifier {
-  final List<BillModel> _bills = List.from(MockBillData.bills);
-  final List<BillPayment> _payments = List.from(MockBillData.payments);
+  final FirestoreService _fs = FirestoreService();
+
+  List<BillModel> _bills = List.from(MockBillData.bills);
+  List<BillPayment> _payments = List.from(MockBillData.payments);
+  StreamSubscription<List<BillModel>>? _billSub;
+  StreamSubscription<List<BillPayment>>? _paymentSub;
   bool _isLoading = false;
 
   bool get isLoading => _isLoading;
 
-  // ── Queries ───────────────────────────────────────────────────────────────
+  // ── Stream management ─────────────────────────────────────────────────────
+
+  /// Subscribe to bills and payments for [aptId]. Call after login.
+  void startListeningForApartment(String aptId) {
+    _billSub?.cancel();
+    _paymentSub?.cancel();
+
+    _billSub = _fs.streamBillsForApartment(aptId).listen((bills) {
+      _bills = bills;
+      MockBillData.replaceAll(_bills, _payments);
+      notifyListeners();
+    }, onError: (_) {});
+
+    _paymentSub =
+        _fs.streamPaymentsForApartment(aptId).listen((payments) {
+      _payments = payments;
+      MockBillData.replaceAll(_bills, _payments);
+      notifyListeners();
+    }, onError: (_) {});
+  }
+
+  /// For super admin: listen to ALL bills across all apartments.
+  void startListeningAll() {
+    _billSub?.cancel();
+    _billSub = _fs.streamAllBills().listen((bills) {
+      _bills = bills;
+      MockBillData.replaceAll(_bills, _payments);
+      notifyListeners();
+    }, onError: (_) {});
+  }
+
+  @override
+  void dispose() {
+    _billSub?.cancel();
+    _paymentSub?.cancel();
+    super.dispose();
+  }
+
+  // ── Queries (identical signatures to original) ────────────────────────────
 
   List<BillModel> billsForApartment(String aptId) =>
       _bills.where((b) => b.apartmentId == aptId).toList()
@@ -157,46 +202,39 @@ class BillProvider extends ChangeNotifier {
     }
   }
 
-  /// Bills visible to a specific user (flattened as user-facing view).
-  List<_UserBillView> userBillViews(String userId) {
+  List<UserBillView> userBillViews(String userId) {
     final userPayments = paymentsForUser(userId);
-    return userPayments.map((payment) {
-      final bill = _bills.firstWhere((b) => b.id == payment.billId,
-          orElse: () => throw StateError('Bill not found'));
-      return _UserBillView(bill: bill, payment: payment);
-    }).toList()
-      ..sort((a, b) => b.bill.createdAt.compareTo(a.bill.createdAt));
+    final result = <UserBillView>[];
+    for (final payment in userPayments) {
+      try {
+        final bill = _bills.firstWhere((b) => b.id == payment.billId);
+        result.add(_UserBillView(bill: bill, payment: payment));
+      } catch (_) {}
+    }
+    result.sort((a, b) => b.bill.createdAt.compareTo(a.bill.createdAt));
+    return result;
   }
 
-  double totalDueForUser(String userId) {
-    return userBillViews(userId)
-        .where((v) => !v.payment.isPaid)
-        .fold(0, (s, v) => s + v.bill.perFlatShare);
-  }
+  double totalDueForUser(String userId) => userBillViews(userId)
+      .where((v) => !v.payment.isPaid)
+      .fold(0, (s, v) => s + v.bill.perFlatShare);
 
-  double totalPaidForUser(String userId) {
-    return userBillViews(userId)
-        .where((v) => v.payment.isPaid)
-        .fold(0, (s, v) => s + v.bill.perFlatShare);
-  }
-
-  // ── Apartment-level aggregates (for Admin dashboard) ──────────────────────
+  double totalPaidForUser(String userId) => userBillViews(userId)
+      .where((v) => v.payment.isPaid)
+      .fold(0, (s, v) => s + v.bill.perFlatShare);
 
   double collectedForApartment(String aptId) {
-    final bills = billsForApartment(aptId);
     double total = 0;
-    for (final bill in bills) {
-      final paid =
-          paymentsForBill(bill.id).where((p) => p.isPaid).length;
+    for (final bill in billsForApartment(aptId)) {
+      final paid = paymentsForBill(bill.id).where((p) => p.isPaid).length;
       total += paid * bill.perFlatShare;
     }
     return total;
   }
 
   double pendingForApartment(String aptId) {
-    final bills = billsForApartment(aptId);
     double total = 0;
-    for (final bill in bills) {
+    for (final bill in billsForApartment(aptId)) {
       final unpaid =
           paymentsForBill(bill.id).where((p) => !p.isPaid).length;
       total += unpaid * bill.perFlatShare;
@@ -206,6 +244,9 @@ class BillProvider extends ChangeNotifier {
 
   int paidFlatsForBill(String billId) =>
       paymentsForBill(billId).where((p) => p.isPaid).length;
+
+  bool hasMonthlyBill(String aptId, String month) =>
+      _bills.any((b) => b.apartmentId == aptId && b.month == month);
 
   // ── Monthly grouping ──────────────────────────────────────────────────────
 
@@ -220,9 +261,6 @@ class BillProvider extends ChangeNotifier {
     final y = int.tryParse(parts[1]) ?? 2000;
     return DateTime(y, m < 1 ? 1 : m);
   }
-
-  bool hasMonthlyBill(String aptId, String month) =>
-      _bills.any((b) => b.apartmentId == aptId && b.month == month);
 
   List<MonthlyBillSummary> monthlyBillsForApartment(String aptId) {
     final bills = billsForApartment(aptId);
@@ -266,50 +304,64 @@ class BillProvider extends ChangeNotifier {
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
-  /// Admin marks a specific flat's payment as paid.
   Future<void> adminMarkPaid(String billId, String userId) async {
     _isLoading = true;
     notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 700));
 
-    final i = _payments
-        .indexWhere((p) => p.billId == billId && p.userId == userId);
+    final paymentId = '${billId}_$userId';
+    final now = DateTime.now();
+    final txnId = 'TXN${now.millisecondsSinceEpoch}';
+
+    await _fs.updatePayment(paymentId, {
+      'status': BillStatus.paid,
+      'paidDate': Timestamp.fromDate(now),
+      'transactionId': txnId,
+      'adminVerified': true,
+    });
+
+    // Optimistic local update
+    final i =
+        _payments.indexWhere((p) => p.billId == billId && p.userId == userId);
     if (i != -1) {
       _payments[i] = _payments[i].copyWith(
         status: BillStatus.paid,
-        paidDate: DateTime.now(),
-        transactionId: 'TXN${DateTime.now().millisecondsSinceEpoch}',
+        paidDate: now,
+        transactionId: txnId,
         adminVerified: true,
       );
     }
-
+    MockBillData.replaceAll(_bills, _payments);
     _isLoading = false;
     notifyListeners();
   }
 
-  /// User self-reports payment (pending admin verification).
   Future<void> userReportPaid(String billId, String userId,
       {String? transactionId}) async {
     _isLoading = true;
     notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 900));
 
-    final i = _payments
-        .indexWhere((p) => p.billId == billId && p.userId == userId);
+    final paymentId = '${billId}_$userId';
+    final txnId =
+        transactionId ?? 'SELF_${DateTime.now().millisecondsSinceEpoch}';
+
+    await _fs.updatePayment(paymentId, {
+      'transactionId': txnId,
+      'adminVerified': false,
+    });
+
+    final i =
+        _payments.indexWhere((p) => p.billId == billId && p.userId == userId);
     if (i != -1) {
       _payments[i] = _payments[i].copyWith(
-        status: BillStatus.pending, // still pending until admin verifies
-        transactionId: transactionId ??
-            'SELF_${DateTime.now().millisecondsSinceEpoch}',
+        transactionId: txnId,
         adminVerified: false,
       );
     }
-
+    MockBillData.replaceAll(_bills, _payments);
     _isLoading = false;
     notifyListeners();
   }
 
-  /// Admin creates a monthly bill with multiple category line items.
   Future<void> createMonthlyBill({
     required String apartmentId,
     required String adminId,
@@ -321,33 +373,38 @@ class BillProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 900));
 
+    final now = DateTime.now();
     for (int i = 0; i < lineItems.length; i++) {
       final item = lineItems[i];
       final billId =
-          'bill_${DateTime.now().millisecondsSinceEpoch}_${item.category}_$i';
-      final bill = BillModel(
-        id: billId,
-        apartmentId: apartmentId,
-        createdByAdminId: adminId,
-        title: item.title,
-        totalAmount: item.amount,
-        totalFlats: totalFlats,
-        category: item.category,
-        month: month,
-        dueDate: dueDate,
-        createdAt: DateTime.now(),
-      );
-      _bills.insert(0, bill);
+          'bill_${now.millisecondsSinceEpoch}_${item.category}_$i';
+
+      final billData = {
+        'apartmentId': apartmentId,
+        'createdByAdminId': adminId,
+        'title': item.title,
+        'totalAmount': item.amount,
+        'totalFlats': totalFlats,
+        'category': item.category,
+        'month': month,
+        'dueDate': Timestamp.fromDate(dueDate),
+        'createdAt': Timestamp.fromDate(now),
+      };
+      await _fs.setBill(billId, billData);
+
       for (final resident in residents) {
-        _payments.add(BillPayment(
-          id: '${billId}_${resident.id}',
-          billId: billId,
-          userId: resident.id,
-          unitNumber: resident.unit,
-          status: BillStatus.pending,
-        ));
+        final paymentId = '${billId}_${resident.id}';
+        await _fs.setPayment(paymentId, {
+          'billId': billId,
+          'userId': resident.id,
+          'unitNumber': resident.unit,
+          'status': BillStatus.pending,
+          'paidDate': null,
+          'transactionId': null,
+          'adminVerified': false,
+          'apartmentId': apartmentId,
+        });
       }
     }
 
@@ -355,67 +412,88 @@ class BillProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Admin marks all unpaid bills in a month as paid for a specific flat.
   Future<void> adminMarkMonthPaid(
       String month, String aptId, String userId) async {
     _isLoading = true;
     notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 700));
 
     final monthBills = _bills
         .where((b) => b.apartmentId == aptId && b.month == month)
         .toList();
+
     for (final bill in monthBills) {
-      final i =
-          _payments.indexWhere((p) => p.billId == bill.id && p.userId == userId);
-      if (i != -1 && !_payments[i].isPaid) {
-        _payments[i] = _payments[i].copyWith(
-          status: BillStatus.paid,
-          paidDate: DateTime.now(),
-          transactionId: 'TXN${DateTime.now().millisecondsSinceEpoch}',
-          adminVerified: true,
-        );
+      final paymentId = '${bill.id}_$userId';
+      final payment = userPaymentForBill(bill.id, userId);
+      if (payment != null && !payment.isPaid) {
+        final now = DateTime.now();
+        final txn = 'TXN${now.millisecondsSinceEpoch}';
+        await _fs.updatePayment(paymentId, {
+          'status': BillStatus.paid,
+          'paidDate': Timestamp.fromDate(now),
+          'transactionId': txn,
+          'adminVerified': true,
+        });
+        final idx = _payments
+            .indexWhere((p) => p.billId == bill.id && p.userId == userId);
+        if (idx != -1) {
+          _payments[idx] = _payments[idx].copyWith(
+            status: BillStatus.paid,
+            paidDate: now,
+            transactionId: txn,
+            adminVerified: true,
+          );
+        }
       }
     }
-
+    MockBillData.replaceAll(_bills, _payments);
     _isLoading = false;
     notifyListeners();
   }
 
-  /// User pays all bills in a month (instant payment for mock).
   Future<void> userPayMonthlyBill(
       String month, String aptId, String userId) async {
     _isLoading = true;
     notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 900));
 
     final monthBills = _bills
         .where((b) => b.apartmentId == aptId && b.month == month)
         .toList();
+
     for (final bill in monthBills) {
-      final i =
-          _payments.indexWhere((p) => p.billId == bill.id && p.userId == userId);
-      if (i != -1 && !_payments[i].isPaid) {
-        _payments[i] = _payments[i].copyWith(
-          status: BillStatus.paid,
-          paidDate: DateTime.now(),
-          transactionId: 'PAY${DateTime.now().millisecondsSinceEpoch}',
-          adminVerified: false,
-        );
+      final payment = userPaymentForBill(bill.id, userId);
+      if (payment != null && !payment.isPaid) {
+        final paymentId = '${bill.id}_$userId';
+        final now = DateTime.now();
+        final txn = 'PAY${now.millisecondsSinceEpoch}';
+        await _fs.updatePayment(paymentId, {
+          'status': BillStatus.paid,
+          'paidDate': Timestamp.fromDate(now),
+          'transactionId': txn,
+          'adminVerified': false,
+        });
+        final idx = _payments
+            .indexWhere((p) => p.billId == bill.id && p.userId == userId);
+        if (idx != -1) {
+          _payments[idx] = _payments[idx].copyWith(
+            status: BillStatus.paid,
+            paidDate: now,
+            transactionId: txn,
+            adminVerified: false,
+          );
+        }
       }
     }
-
+    MockBillData.replaceAll(_bills, _payments);
     _isLoading = false;
     notifyListeners();
   }
 }
 
-/// Convenience wrapper for a user's view of a bill + their payment status.
+/// Convenience wrapper — unchanged public typedef.
 class _UserBillView {
   final BillModel bill;
   final BillPayment payment;
   const _UserBillView({required this.bill, required this.payment});
 }
 
-// Public exposure so screens can use this type.
 typedef UserBillView = _UserBillView;

@@ -1,13 +1,62 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/apartment_model.dart';
 import '../models/user_model.dart';
+import '../core/theme/role_theme.dart';
+import '../core/services/firestore_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ApartmentProvider extends ChangeNotifier {
+  final FirestoreService _fs = FirestoreService();
+
   List<ApartmentModel> _apartments = List.from(MockApartments.all);
+  StreamSubscription<List<ApartmentModel>>? _sub;
   bool _isLoading = false;
 
   List<ApartmentModel> get apartments => _apartments;
   bool get isLoading => _isLoading;
+
+  // ── Start listening ───────────────────────────────────────────────────────
+
+  void startListening() {
+    _sub?.cancel();
+    _sub = _fs.streamApartments().listen((list) {
+      _apartments = list;
+      MockApartments.replaceAll(list); // keep statics in sync
+      notifyListeners();
+      // Migrate any apartments still holding a pending_* presidentId
+      for (final apt in list) {
+        if (apt.presidentId != null && apt.presidentId!.startsWith('pending_')) {
+          _migratePendingPresident(apt);
+        }
+      }
+    }, onError: (_) {});
+  }
+
+  /// Finds the real admin user for [apt] and updates the apartment document.
+  Future<void> _migratePendingPresident(ApartmentModel apt) async {
+    final realAdmin = await _fs.findAdminForApartment(apt.id);
+    if (realAdmin == null) {
+      // No real admin yet — just clear the invalid pending ID
+      await _fs.updateApartment(apt.id, {
+        'presidentId': null,
+        'presidentName': apt.presidentName,
+      });
+    } else {
+      await _fs.updateApartment(apt.id, {
+        'presidentId': realAdmin.id,
+        'presidentName': realAdmin.name,
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  // ── Queries ───────────────────────────────────────────────────────────────
 
   ApartmentModel? findById(String id) {
     try {
@@ -17,10 +66,9 @@ class ApartmentProvider extends ChangeNotifier {
     }
   }
 
-  /// Resolves the president's display name for an apartment.
   String presidentName(ApartmentModel apt) {
     if (!apt.hasPresident) return 'Unassigned';
-    return MockUsers.findById(apt.presidentId!)?.name ?? 'Unassigned';
+    return apt.presidentName ?? MockUsers.findById(apt.presidentId!)?.name ?? 'Unassigned';
   }
 
   List<ApartmentModel> get withPresident =>
@@ -29,41 +77,44 @@ class ApartmentProvider extends ChangeNotifier {
   List<ApartmentModel> get withoutPresident =>
       _apartments.where((a) => !a.hasPresident).toList();
 
-  /// Returns the current presidentId for an apartment, or null.
   String? currentPresidentId(String aptId) => findById(aptId)?.presidentId;
 
-  /// Returns true if [userId] is already a president of any apartment other than [aptId].
-  bool isPresidentElsewhere(String userId, {String? excludingAptId}) {
-    return _apartments.any((a) =>
-        a.presidentId == userId &&
-        (excludingAptId == null || a.id != excludingAptId));
-  }
+  bool isPresidentElsewhere(String userId, {String? excludingAptId}) =>
+      _apartments.any((a) =>
+          a.presidentId == userId &&
+          (excludingAptId == null || a.id != excludingAptId));
 
-  /// Assigns [adminUserId] as president of [aptId].
-  /// Throws [StateError] if the user is already president of another apartment.
-  Future<void> assignPresident(String aptId, String adminUserId) async {
-    if (isPresidentElsewhere(adminUserId, excludingAptId: aptId)) {
+  // ── Mutations ─────────────────────────────────────────────────────────────
+
+  Future<void> assignPresident(
+    String aptId,
+    String newPresidentId,
+    String newPresidentName, {
+    String? oldPresidentId,
+  }) async {
+    if (isPresidentElsewhere(newPresidentId, excludingAptId: aptId)) {
       throw StateError('User is already president of another apartment');
     }
-
     _isLoading = true;
     notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 700));
 
-    final i = _apartments.indexWhere((a) => a.id == aptId);
-    if (i != -1) {
-      _apartments[i] = _apartments[i].copyWith(presidentId: adminUserId);
-      // Sync to static mock so other providers reading MockApartments stay consistent.
-      MockApartments.assignPresident(aptId, adminUserId);
+    await _fs.assignPresidentBatch(
+      aptId: aptId,
+      newPresidentId: newPresidentId,
+      newPresidentName: newPresidentName,
+      newPresidentApartmentId: aptId,
+      oldPresidentId: oldPresidentId,
+    );
+    MockApartments.assignPresident(aptId, newPresidentId, newPresidentName);
+    if (oldPresidentId != null && oldPresidentId != newPresidentId) {
+      MockUsers.updateRole(oldPresidentId, UserRole.user);
     }
+    MockUsers.updateRole(newPresidentId, UserRole.admin);
 
     _isLoading = false;
     notifyListeners();
   }
 
-  /// Simulates creating a new apartment.
-  /// [id] can be pre-generated so the admin user can be linked before calling this.
-  /// [presidentId] sets the initial president on creation.
   Future<void> createApartment({
     String? id,
     required String name,
@@ -71,25 +122,27 @@ class ApartmentProvider extends ChangeNotifier {
     required String city,
     required int totalFlats,
     List<String> amenities = const [],
-    String? presidentId,
+    // presidentId is intentionally NOT accepted here — a pending_users record
+    // never has a real UID. presidentId is set atomically via assignPresidentBatch
+    // after the admin's first login creates their real users/ document.
+    String? presidentName,
   }) async {
     _isLoading = true;
     notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 800));
 
-    final newApt = ApartmentModel(
-      id: id ?? 'apt_${DateTime.now().millisecondsSinceEpoch}',
-      name: name,
-      address: address,
-      city: city,
-      totalFlats: totalFlats,
-      presidentId: presidentId,
-      amenities: amenities,
-      createdAt: DateTime.now(),
-    );
+    final docId = id ?? 'apt_${DateTime.now().millisecondsSinceEpoch}';
+    final data = {
+      'name': name,
+      'address': address,
+      'city': city,
+      'totalFlats': totalFlats,
+      'presidentId': null,
+      'presidentName': presidentName,
+      'amenities': amenities,
+      'createdAt': Timestamp.fromDate(DateTime.now()),
+    };
 
-    _apartments.add(newApt);
-    MockApartments.add(newApt);
+    await _fs.createApartment(docId, data);
 
     _isLoading = false;
     notifyListeners();

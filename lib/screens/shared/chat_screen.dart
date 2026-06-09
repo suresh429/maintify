@@ -31,7 +31,13 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Subscribe to real-time Firestore messages subcollection
+      context
+          .read<ComplaintProvider>()
+          .subscribeToMessages(widget.complaint.id);
+      _scrollToBottom();
+    });
   }
 
   @override

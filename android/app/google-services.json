@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "54805482872",
+    "firebase_url": "https://tivastraapp-default-rtdb.firebaseio.com",
+    "project_id": "tivastraapp",
+    "storage_bucket": "tivastraapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:54805482872:android:9ae61e1e77905946a7cc8d",
+        "android_client_info": {
+          "package_name": "com.maintify.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "54805482872-moovsggkeevs1gufqqm1b3arf2baos5h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAr9BzFyOvBSUX1GDlsJ7_7SqCHlGfs3OY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "54805482872-moovsggkeevs1gufqqm1b3arf2baos5h.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "54805482872-0fcbe6vn0psgcliqds2depr1umm4h22o.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.trivastra.trivastra"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

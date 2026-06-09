@@ -52,15 +52,18 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
 
     setState(() => _isAssigning = true);
 
-    // 1. Update user roles
-    await userProvider.updatePresidentRoles(oldPresidentId, _selectedUserId!);
-
-    // 2. Update apartment record
-    if (mounted) {
-      await context
-          .read<ApartmentProvider>()
-          .assignPresident(_selectedAptId!, _selectedUserId!);
+    final selectedUser = userProvider.findById(_selectedUserId!);
+    if (selectedUser == null || !mounted) {
+      setState(() => _isAssigning = false);
+      return;
     }
+
+    await context.read<ApartmentProvider>().assignPresident(
+          _selectedAptId!,
+          _selectedUserId!,
+          selectedUser.name,
+          oldPresidentId: oldPresidentId,
+        );
 
     if (!mounted) return;
     setState(() {
@@ -136,7 +139,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
           ...aptProvider.apartments.map((apt) {
             final isSelected = _selectedAptId == apt.id;
             final currentPresident = apt.hasPresident
-                ? MockUsers.findById(apt.presidentId!)?.name
+                ? userProvider.findById(apt.presidentId!)?.name
                 : null;
             final hasPresident = currentPresident != null;
 

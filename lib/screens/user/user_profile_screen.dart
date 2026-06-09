@@ -3,11 +3,9 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
-import '../../core/utils/app_utils.dart';
-import '../../models/apartment_model.dart';
-import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/bill_provider.dart';
+import '../../providers/apartment_provider.dart';
 import 'complaints_screen.dart';
 import 'i_paid_screen.dart';
 import '../../widgets/change_password_sheet.dart';
@@ -21,10 +19,10 @@ class UserProfileScreen extends StatelessWidget {
     final auth = context.read<AuthProvider>();
     final user = auth.currentUser!;
     final billProvider = context.watch<BillProvider>();
+    final aptProvider = context.watch<ApartmentProvider>();
     final theme = RoleTheme.of(UserRole.user);
 
-    final apt = MockApartments.findById(user.apartmentId ?? 'apt1');
-    final president = MockUsers.presidentFor(user.apartmentId ?? 'apt1');
+    final apt = aptProvider.findById(user.apartmentId ?? '');
     final allViews = billProvider.userBillViews(user.id);
     final paidCount = allViews.where((v) => v.payment.isPaid).length;
     final pendingCount = allViews.where((v) => !v.payment.isPaid).length;
@@ -115,7 +113,7 @@ class UserProfileScreen extends StatelessWidget {
                   value: '${apt?.totalFlats ?? 0} flats'),
               _InfoRow(
                   label: 'President',
-                  value: president?.name ?? 'Unassigned'),
+                  value: apt?.presidentName ?? 'Unassigned'),
             ],
           ),
 

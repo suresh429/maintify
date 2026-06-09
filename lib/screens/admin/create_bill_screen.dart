@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/bill_provider.dart';
+import '../../providers/apartment_provider.dart';
+import '../../providers/user_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
-import '../../models/apartment_model.dart';
-import '../../models/user_model.dart';
 import '../../widgets/common_button.dart';
 
 class CreateBillScreen extends StatefulWidget {
@@ -206,8 +206,12 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthProvider>();
-    final aptId = auth.currentUser?.apartmentId ?? 'apt1';
-    final apt = MockApartments.findById(aptId);
+    final aptId = auth.currentUser?.apartmentId;
+    if (aptId == null || aptId.isEmpty) {
+      AppUtils.showSnackBar(context, 'Apartment not found', isError: true);
+      return;
+    }
+    final apt = context.read<ApartmentProvider>().findById(aptId);
     if (apt == null) {
       AppUtils.showSnackBar(context, 'Apartment not found', isError: true);
       return;
@@ -223,7 +227,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
       return;
     }
 
-    final residents = MockUsers.residentsForApartment(aptId);
+    final residents = context.read<UserProvider>().residentsForApartment(aptId);
     if (residents.isEmpty) {
       AppUtils.showSnackBar(context, 'No residents found in this apartment',
           isError: true);
@@ -238,7 +242,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
 
     await billProvider.createMonthlyBill(
       apartmentId: aptId,
-      adminId: auth.currentUser?.id ?? 'u2',
+      adminId: auth.currentUser?.id ?? '',
       month: _selectedMonth,
       dueDate: _dueDate,
       lineItems: lineItems,
@@ -259,9 +263,9 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
-    final aptId = auth.currentUser?.apartmentId ?? 'apt1';
-    final apt = MockApartments.findById(aptId);
-    final residents = MockUsers.residentsForApartment(aptId);
+    final aptId = auth.currentUser?.apartmentId ?? '';
+    final apt = context.read<ApartmentProvider>().findById(aptId);
+    final residents = context.read<UserProvider>().residentsForApartment(aptId);
     final theme = RoleTheme.of(UserRole.admin);
     final totalFlats = apt?.totalFlats ?? residents.length;
     final perFlatShare = totalFlats > 0 ? _totalAmount / totalFlats : 0.0;

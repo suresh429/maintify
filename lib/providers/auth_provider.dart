@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../core/theme/role_theme.dart';
-import '../core/utils/app_utils.dart';
+import '../core/services/firebase_auth_service.dart';
+import '../core/services/fcm_service.dart';
 
 class AuthProvider extends ChangeNotifier {
+  final FirebaseAuthService _auth = FirebaseAuthService();
+
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _error;
@@ -15,67 +18,73 @@ class AuthProvider extends ChangeNotifier {
   UserRole? get role => _currentUser?.role;
   bool get isFirstLogin => _currentUser?.isFirstLogin ?? false;
 
+  // ── Login ─────────────────────────────────────────────────────────────────
+
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 1200));
+    final result = await _auth.signIn(email, password);
 
-    final trimmedEmail = email.trim().toLowerCase();
-    final user = MockUsers.findByEmail(trimmedEmail);
-
-    if (user == null) {
-      _error = 'No account found with this email.';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-
-    if (user.password != password) {
-      _error = 'Incorrect password. Please try again.';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-
-    _currentUser = user;
     _isLoading = false;
+    if (result.error != null) {
+      _error = result.error;
+      notifyListeners();
+      return false;
+    }
+
+    _currentUser = result.user;
     notifyListeners();
+
+    // Initialise FCM in background — don't await to keep login fast
+    if (_currentUser != null) {
+      FcmService().init(_currentUser!.id).ignore();
+    }
+
     return true;
   }
 
-  /// Changes the current user's password. Returns true on success.
+  // ── Change password ───────────────────────────────────────────────────────
+
   Future<bool> changePassword({
     required String currentPassword,
     required String newPassword,
   }) async {
     if (_currentUser == null) return false;
-    if (_currentUser!.password != currentPassword) {
-      _error = 'Current password is incorrect.';
+    _error = null;
+
+    final result = await _auth.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+
+    if (!result.ok) {
+      _error = result.error ?? 'Current password is incorrect.';
       notifyListeners();
       return false;
     }
-    MockUsers.updatePassword(_currentUser!.id, newPassword);
-    _currentUser = _currentUser!.copyWith(password: newPassword, isFirstLogin: false);
-    _error = null;
+
+    _currentUser = _currentUser!.copyWith(isFirstLogin: false);
     notifyListeners();
     return true;
   }
 
-  /// Generates a new password for the given email (forgot password flow).
-  /// Returns the new password string if the user exists, null otherwise.
-  String? generateForgotPassword(String email) {
-    final user = MockUsers.findByEmail(email.trim().toLowerCase());
-    if (user == null) return null;
-    final newPass = user.role == UserRole.admin
-        ? AppUtils.generateAdminPassword(user.name)
-        : AppUtils.generateUserPassword(user.name, user.unit);
-    MockUsers.updatePassword(user.id, newPass);
-    return newPass;
+  // ── Forgot password (sends a reset email) ────────────────────────────────
+
+  /// Returns a message string to show the user.
+  /// In production this sends a Firebase password-reset email.
+  Future<String?> generateForgotPassword(String email) async {
+    final sent = await _auth.sendPasswordResetEmail(email);
+    if (!sent) return null;
+    // Return a display string so the UI (which shows this in a dialog) works.
+    return 'Reset link sent to $email';
   }
 
-  void logout() {
+  // ── Logout ────────────────────────────────────────────────────────────────
+
+  Future<void> logout() async {
+    await _auth.signOut();
     _currentUser = null;
     _error = null;
     notifyListeners();
@@ -84,5 +93,14 @@ class AuthProvider extends ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  /// Called by UserProvider / ApartmentProvider when user data changes
+  /// (e.g. role change after president transfer).
+  void refreshUser(UserModel updated) {
+    if (_currentUser?.id == updated.id) {
+      _currentUser = updated;
+      notifyListeners();
+    }
   }
 }

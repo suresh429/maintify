@@ -1,0 +1,108 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ─────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superAdmin';
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isAdminForApartment(aptId) {
+      return isAdmin() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.apartmentId == aptId;
+    }
+
+    function isMemberOfApartment(aptId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.apartmentId == aptId;
+    }
+
+    // ── _meta (seeder flag) ──────────────────────────────────────────────────
+    match /_meta/{doc} {
+      allow read, write: if true; // open for seeder — tighten in production
+    }
+
+    // ── Users ────────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn(); // new user self-registration
+      allow update: if request.auth.uid == userId || isAdmin() || isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // ── Pending users (admin-created accounts waiting first login) ───────────
+    match /pending_users/{docId} {
+      allow read, write: if isSignedIn() || request.auth != null;
+      // Also allow unauthenticated reads so the first-login flow can check
+      allow read: if true;
+    }
+
+    // ── Apartments ───────────────────────────────────────────────────────────
+    match /apartments/{aptId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSuperAdmin() || isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // ── Bills ────────────────────────────────────────────────────────────────
+    match /bills/{billId} {
+      allow read: if isMemberOfApartment(resource.data.apartmentId);
+      allow create, update: if isAdminForApartment(request.resource.data.apartmentId);
+      allow delete: if isAdminForApartment(resource.data.apartmentId);
+    }
+
+    // ── Payments ─────────────────────────────────────────────────────────────
+    match /payments/{paymentId} {
+      allow read: if isMemberOfApartment(resource.data.apartmentId) ||
+                     request.auth.uid == resource.data.userId;
+      allow create: if isSignedIn();
+      allow update: if isAdminForApartment(resource.data.apartmentId) ||
+                       request.auth.uid == resource.data.userId;
+      allow delete: if isSuperAdmin();
+    }
+
+    // ── Complaints ───────────────────────────────────────────────────────────
+    match /complaints/{complaintId} {
+      allow read: if isMemberOfApartment(resource.data.apartmentId);
+      allow create: if isSignedIn();
+      allow update: if isAdminForApartment(resource.data.apartmentId) ||
+                       request.auth.uid == resource.data.userId;
+      allow delete: if isAdminForApartment(resource.data.apartmentId);
+
+      // Messages subcollection
+      match /messages/{msgId} {
+        allow read: if isMemberOfApartment(
+          get(/databases/$(database)/documents/complaints/$(complaintId)).data.apartmentId
+        );
+        allow create: if isSignedIn();
+        allow update, delete: if false; // messages are immutable
+      }
+    }
+
+    // ── Meetings ─────────────────────────────────────────────────────────────
+    match /meetings/{meetingId} {
+      allow read: if isMemberOfApartment(resource.data.apartmentId);
+      allow create, update: if isAdminForApartment(request.resource.data.apartmentId);
+      allow delete: if isAdminForApartment(resource.data.apartmentId);
+    }
+
+    // ── Notifications ─────────────────────────────────────────────────────────
+    match /notifications/{notifId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || isSuperAdmin();
+      allow update: if isSignedIn(); // mark as read
+      allow delete: if isSuperAdmin();
+    }
+  }
+}

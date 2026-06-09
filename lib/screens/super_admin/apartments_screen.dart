@@ -4,9 +4,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/app_utils.dart';
 import '../../models/apartment_model.dart';
-import '../../models/user_model.dart';
-import '../../models/bill_model.dart';
 import '../../providers/apartment_provider.dart';
+import '../../providers/bill_provider.dart';
 import 'create_apartment_screen.dart';
 
 class ApartmentsScreen extends StatefulWidget {
@@ -155,35 +154,13 @@ class _ApartmentDetailCard extends StatelessWidget {
   final ApartmentModel apt;
   const _ApartmentDetailCard({required this.apt});
 
-  String get _presidentName {
-    if (!apt.hasPresident) return 'Unassigned';
-    return MockUsers.findById(apt.presidentId!)?.name ?? 'Unassigned';
-  }
-
-  double get _collected {
-    final bills = MockBillData.billsForApartment(apt.id);
-    double total = 0;
-    for (final bill in bills) {
-      final paid =
-          MockBillData.paymentsForBill(bill.id).where((p) => p.isPaid).length;
-      total += paid * bill.perFlatShare;
-    }
-    return total;
-  }
-
-  double get _pending {
-    final bills = MockBillData.billsForApartment(apt.id);
-    double total = 0;
-    for (final bill in bills) {
-      final unpaid =
-          MockBillData.paymentsForBill(bill.id).where((p) => !p.isPaid).length;
-      total += unpaid * bill.perFlatShare;
-    }
-    return total;
-  }
-
   @override
   Widget build(BuildContext context) {
+    final billProvider = context.watch<BillProvider>();
+    final presidentName = apt.presidentName ?? 'Unassigned';
+    final collected = billProvider.collectedForApartment(apt.id);
+    final pending = billProvider.pendingForApartment(apt.id);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -281,7 +258,7 @@ class _ApartmentDetailCard extends StatelessWidget {
                       child: _InfoTile(
                         icon: Icons.person_outline,
                         label: 'President',
-                        value: _presidentName,
+                        value: presidentName,
                         color: apt.hasPresident
                             ? AppColors.textPrimary
                             : AppColors.overdue,
@@ -296,7 +273,7 @@ class _ApartmentDetailCard extends StatelessWidget {
                     Expanded(
                       child: _FinanceTile(
                         label: 'Collected',
-                        value: AppUtils.formatCurrency(_collected),
+                        value: AppUtils.formatCurrency(collected),
                         color: AppColors.green,
                       ),
                     ),
@@ -305,7 +282,7 @@ class _ApartmentDetailCard extends StatelessWidget {
                     Expanded(
                       child: _FinanceTile(
                         label: 'Pending',
-                        value: AppUtils.formatCurrency(_pending),
+                        value: AppUtils.formatCurrency(pending),
                         color: AppColors.pending,
                       ),
                     ),

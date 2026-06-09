@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/app_utils.dart';
-import '../../models/apartment_model.dart';
 import '../../models/complaint_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/complaint_provider.dart';
+import '../../providers/apartment_provider.dart';
 import '../../widgets/pill_filter_bar.dart';
 import '../shared/chat_screen.dart';
 
@@ -31,8 +31,8 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final user = auth.currentUser!;
-    final aptId = user.apartmentId ?? 'apt1';
-    final apt = MockApartments.findById(aptId);
+    final aptId = user.apartmentId ?? '';
+    final apt = context.read<ApartmentProvider>().findById(aptId);
 
     return Consumer<ComplaintProvider>(
       builder: (_, prov, __) {

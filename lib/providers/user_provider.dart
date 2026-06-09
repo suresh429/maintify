@@ -1,14 +1,47 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../core/theme/role_theme.dart';
 import '../core/utils/app_utils.dart';
+import '../core/services/firestore_service.dart';
 
 class UserProvider extends ChangeNotifier {
-  final List<UserModel> _users = List.from(MockUsers.all);
+  final FirestoreService _fs = FirestoreService();
+
+  List<UserModel> _users = List.from(MockUsers.all);
+  StreamSubscription<List<UserModel>>? _sub;
   bool _isLoading = false;
 
   List<UserModel> get users => _users;
   bool get isLoading => _isLoading;
+
+  UserModel? findById(String id) {
+    try {
+      return _users.firstWhere((u) => u.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Start listening ───────────────────────────────────────────────────────
+
+  void startListening() {
+    _sub?.cancel();
+    _sub = _fs.streamUsers().listen((list) {
+      _users = list;
+      MockUsers.replaceAll(list); // keep statics in sync for DashboardProvider
+      notifyListeners();
+    }, onError: (_) {});
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  // ── Queries ───────────────────────────────────────────────────────────────
 
   List<UserModel> get residents =>
       _users.where((u) => u.role == UserRole.user).toList();
@@ -20,7 +53,6 @@ class UserProvider extends ChangeNotifier {
       .where((u) => u.role == UserRole.user && u.apartmentId == aptId)
       .toList();
 
-  /// All members of [aptId] (admin + residents, not super admin).
   List<UserModel> membersForApartment(String aptId) => _users
       .where((u) => u.apartmentId == aptId && u.role != UserRole.superAdmin)
       .toList();
@@ -43,7 +75,6 @@ class UserProvider extends ChangeNotifier {
         .toList();
   }
 
-  /// Returns users in [aptId] who are NOT already a president of any apartment.
   List<UserModel> eligibleForPresident(String aptId) {
     final presidentIds =
         _users.where((u) => u.role == UserRole.admin).map((u) => u.id).toSet();
@@ -55,36 +86,34 @@ class UserProvider extends ChangeNotifier {
   bool isAlreadyPresident(String userId) =>
       _users.any((u) => u.id == userId && u.role == UserRole.admin);
 
-  /// Promotes [newPresidentId] to admin and demotes [oldPresidentId] (if any) to user.
+  // ── Mutations ─────────────────────────────────────────────────────────────
+
   Future<void> updatePresidentRoles(
       String? oldPresidentId, String newPresidentId) async {
-    final newIdx = _users.indexWhere((u) => u.id == newPresidentId);
-    if (newIdx != -1) {
-      _users[newIdx] = _users[newIdx].copyWith(role: UserRole.admin);
-      MockUsers.updateRole(newPresidentId, UserRole.admin);
-    }
+    await _fs.updateUser(newPresidentId, {'role': UserRole.admin.name});
+    MockUsers.updateRole(newPresidentId, UserRole.admin);
 
     if (oldPresidentId != null && oldPresidentId != newPresidentId) {
-      final oldIdx = _users.indexWhere((u) => u.id == oldPresidentId);
-      if (oldIdx != -1) {
-        _users[oldIdx] = _users[oldIdx].copyWith(role: UserRole.user);
-        MockUsers.updateRole(oldPresidentId, UserRole.user);
-      }
+      await _fs.updateUser(oldPresidentId, {'role': UserRole.user.name});
+      MockUsers.updateRole(oldPresidentId, UserRole.user);
     }
-
     notifyListeners();
   }
 
   Future<void> toggleUserStatus(String userId) async {
     _isLoading = true;
     notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 400));
+    final idx = _users.indexWhere((u) => u.id == userId);
+    if (idx != -1) {
+      final newStatus = !_users[idx].isActive;
+      await _fs.updateUser(userId, {'isActive': newStatus});
+    }
     _isLoading = false;
     notifyListeners();
   }
 
-  /// Creates an admin user for a newly created apartment.
-  /// Auto-generates a password. Returns `({id, password})`. Throws if email already registered.
+  /// Creates an admin user record in Firestore `pending_users`.
+  /// The Firebase Auth account is created on the user's first sign-in.
   ({String id, String password}) createAdmin({
     required String name,
     required String email,
@@ -106,29 +135,28 @@ class UserProvider extends ChangeNotifier {
         .join();
 
     final password = AppUtils.generateAdminPassword(aptName);
-    final id = 'ua_${DateTime.now().millisecondsSinceEpoch}';
-    final newAdmin = UserModel(
-      id: id,
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      password: password,
-      phone: '',
-      role: UserRole.admin,
-      apartmentId: aptId,
-      unit: unit.trim(),
-      avatarInitials: initials.isEmpty ? name.trim()[0].toUpperCase() : initials,
-      joinedAt: DateTime.now(),
-      isFirstLogin: true,
-    );
+    final id = 'pending_${DateTime.now().millisecondsSinceEpoch}';
 
-    _users.add(newAdmin);
-    MockUsers.all.add(newAdmin);
+    _fs.createPendingUser({
+      'name': name.trim(),
+      'email': email.trim().toLowerCase(),
+      'tempPassword': password,
+      'phone': '',
+      'role': UserRole.admin.name,
+      'apartmentId': aptId,
+      'unit': unit.trim(),
+      'avatarInitials':
+          initials.isEmpty ? name.trim()[0].toUpperCase() : initials,
+      'isActive': true,
+      'isFirstLogin': true,
+      'joinedAt': Timestamp.fromDate(DateTime.now()),
+    }).ignore();
+
     notifyListeners();
     return (id: id, password: password);
   }
 
-  /// Adds a new resident to [aptId].
-  /// Auto-generates a password. Returns the generated password. Validates capacity, flat duplicate, and email duplicate.
+  /// Adds a new resident via `pending_users`. Returns the generated password.
   String addMember({
     required String flatNumber,
     required String name,
@@ -139,9 +167,9 @@ class UserProvider extends ChangeNotifier {
     final inApt = membersForApartment(aptId);
 
     if (inApt.length >= maxFlats) {
-      throw Exception('All $maxFlats flats are occupied. Cannot add more members.');
+      throw Exception(
+          'All $maxFlats flats are occupied. Cannot add more members.');
     }
-
     if (inApt.any((u) => u.unit.trim() == flatNumber.trim())) {
       throw Exception('Flat $flatNumber already has a member');
     }
@@ -162,22 +190,22 @@ class UserProvider extends ChangeNotifier {
         .join();
 
     final password = AppUtils.generateUserPassword(name, flatNumber);
-    final newUser = UserModel(
-      id: 'um_${DateTime.now().millisecondsSinceEpoch}',
-      name: name.trim(),
-      email: trimmedEmail,
-      password: password,
-      phone: '',
-      role: UserRole.user,
-      apartmentId: aptId,
-      unit: flatNumber.trim(),
-      avatarInitials: initials.isEmpty ? name.trim()[0].toUpperCase() : initials,
-      joinedAt: DateTime.now(),
-      isFirstLogin: true,
-    );
 
-    _users.add(newUser);
-    MockUsers.all.add(newUser);
+    _fs.createPendingUser({
+      'name': name.trim(),
+      'email': trimmedEmail,
+      'tempPassword': password,
+      'phone': '',
+      'role': UserRole.user.name,
+      'apartmentId': aptId,
+      'unit': flatNumber.trim(),
+      'avatarInitials':
+          initials.isEmpty ? name.trim()[0].toUpperCase() : initials,
+      'isActive': true,
+      'isFirstLogin': true,
+      'joinedAt': Timestamp.fromDate(DateTime.now()),
+    }).ignore();
+
     notifyListeners();
     return password;
   }

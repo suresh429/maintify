@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class ComplaintStatus {
   static const String open = 'Open';
   static const String inProgress = 'In Progress';
@@ -40,6 +42,29 @@ class ComplaintMessage {
     required this.content,
     required this.timestamp,
   });
+
+  factory ComplaintMessage.fromFirestore(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    return ComplaintMessage(
+      id: doc.id,
+      complaintId: d['complaintId'] as String? ?? '',
+      senderId: d['senderId'] as String? ?? '',
+      senderName: d['senderName'] as String? ?? '',
+      isFromAdmin: d['isFromAdmin'] as bool? ?? false,
+      content: d['content'] as String? ?? '',
+      timestamp:
+          (d['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'complaintId': complaintId,
+        'senderId': senderId,
+        'senderName': senderName,
+        'isFromAdmin': isFromAdmin,
+        'content': content,
+        'timestamp': Timestamp.fromDate(timestamp),
+      };
 }
 
 class ComplaintModel {
@@ -66,6 +91,35 @@ class ComplaintModel {
     required this.createdAt,
     required this.messages,
   });
+
+  factory ComplaintModel.fromFirestore(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    return ComplaintModel(
+      id: doc.id,
+      apartmentId: d['apartmentId'] as String? ?? '',
+      userId: d['userId'] as String? ?? '',
+      userName: d['userName'] as String? ?? '',
+      unit: d['unit'] as String? ?? '',
+      title: d['title'] as String? ?? '',
+      category: d['category'] as String? ?? '',
+      status: d['status'] as String? ?? ComplaintStatus.open,
+      createdAt:
+          (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      messages: const [], // messages loaded separately from subcollection
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'apartmentId': apartmentId,
+        'userId': userId,
+        'userName': userName,
+        'unit': unit,
+        'title': title,
+        'category': category,
+        'status': status,
+        'createdAt': Timestamp.fromDate(createdAt),
+        'lastActivityAt': Timestamp.fromDate(lastActivityAt),
+      };
 
   ComplaintMessage? get lastMessage =>
       messages.isEmpty ? null : messages.last;
