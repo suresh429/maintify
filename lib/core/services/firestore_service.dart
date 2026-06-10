@@ -146,6 +146,39 @@ class FirestoreService {
   Future<void> setBill(String id, Map<String, dynamic> data) =>
       _db.collection('bills').doc(id).set(data);
 
+  /// Checks the Firestore SERVER directly (bypasses offline cache) to see if a
+  /// bill already exists for [aptId] + [month]. Use this before creating a new
+  /// monthly bill to avoid false positives from stale local cache.
+  Future<bool> monthlyBillExistsOnServer(String aptId, String month) async {
+    final snap = await _db
+        .collection('bills')
+        .where('apartmentId', isEqualTo: aptId)
+        .where('month', isEqualTo: month)
+        .limit(1)
+        .get(const GetOptions(source: Source.server));
+    return snap.docs.isNotEmpty;
+  }
+
+  Future<void> updateBill(String id, Map<String, dynamic> data) =>
+      _db.collection('bills').doc(id).update(data);
+
+  Future<void> deleteBill(String id) =>
+      _db.collection('bills').doc(id).delete();
+
+  /// Deletes all payment documents for [billId] in a single batch.
+  Future<void> deleteAllPaymentsForBill(String billId) async {
+    final snap = await _db
+        .collection('payments')
+        .where('billId', isEqualTo: billId)
+        .get();
+    if (snap.docs.isEmpty) return;
+    final batch = _db.batch();
+    for (final doc in snap.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+  }
+
   // ─────────────────────────────────── PAYMENTS ────────────────────────────────
 
   Stream<List<BillPayment>> streamPaymentsForApartment(String aptId) => _db

@@ -9,20 +9,29 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ApartmentProvider extends ChangeNotifier {
   final FirestoreService _fs = FirestoreService();
 
-  List<ApartmentModel> _apartments = List.from(MockApartments.all);
+  List<ApartmentModel> _apartments = []; // start empty — server is source of truth
   StreamSubscription<List<ApartmentModel>>? _sub;
+  bool _isInitialLoading = false;
   bool _isLoading = false;
 
   List<ApartmentModel> get apartments => _apartments;
+  bool get isInitialLoading => _isInitialLoading;
   bool get isLoading => _isLoading;
 
   // ── Start listening ───────────────────────────────────────────────────────
 
   void startListening() {
     _sub?.cancel();
+    // Hard reset: clear before any server data arrives.
+    _apartments = [];
+    _isInitialLoading = true;
+    MockApartments.replaceAll([]);
+    notifyListeners();
+
     _sub = _fs.streamApartments().listen((list) {
       debugPrint('[REALTIME] Apartments updated: ${list.length} doc(s)');
       _apartments = list;
+      _isInitialLoading = false;
       MockApartments.replaceAll(list); // keep statics in sync
       notifyListeners();
       // Migrate any apartments still holding a pending_* presidentId
@@ -33,6 +42,8 @@ class ApartmentProvider extends ChangeNotifier {
       }
     }, onError: (e) {
       debugPrint('[REALTIME] Apartments stream ERROR: $e');
+      _isInitialLoading = false;
+      notifyListeners();
     });
   }
 

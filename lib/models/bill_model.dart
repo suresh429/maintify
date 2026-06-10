@@ -54,18 +54,13 @@ class BillCategory {
       };
 
   /// Compute the amount this user owes for this category.
-  double amountForUser(String userId, int totalFlats) {
+  double amountForUser(String userId, int eligibleCount) {
     switch (type) {
-      case 'common':
-        return totalFlats > 0 ? totalAmount / totalFlats : 0;
-      case 'hybrid':
-        return userOverrides.containsKey(userId)
-            ? userOverrides[userId]!
-            : defaultAmount;
-      case 'individual':
-        return userOverrides[userId] ?? 0;
-      default:
-        return totalFlats > 0 ? totalAmount / totalFlats : 0;
+      case 'common': return eligibleCount > 0 ? totalAmount / eligibleCount : 0;
+      case 'hybrid': return userOverrides.containsKey(userId)
+          ? userOverrides[userId]! : defaultAmount;
+      case 'individual': return userOverrides[userId] ?? 0;
+      default: return eligibleCount > 0 ? totalAmount / eligibleCount : 0;
     }
   }
 }
@@ -93,6 +88,7 @@ class BillModel {
   final DateTime createdAt;
   final String billType;       // "common" | "hybrid" | "individual" (legacy single-cat)
   final List<BillCategory> categories; // embedded categories (new-style bills)
+  final List<String> excludedUserIds;
 
   const BillModel({
     required this.id,
@@ -107,6 +103,7 @@ class BillModel {
     required this.createdAt,
     this.billType = 'common',
     this.categories = const [],
+    this.excludedUserIds = const [],
   });
 
   factory BillModel.fromFirestore(DocumentSnapshot doc) {
@@ -125,6 +122,8 @@ class BillModel {
         ? categories.fold(0.0, (s, c) => s + c.totalAmount)
         : (d['totalAmount'] as num?)?.toDouble() ?? 0;
 
+    final rawExcluded = d['excludedUserIds'] as List<dynamic>? ?? [];
+
     return BillModel(
       id: doc.id,
       apartmentId: d['apartmentId'] as String? ?? '',
@@ -138,6 +137,7 @@ class BillModel {
       createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       billType: d['billType'] as String? ?? 'common',
       categories: categories,
+      excludedUserIds: rawExcluded.cast<String>(),
     );
   }
 
@@ -154,29 +154,37 @@ class BillModel {
         'billType': billType,
         if (categories.isNotEmpty)
           'categories': categories.map((c) => c.toMap()).toList(),
+        if (excludedUserIds.isNotEmpty) 'excludedUserIds': excludedUserIds,
       };
 
+  /// Number of flats that actually owe this bill (total minus excluded).
+  int get eligibleCount {
+    final n = totalFlats - excludedUserIds.length;
+    return n > 0 ? n : totalFlats;
+  }
+
   /// Per-flat share for display (sum of each category's per-flat contribution).
-  /// For hybrid: uses defaultAmount / totalFlats as display estimate.
   double get perFlatShare {
+    final eligible = eligibleCount;
     if (categories.isNotEmpty) {
       return categories.fold(0.0, (s, c) {
         switch (c.type) {
-          case 'common': return s + c.totalAmount / totalFlats;
-          case 'hybrid': return s + c.defaultAmount / totalFlats;
-          case 'individual': return s; // no single representative value
-          default: return s + c.totalAmount / totalFlats;
+          case 'common': return s + (eligible > 0 ? c.totalAmount / eligible : 0);
+          case 'hybrid': return s + c.defaultAmount; // defaultAmount is already per-flat
+          case 'individual': return s;
+          default: return s + (eligible > 0 ? c.totalAmount / eligible : 0);
         }
       });
     }
-    return totalFlats > 0 ? totalAmount / totalFlats : 0;
+    return eligible > 0 ? totalAmount / eligible : 0;
   }
 
   /// This user's total amount due for this bill (sum across all categories).
   double amountForUser(String userId) {
+    if (excludedUserIds.contains(userId)) return 0;
     if (categories.isNotEmpty) {
       return categories.fold(
-          0.0, (s, c) => s + c.amountForUser(userId, totalFlats));
+          0.0, (s, c) => s + c.amountForUser(userId, eligibleCount));
     }
     return perFlatShare;
   }

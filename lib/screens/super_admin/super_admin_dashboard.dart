@@ -313,7 +313,7 @@ class _DashboardHome extends StatelessWidget {
     final theme = RoleTheme.of(UserRole.superAdmin);
     final aptProvider = context.watch<ApartmentProvider>();
 
-    if (dashboard.isLoading) return const ShimmerDashboard();
+    if (aptProvider.isInitialLoading) return const ShimmerDashboard();
 
     final hour = DateTime.now().hour;
     final greeting = hour < 12

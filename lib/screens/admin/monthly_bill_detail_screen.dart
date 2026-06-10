@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/bill_model.dart';
+import '../../models/user_model.dart';
 import '../../providers/bill_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
+import 'edit_bill_sheet.dart';
 
 class MonthlyBillDetailScreen extends StatelessWidget {
   final MonthlyBillSummary summary;
@@ -28,17 +31,23 @@ class MonthlyBillDetailScreen extends StatelessWidget {
         );
     final flats = fresh.flatList;
 
-    // Total collected = sum of paid payments across all bills in month
-    double collectedAmount = 0;
-    for (final bill in fresh.bills) {
-      final paidCount = fresh.allPayments
-          .where((p) => p.billId == bill.id && p.isPaid)
-          .length;
-      collectedAmount += paidCount * bill.perFlatShare;
-    }
-    final pendingAmount = fresh.totalAmount - collectedAmount;
+    // Total collected = sum of actual paid payment amounts
+    final collectedAmount = fresh.allPayments
+        .where((p) => p.isPaid)
+        .fold(0.0, (s, p) => s + (p.amount ?? fresh.perFlatShare));
+    final totalBilledAmount = fresh.allPayments
+        .fold(0.0, (s, p) => s + (p.amount ?? fresh.perFlatShare));
+    final pendingAmount = totalBilledAmount - collectedAmount;
     final collectionRate =
-        fresh.totalAmount == 0 ? 0.0 : collectedAmount / fresh.totalAmount;
+        totalBilledAmount == 0 ? 0.0 : collectedAmount / totalBilledAmount;
+
+    // Get the raw bill document for edit/delete (first bill id in this month)
+    final rawBillId = fresh.bills.isNotEmpty ? fresh.bills.first.id : null;
+    final rawBill = rawBillId != null
+        ? context.read<BillProvider>().rawBillById(rawBillId)
+        : null;
+    final residents =
+        context.read<UserProvider>().residentsForApartment(aptId);
 
     return Scaffold(
       backgroundColor: AppColors.lightGray,
@@ -51,6 +60,19 @@ class MonthlyBillDetailScreen extends StatelessWidget {
         ),
         title: Text(summary.month,
             style: AppTextStyles.heading3(color: Colors.white)),
+        actions: [
+          if (rawBill != null)
+            IconButton(
+              icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+              onPressed: () => _showDetailBillActions(
+                context,
+                rawBill: rawBill,
+                summary: summary,
+                residents: residents,
+                billProvider: context.read<BillProvider>(),
+              ),
+            ),
+        ],
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -83,6 +105,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                     collectedAmount,
                     pendingAmount,
                     collectionRate,
+                    totalBilledAmount,
                   ),
                   const SizedBox(height: 16),
 
@@ -386,10 +409,11 @@ class MonthlyBillDetailScreen extends StatelessWidget {
     double collectedAmount,
     double pendingAmount,
     double collectionRate,
+    double totalBilledAmount,
   ) {
     final isComplete = collectionRate >= 1.0;
     final barColor = isComplete ? AppColors.paid : theme.primary;
-    final pendingFlats = fresh.totalFlats - fresh.fullyPaidFlats;
+    final pendingFlats = fresh.pendingFlats;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -442,7 +466,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${AppUtils.formatCurrency(collectedAmount)} of ${AppUtils.formatCurrency(fresh.totalAmount)}',
+            '${AppUtils.formatCurrency(collectedAmount)} of ${AppUtils.formatCurrency(totalBilledAmount)}',
             style: AppTextStyles.caption(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 14),
@@ -574,6 +598,115 @@ class MonthlyBillDetailScreen extends StatelessWidget {
       default:           return Icons.receipt_outlined;
     }
   }
+}
+
+// ── Bill Actions Sheet ────────────────────────────────────────────────────────
+
+void _showDetailBillActions(
+  BuildContext context, {
+  required BillModel rawBill,
+  required MonthlyBillSummary summary,
+  required List<UserModel> residents,
+  required BillProvider billProvider,
+}) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: false,
+    builder: (_) => Container(
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.edit_outlined,
+                  color: AppColors.blue, size: 20),
+            ),
+            title: Text('Edit Bill',
+                style: AppTextStyles.bodyLarge()
+                    .copyWith(fontWeight: FontWeight.w500)),
+            subtitle: Text('Update categories, amounts or due date',
+                style: AppTextStyles.caption()),
+            onTap: () {
+              Navigator.pop(context);
+              showEditBillSheet(context,
+                  bill: rawBill, residents: residents);
+            },
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.overdue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.delete_outline_rounded,
+                  color: AppColors.overdue, size: 20),
+            ),
+            title: Text('Delete Bill',
+                style: AppTextStyles.bodyLarge().copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.overdue)),
+            subtitle: Text('Permanently remove bill and all payments',
+                style: AppTextStyles.caption()),
+            onTap: () {
+              Navigator.pop(context);
+              showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                  title: const Text('Delete Bill'),
+                  content: Text(
+                      'Delete the ${summary.month} bill and all payment records? This cannot be undone.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Delete',
+                          style: TextStyle(color: AppColors.overdue)),
+                    ),
+                  ],
+                ),
+              ).then((confirmed) async {
+                if (confirmed != true) return;
+                if (!context.mounted) return;
+                await billProvider.adminDeleteBill(rawBill.id);
+                if (!context.mounted) return;
+                AppUtils.showSnackBar(
+                    context, '${summary.month} bill deleted');
+                Navigator.pop(context);
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    ),
+  );
 }
 
 // ── Flat Payment Card ─────────────────────────────────────────────────────────

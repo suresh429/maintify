@@ -211,7 +211,9 @@ class _UserHome extends StatelessWidget {
     final user = auth.currentUser;
     final aptId = user?.apartmentId ?? '';
 
-    if (dashboard.isLoading) return const ShimmerDashboard();
+    if (billProvider.isInitialLoading || aptProvider.isInitialLoading) {
+      return const ShimmerDashboard();
+    }
 
     final hour = DateTime.now().hour;
     final greeting = hour < 12

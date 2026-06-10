@@ -46,7 +46,17 @@ class MonthlyBillSummary {
     }).length;
   }
 
-  int get pendingFlats => totalFlats - fullyPaidFlats;
+  /// All excluded user IDs across all bills in this month.
+  Set<String> get allExcludedUserIds =>
+      bills.expand((b) => b.excludedUserIds).toSet();
+
+  /// Eligible flats = total - excluded.
+  int get eligibleFlats {
+    final n = totalFlats - allExcludedUserIds.length;
+    return n > 0 ? n : totalFlats;
+  }
+
+  int get pendingFlats => eligibleFlats - fullyPaidFlats;
 
   String get overallStatus {
     if (totalFlats == 0) return BillStatus.pending;
@@ -140,31 +150,49 @@ class UserMonthlySummary {
 class BillProvider extends ChangeNotifier {
   final FirestoreService _fs = FirestoreService();
 
-  List<BillModel> _bills = List.from(MockBillData.bills);
-  List<BillPayment> _payments = List.from(MockBillData.payments);
+  // Start empty — server is the only source of truth.
+  // Mock data is intentionally not used here; it only exists for DashboardProvider.
+  List<BillModel> _bills = [];
+  List<BillPayment> _payments = [];
   StreamSubscription<List<BillModel>>? _billSub;
   StreamSubscription<List<BillPayment>>? _paymentSub;
 
+  // True from the moment startListening* is called until the first
+  // server snapshot arrives. Drives shimmer loading in screens.
+  bool _isInitialLoading = false;
+  // True only during write mutations (createBill, markPaid, etc.).
   bool _isLoading = false;
 
+  bool get isInitialLoading => _isInitialLoading;
   bool get isLoading => _isLoading;
 
   // ── Stream management ─────────────────────────────────────────────────────
 
   /// Subscribe to bills and payments for [aptId]. Call after login.
+  /// Performs a hard reset first — never shows stale data from a previous session.
   void startListeningForApartment(String aptId) {
     _billSub?.cancel();
     _paymentSub?.cancel();
 
+    // Hard reset: clear local lists + mock statics before any server data arrives.
+    _bills = [];
+    _payments = [];
+    _isInitialLoading = true;
+    MockBillData.replaceAll([], []);
+    notifyListeners();
+
     _billSub = _fs.streamBillsForApartment(aptId).listen((bills) {
       debugPrint('[REALTIME] Bills updated: ${bills.length} doc(s) for apt $aptId');
       _bills = bills;
+      _isInitialLoading = false; // first server snapshot received
       MockBillData.replaceAll(_bills, _payments);
       notifyListeners();
     }, onError: (e) {
       // Errors here are almost always a missing Firestore composite index.
       // Run: firebase deploy --only firestore:indexes  to deploy firestore.indexes.json
       debugPrint('[REALTIME] Bills stream ERROR (apt $aptId): $e');
+      _isInitialLoading = false;
+      notifyListeners();
     });
 
     _paymentSub =
@@ -181,13 +209,23 @@ class BillProvider extends ChangeNotifier {
   /// For super admin: listen to ALL bills across all apartments.
   void startListeningAll() {
     _billSub?.cancel();
+
+    _bills = [];
+    _payments = [];
+    _isInitialLoading = true;
+    MockBillData.replaceAll([], []);
+    notifyListeners();
+
     _billSub = _fs.streamAllBills().listen((bills) {
       debugPrint('[REALTIME] All-bills updated: ${bills.length} doc(s)');
       _bills = bills;
+      _isInitialLoading = false;
       MockBillData.replaceAll(_bills, _payments);
       notifyListeners();
     }, onError: (e) {
       debugPrint('[REALTIME] All-bills stream ERROR: $e');
+      _isInitialLoading = false;
+      notifyListeners();
     });
   }
 
@@ -238,6 +276,7 @@ class BillProvider extends ChangeNotifier {
               createdAt: bill.createdAt,
               billType: cat.type,
               categories: const [],
+              excludedUserIds: bill.excludedUserIds,
             ))
         .toList();
   }
@@ -265,11 +304,14 @@ class BillProvider extends ChangeNotifier {
               createdAt: bill.createdAt,
               billType: cat.type,
               categories: const [],
+              excludedUserIds: bill.excludedUserIds,
             );
             result.add(_UserBillView(
               bill: synthetic,
               payment: payment,
-              precomputedAmount: cat.amountForUser(userId, bill.totalFlats),
+              precomputedAmount: bill.excludedUserIds.contains(userId)
+                  ? 0
+                  : cat.amountForUser(userId, bill.eligibleCount),
             ));
           }
         } else {
@@ -329,6 +371,21 @@ class BillProvider extends ChangeNotifier {
 
   bool hasMonthlyBill(String aptId, String month) =>
       _bills.any((b) => b.apartmentId == aptId && b.month == month);
+
+  /// Server-authoritative duplicate check — bypasses the Firestore offline
+  /// cache. Always call this before creating a bill; the stream cache can be
+  /// stale after console deletions or across sessions.
+  Future<bool> checkMonthlyBillFresh(String aptId, String month) =>
+      _fs.monthlyBillExistsOnServer(aptId, month);
+
+  /// Returns the raw (non-synthetic) bill document by id, or null.
+  BillModel? rawBillById(String id) {
+    try {
+      return _bills.firstWhere((b) => b.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
 
   // ── Monthly grouping ──────────────────────────────────────────────────────
 
@@ -462,6 +519,7 @@ class BillProvider extends ChangeNotifier {
     required int totalFlats,
     required List<UserModel> residents,
     required NotificationProvider notificationProvider,
+    List<String> excludedUserIds = const [],
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -484,10 +542,12 @@ class BillProvider extends ChangeNotifier {
       'createdAt': Timestamp.fromDate(now),
       'billType': 'common',
       'categories': categories.map((c) => c.toMap()).toList(),
+      if (excludedUserIds.isNotEmpty) 'excludedUserIds': excludedUserIds,
     });
     debugPrint('[FLOW] Bill doc created: $billId, total=₹${totalAmount.toStringAsFixed(0)}');
 
     for (final resident in residents) {
+      if (excludedUserIds.contains(resident.id)) continue;
       final userAmount = categories.fold(
           0.0, (s, c) => s + c.amountForUser(resident.id, totalFlats));
       final paymentId = '${billId}_${resident.id}';
@@ -556,6 +616,61 @@ class BillProvider extends ChangeNotifier {
       }
     }
     MockBillData.replaceAll(_bills, _payments);
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// Updates the bill document with new [categories] and [dueDate].
+  /// Re-calculates and updates payment amounts for residents who have NOT yet paid.
+  Future<void> adminEditBill({
+    required String billId,
+    required List<BillCategory> categories,
+    required DateTime dueDate,
+    required List<UserModel> residents,
+    required List<String> excludedUserIds,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final totalAmount = categories.fold(0.0, (s, c) => s + c.totalAmount);
+    final bill = rawBillById(billId);
+    final totalFlats = bill?.totalFlats ?? residents.length;
+
+    await _fs.updateBill(billId, {
+      'title': categories.isNotEmpty ? categories.first.name : '',
+      'totalAmount': totalAmount,
+      'dueDate': Timestamp.fromDate(dueDate),
+      'categories': categories.map((c) => c.toMap()).toList(),
+      'excludedUserIds': excludedUserIds,
+    });
+
+    // Update amounts only for unpaid payments
+    for (final resident in residents) {
+      final payment = userPaymentForBill(billId, resident.id);
+      if (excludedUserIds.contains(resident.id)) {
+        // No payment should exist for excluded user; skip
+        continue;
+      }
+      if (payment != null && !payment.isPaid) {
+        final userAmount = categories.fold(
+            0.0, (s, c) => s + c.amountForUser(resident.id, totalFlats));
+        final paymentId = '${billId}_${resident.id}';
+        await _fs.updatePayment(paymentId, {'amount': userAmount});
+      }
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// Deletes the bill document and all associated payment documents.
+  Future<void> adminDeleteBill(String billId) async {
+    _isLoading = true;
+    notifyListeners();
+
+    await _fs.deleteAllPaymentsForBill(billId);
+    await _fs.deleteBill(billId);
+
     _isLoading = false;
     notifyListeners();
   }

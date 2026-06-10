@@ -244,10 +244,15 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
       return;
     }
 
-    if (billProvider.hasMonthlyBill(aptId, _selectedMonth)) {
+    // Always check the server directly — the local stream cache can be stale
+    // after a console deletion or across re-logins (Firestore offline cache).
+    final alreadyExists =
+        await billProvider.checkMonthlyBillFresh(aptId, _selectedMonth);
+    if (!mounted) return;
+    if (alreadyExists) {
       AppUtils.showSnackBar(
           context,
-          'A bill for $_selectedMonth already exists. Delete or update it instead.',
+          'A bill for $_selectedMonth already exists. Edit or delete it from the dashboard.',
           isError: true);
       return;
     }

@@ -22,7 +22,11 @@ import '../../widgets/schedule_meeting_sheet.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/meeting_provider.dart';
 import '../../models/meeting_model.dart';
+import '../../models/bill_model.dart';
+import '../../models/user_model.dart';
+import '../../providers/user_provider.dart';
 import '../shared/notifications_screen.dart';
+import 'edit_bill_sheet.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -276,7 +280,9 @@ class _AdminHome extends StatelessWidget {
     final theme = RoleTheme.of(UserRole.admin);
     final aptId = auth.currentUser?.apartmentId ?? '';
 
-    if (dashboard.isLoading) return const ShimmerDashboard();
+    if (billProvider.isInitialLoading || aptProvider.isInitialLoading) {
+      return const ShimmerDashboard();
+    }
 
     final hour = DateTime.now().hour;
     final greeting = hour < 12
@@ -667,9 +673,14 @@ class _AdminHome extends StatelessWidget {
               ...recentBills.map((bill) {
                 final payments = billProvider.paymentsForBill(bill.id);
                 final paidCount = bill.paidFlats(payments);
+                final rawBill =
+                    billProvider.rawBillById(bill.id) ?? bill;
+                final residents = context
+                    .read<UserProvider>()
+                    .residentsForApartment(aptId);
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.fromLTRB(14, 14, 4, 14),
                   decoration: BoxDecoration(
                     color: AppColors.white,
                     borderRadius: BorderRadius.circular(14),
@@ -716,6 +727,20 @@ class _AdminHome extends StatelessWidget {
                           ),
                           Text('paid', style: AppTextStyles.caption()),
                         ],
+                      ),
+                      GestureDetector(
+                        onTap: () => _showBillActionsSheet(
+                          context,
+                          bill: rawBill,
+                          billMonth: bill.month,
+                          residents: residents,
+                          billProvider: billProvider,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: const Icon(Icons.more_vert_rounded,
+                              size: 20, color: AppColors.textSecondary),
+                        ),
                       ),
                     ],
                   ),
@@ -958,4 +983,121 @@ class _NavTile extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Bill actions sheet ────────────────────────────────────────────────────────
+
+void _showBillActionsSheet(
+  BuildContext context, {
+  required BillModel bill,
+  required String billMonth,
+  required List<UserModel> residents,
+  required BillProvider billProvider,
+}) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: false,
+    builder: (_) => Container(
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.edit_outlined,
+                  color: AppColors.blue, size: 20),
+            ),
+            title: Text('Edit Bill',
+                style: AppTextStyles.bodyLarge()
+                    .copyWith(fontWeight: FontWeight.w500)),
+            subtitle: Text('Update categories, amounts or due date',
+                style: AppTextStyles.caption()),
+            onTap: () {
+              Navigator.pop(context);
+              showEditBillSheet(context, bill: bill, residents: residents);
+            },
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.overdue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.delete_outline_rounded,
+                  color: AppColors.overdue, size: 20),
+            ),
+            title: Text('Delete Bill',
+                style: AppTextStyles.bodyLarge().copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.overdue)),
+            subtitle: Text('Permanently remove bill and all payments',
+                style: AppTextStyles.caption()),
+            onTap: () {
+              Navigator.pop(context);
+              _confirmDeleteBill(context,
+                  billId: bill.id,
+                  billMonth: billMonth,
+                  billProvider: billProvider);
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    ),
+  );
+}
+
+void _confirmDeleteBill(
+  BuildContext context, {
+  required String billId,
+  required String billMonth,
+  required BillProvider billProvider,
+}) {
+  showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Delete Bill'),
+      content: Text(
+          'Delete the $billMonth bill and all payment records? This cannot be undone.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Delete',
+              style: TextStyle(color: AppColors.overdue)),
+        ),
+      ],
+    ),
+  ).then((confirmed) async {
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+    await billProvider.adminDeleteBill(billId);
+    if (!context.mounted) return;
+    AppUtils.showSnackBar(context, '$billMonth bill deleted');
+  });
 }

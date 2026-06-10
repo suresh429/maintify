@@ -9,11 +9,13 @@ import '../core/services/firestore_service.dart';
 class UserProvider extends ChangeNotifier {
   final FirestoreService _fs = FirestoreService();
 
-  List<UserModel> _users = List.from(MockUsers.all);
+  List<UserModel> _users = []; // start empty — server is source of truth
   StreamSubscription<List<UserModel>>? _sub;
+  bool _isInitialLoading = false;
   bool _isLoading = false;
 
   List<UserModel> get users => _users;
+  bool get isInitialLoading => _isInitialLoading;
   bool get isLoading => _isLoading;
 
   UserModel? findById(String id) {
@@ -28,13 +30,22 @@ class UserProvider extends ChangeNotifier {
 
   void startListening() {
     _sub?.cancel();
+    // Hard reset: clear before any server data arrives.
+    _users = [];
+    _isInitialLoading = true;
+    MockUsers.replaceAll([]);
+    notifyListeners();
+
     _sub = _fs.streamUsers().listen((list) {
       debugPrint('[REALTIME] Users updated: ${list.length} doc(s)');
       _users = list;
+      _isInitialLoading = false;
       MockUsers.replaceAll(list); // keep statics in sync for DashboardProvider
       notifyListeners();
     }, onError: (e) {
       debugPrint('[REALTIME] Users stream ERROR: $e');
+      _isInitialLoading = false;
+      notifyListeners();
     });
   }
 

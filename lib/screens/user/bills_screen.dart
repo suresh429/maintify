@@ -28,7 +28,7 @@ class _BillsScreenState extends State<BillsScreen> {
     final billProvider = context.watch<BillProvider>();
     final theme = RoleTheme.of(UserRole.user);
 
-    if (billProvider.isLoading) return const ShimmerDashboard();
+    if (billProvider.isInitialLoading || billProvider.isLoading) return const ShimmerDashboard();
 
     final allSummaries = billProvider.userMonthlySummaries(userId);
     final displayed = _filter == 'Pending'
