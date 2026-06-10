@@ -100,8 +100,10 @@ class UserMonthlySummary {
     required this.views,
   });
 
+  // Uses precomputed per-category amount when available, else payment.amount
+  // or bill.perFlatShare for legacy bills.
   double get totalAmount =>
-      views.fold(0.0, (s, v) => s + v.bill.perFlatShare);
+      views.fold(0.0, (s, v) => s + v.userAmount);
 
   bool get isFullyPaid =>
       views.isNotEmpty && views.every((v) => v.payment.isPaid);
@@ -142,6 +144,7 @@ class BillProvider extends ChangeNotifier {
   List<BillPayment> _payments = List.from(MockBillData.payments);
   StreamSubscription<List<BillModel>>? _billSub;
   StreamSubscription<List<BillPayment>>? _paymentSub;
+
   bool _isLoading = false;
 
   bool get isLoading => _isLoading;
@@ -195,7 +198,7 @@ class BillProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  // ── Queries (identical signatures to original) ────────────────────────────
+  // ── Queries ────────────────────────────────────────────────────────────────
 
   List<BillModel> billsForApartment(String aptId) =>
       _bills.where((b) => b.apartmentId == aptId).toList()
@@ -216,16 +219,63 @@ class BillProvider extends ChangeNotifier {
     }
   }
 
+  /// Expands a multi-category bill into one synthetic BillModel per category.
+  /// All synthetic bills share the same [id] so payment lookups remain correct.
+  /// Legacy bills (no categories) are returned as-is in a single-element list.
+  List<BillModel> _expandBillToSyntheticList(BillModel bill) {
+    if (bill.categories.isEmpty) return [bill];
+    return bill.categories
+        .map((cat) => BillModel(
+              id: bill.id,
+              apartmentId: bill.apartmentId,
+              createdByAdminId: bill.createdByAdminId,
+              title: cat.name,
+              totalAmount: cat.totalAmount,
+              totalFlats: bill.totalFlats,
+              category: cat.type,
+              month: bill.month,
+              dueDate: bill.dueDate,
+              createdAt: bill.createdAt,
+              billType: cat.type,
+              categories: const [],
+            ))
+        .toList();
+  }
+
+  /// Returns one [UserBillView] per billing line-item (category) the user owes.
+  /// Multi-category bills are expanded into N synthetic views sharing one payment.
   List<UserBillView> userBillViews(String userId) {
     final userPayments = paymentsForUser(userId);
     final result = <UserBillView>[];
     for (final payment in userPayments) {
       try {
         final bill = _bills.firstWhere((b) => b.id == payment.billId);
-        result.add(_UserBillView(bill: bill, payment: payment));
+        if (bill.categories.isNotEmpty) {
+          for (final cat in bill.categories) {
+            final synthetic = BillModel(
+              id: bill.id,
+              apartmentId: bill.apartmentId,
+              createdByAdminId: bill.createdByAdminId,
+              title: cat.name,
+              totalAmount: cat.totalAmount,
+              totalFlats: bill.totalFlats,
+              category: cat.type,
+              month: bill.month,
+              dueDate: bill.dueDate,
+              createdAt: bill.createdAt,
+              billType: cat.type,
+              categories: const [],
+            );
+            result.add(_UserBillView(
+              bill: synthetic,
+              payment: payment,
+              precomputedAmount: cat.amountForUser(userId, bill.totalFlats),
+            ));
+          }
+        } else {
+          result.add(_UserBillView(bill: bill, payment: payment));
+        }
       } catch (_) {
-        // Bill not found in cache — usually means the bills stream hasn't
-        // loaded yet or failed (check '[REALTIME] Bills stream ERROR' logs).
         debugPrint('[REALTIME] userBillViews: payment ${payment.billId} has no matching bill in cache (${_bills.length} bills loaded)');
       }
     }
@@ -233,13 +283,27 @@ class BillProvider extends ChangeNotifier {
     return result;
   }
 
-  double totalDueForUser(String userId) => userBillViews(userId)
-      .where((v) => !v.payment.isPaid)
-      .fold(0, (s, v) => s + v.bill.perFlatShare);
+  /// Sum of all unpaid amounts for this user (across all bill categories).
+  double totalDueForUser(String userId) {
+    return userBillViews(userId)
+        .where((v) => !v.payment.isPaid)
+        .fold(0.0, (s, v) => s + v.userAmount);
+  }
 
-  double totalPaidForUser(String userId) => userBillViews(userId)
-      .where((v) => v.payment.isPaid)
-      .fold(0, (s, v) => s + v.bill.perFlatShare);
+  /// Sum of all paid amounts for this user (across all bill categories).
+  double totalPaidForUser(String userId) {
+    return userBillViews(userId)
+        .where((v) => v.payment.isPaid)
+        .fold(0.0, (s, v) => s + v.userAmount);
+  }
+
+  /// Count of unpaid bills (by unique bill document, not category expansions).
+  int pendingUserBillsCount(String userId) {
+    final seenBillIds = <String>{};
+    return userBillViews(userId).where((v) {
+      return !v.payment.isPaid && seenBillIds.add(v.bill.id);
+    }).length;
+  }
 
   double collectedForApartment(String aptId) {
     double total = 0;
@@ -280,15 +344,22 @@ class BillProvider extends ChangeNotifier {
     return DateTime(y, m < 1 ? 1 : m);
   }
 
+  /// Groups bills by month, expanding multi-category bills into synthetic
+  /// per-category BillModel entries so the admin detail screen can iterate
+  /// each category as a separate line item.
   List<MonthlyBillSummary> monthlyBillsForApartment(String aptId) {
     final bills = billsForApartment(aptId);
     final grouped = <String, List<BillModel>>{};
     for (final b in bills) {
-      grouped.putIfAbsent(b.month, () => []).add(b);
+      grouped.putIfAbsent(b.month, () => []).addAll(_expandBillToSyntheticList(b));
     }
     final summaries = grouped.entries.map((e) {
-      final monthPayments =
-          e.value.expand((b) => paymentsForBill(b.id)).toList();
+      // Payments are keyed by bill.id; synthetic bills share the same id as
+      // their parent, so deduplication via Set identity is necessary.
+      final monthPayments = e.value
+          .expand((b) => paymentsForBill(b.id))
+          .toSet()
+          .toList();
       return MonthlyBillSummary(
         month: e.key,
         apartmentId: aptId,
@@ -337,7 +408,6 @@ class BillProvider extends ChangeNotifier {
       'adminVerified': true,
     });
 
-    // Optimistic local update
     final i =
         _payments.indexWhere((p) => p.billId == billId && p.userId == userId);
     if (i != -1) {
@@ -380,12 +450,15 @@ class BillProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> createMonthlyBill({
+  /// Creates ONE Firestore bill document with embedded [categories] for [month].
+  /// Each resident gets a single payment record whose [amount] equals the sum
+  /// of their per-category amounts (category-aware: common / hybrid / individual).
+  Future<void> createBillForMonth({
     required String apartmentId,
     required String adminId,
     required String month,
     required DateTime dueDate,
-    required List<({String title, String category, double amount})> lineItems,
+    required List<BillCategory> categories,
     required int totalFlats,
     required List<UserModel> residents,
     required NotificationProvider notificationProvider,
@@ -394,54 +467,55 @@ class BillProvider extends ChangeNotifier {
     notifyListeners();
 
     final now = DateTime.now();
-    for (int i = 0; i < lineItems.length; i++) {
-      final item = lineItems[i];
-      final billId =
-          'bill_${now.millisecondsSinceEpoch}_${item.category}_$i';
+    final billId = 'bill_${now.millisecondsSinceEpoch}';
+    final totalAmount = categories.fold(0.0, (s, c) => s + c.totalAmount);
 
-      final billData = {
+    debugPrint('[FLOW] Creating bill for $month: ${categories.length} categories, ${residents.length} residents');
+
+    await _fs.setBill(billId, {
+      'apartmentId': apartmentId,
+      'createdByAdminId': adminId,
+      'title': categories.isNotEmpty ? categories.first.name : '',
+      'totalAmount': totalAmount,
+      'totalFlats': totalFlats,
+      'category': '',
+      'month': month,
+      'dueDate': Timestamp.fromDate(dueDate),
+      'createdAt': Timestamp.fromDate(now),
+      'billType': 'common',
+      'categories': categories.map((c) => c.toMap()).toList(),
+    });
+    debugPrint('[FLOW] Bill doc created: $billId, total=₹${totalAmount.toStringAsFixed(0)}');
+
+    for (final resident in residents) {
+      final userAmount = categories.fold(
+          0.0, (s, c) => s + c.amountForUser(resident.id, totalFlats));
+      final paymentId = '${billId}_${resident.id}';
+      await _fs.setPayment(paymentId, {
+        'billId': billId,
+        'userId': resident.id,
+        'unitNumber': resident.unit,
+        'status': BillStatus.pending,
+        'amount': userAmount,
+        'paidDate': null,
+        'transactionId': null,
+        'adminVerified': false,
         'apartmentId': apartmentId,
-        'createdByAdminId': adminId,
-        'title': item.title,
-        'totalAmount': item.amount,
-        'totalFlats': totalFlats,
-        'category': item.category,
-        'month': month,
-        'dueDate': Timestamp.fromDate(dueDate),
-        'createdAt': Timestamp.fromDate(now),
-      };
-      await _fs.setBill(billId, billData);
-
-      for (final resident in residents) {
-        final paymentId = '${billId}_${resident.id}';
-        await _fs.setPayment(paymentId, {
-          'billId': billId,
-          'userId': resident.id,
-          'unitNumber': resident.unit,
-          'status': BillStatus.pending,
-          'paidDate': null,
-          'transactionId': null,
-          'adminVerified': false,
-          'apartmentId': apartmentId,
-        });
-      }
+      });
+      debugPrint('[USER] Created payment for userId: ${resident.id}, amount: ₹${userAmount.toStringAsFixed(0)}');
     }
+    debugPrint('[FLOW] Total payments created: ${residents.length}');
 
-    // In-app notification to all residents about the new bill
-    final totalAmount =
-        lineItems.fold(0.0, (sum, item) => sum + item.amount);
-    // residents list is already available — pass IDs directly, no extra Firestore query.
-    final residentIds = residents.map((u) => u.id).toList();
-    debugPrint('[FLOW] Bill created — triggering notification for ${residentIds.length} resident(s) (apt: $apartmentId)');
+    final perFlatDisplay = totalFlats > 0 ? totalAmount / totalFlats : 0;
     await notificationProvider.addAndPersistNotification(
       title: 'New Bill for $month',
       body: 'Monthly maintenance bill generated. '
-          '₹${(totalAmount / totalFlats).toStringAsFixed(0)} per flat due by '
+          '₹${perFlatDisplay.toStringAsFixed(0)} per flat due by '
           '${dueDate.day}/${dueDate.month}/${dueDate.year}.',
       type: NotificationType.bill,
       targetRole: UserRole.user,
       aptId: apartmentId,
-      targetUserIds: residentIds,
+      targetUserIds: residents.map((u) => u.id).toList(),
     );
 
     _isLoading = false;
@@ -529,7 +603,18 @@ class BillProvider extends ChangeNotifier {
 class _UserBillView {
   final BillModel bill;
   final BillPayment payment;
-  const _UserBillView({required this.bill, required this.payment});
+  final double? _precomputedAmount;
+
+  const _UserBillView({
+    required this.bill,
+    required this.payment,
+    double? precomputedAmount,
+  }) : _precomputedAmount = precomputedAmount;
+
+  /// Category-expanded bills: uses precomputed per-category amount.
+  /// Individual (legacy) bills: payment.amount holds the per-user amount.
+  /// Common (legacy) bills: falls back to bill.perFlatShare.
+  double get userAmount => _precomputedAmount ?? payment.amount ?? bill.perFlatShare;
 }
 
 typedef UserBillView = _UserBillView;

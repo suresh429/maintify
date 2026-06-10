@@ -1,11 +1,74 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BILL MODEL
-// A bill is created at the apartment level by the Admin (President).
-// The total amount is split equally across all flats → perFlatShare.
-// Each flat's payment is tracked separately via BillPayment.
+// BILLING MODEL — Hybrid multi-category design
+//
+// One BillModel document = one month's full bill for an apartment.
+// It embeds a `categories` array (BillCategory) that supports:
+//   • common   → split equally across all flats
+//   • hybrid   → defaultAmount per flat; per-user overrides in userOverrides
+//   • individual → fully custom per-user (userOverrides only, no default)
+//
+// Storage: bills/ collection ONLY.  No user_bills/ or other collections.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BILL CATEGORY
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// One billing line-item embedded in BillModel.categories.
+class BillCategory {
+  final String name;         // e.g. "Lift", "Water", "Garbage"
+  final String type;         // "common" | "hybrid" | "individual"
+  final double totalAmount;  // apt-level total for this category (stored at creation)
+  final double defaultAmount;// per-user default; meaningful for hybrid
+  final Map<String, double> userOverrides; // userId → override amount
+
+  const BillCategory({
+    required this.name,
+    required this.type,
+    required this.totalAmount,
+    this.defaultAmount = 0,
+    this.userOverrides = const {},
+  });
+
+  factory BillCategory.fromMap(Map<String, dynamic> m) {
+    final rawOverrides = m['userOverrides'] as Map<String, dynamic>? ?? {};
+    return BillCategory(
+      name: m['name'] as String? ?? '',
+      type: m['type'] as String? ?? 'common',
+      totalAmount: (m['totalAmount'] as num?)?.toDouble() ?? 0,
+      defaultAmount: (m['defaultAmount'] as num?)?.toDouble() ?? 0,
+      userOverrides: rawOverrides.map(
+        (k, v) => MapEntry(k, (v as num).toDouble()),
+      ),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'name': name,
+        'type': type,
+        'totalAmount': totalAmount,
+        if (type != 'common') 'defaultAmount': defaultAmount,
+        if (userOverrides.isNotEmpty) 'userOverrides': userOverrides,
+      };
+
+  /// Compute the amount this user owes for this category.
+  double amountForUser(String userId, int totalFlats) {
+    switch (type) {
+      case 'common':
+        return totalFlats > 0 ? totalAmount / totalFlats : 0;
+      case 'hybrid':
+        return userOverrides.containsKey(userId)
+            ? userOverrides[userId]!
+            : defaultAmount;
+      case 'individual':
+        return userOverrides[userId] ?? 0;
+      default:
+        return totalFlats > 0 ? totalAmount / totalFlats : 0;
+    }
+  }
+}
 
 class BillStatus {
   static const String paid = 'Paid';
@@ -14,18 +77,22 @@ class BillStatus {
   static const String partiallyPaid = 'Partial';
 }
 
-/// One bill for the entire apartment (not per-user).
+/// One bill for the entire apartment.
+/// May contain multiple embedded categories (common, hybrid, individual).
+/// A single Firestore document in bills/ represents one month's full bill.
 class BillModel {
   final String id;
   final String apartmentId;
   final String createdByAdminId;
-  final String title;
-  final double totalAmount;
-  final int totalFlats;       // snapshot of apartment.totalFlats at creation time
-  final String category;
-  final String month;         // e.g. "May 2026"
+  final String title;    // first category name or "" for multi-category bills
+  final double totalAmount; // sum of category.totalAmount (or stored legacy value)
+  final int totalFlats;
+  final String category; // "" for multi-category bills; legacy field
+  final String month;
   final DateTime dueDate;
   final DateTime createdAt;
+  final String billType;       // "common" | "hybrid" | "individual" (legacy single-cat)
+  final List<BillCategory> categories; // embedded categories (new-style bills)
 
   const BillModel({
     required this.id,
@@ -38,23 +105,39 @@ class BillModel {
     required this.month,
     required this.dueDate,
     required this.createdAt,
+    this.billType = 'common',
+    this.categories = const [],
   });
 
   factory BillModel.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
+
+    // Parse embedded categories (new-style bills)
+    final rawCats = d['categories'] as List<dynamic>?;
+    final categories = rawCats != null
+        ? rawCats
+            .map((c) => BillCategory.fromMap(c as Map<String, dynamic>))
+            .toList()
+        : <BillCategory>[];
+
+    // totalAmount: derive from categories when present; fall back to stored field
+    final totalAmount = categories.isNotEmpty
+        ? categories.fold(0.0, (s, c) => s + c.totalAmount)
+        : (d['totalAmount'] as num?)?.toDouble() ?? 0;
+
     return BillModel(
       id: doc.id,
       apartmentId: d['apartmentId'] as String? ?? '',
       createdByAdminId: d['createdByAdminId'] as String? ?? '',
       title: d['title'] as String? ?? '',
-      totalAmount: (d['totalAmount'] as num?)?.toDouble() ?? 0,
+      totalAmount: totalAmount,
       totalFlats: (d['totalFlats'] as int?) ?? 1,
       category: d['category'] as String? ?? '',
       month: d['month'] as String? ?? '',
-      dueDate:
-          (d['dueDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      createdAt:
-          (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      dueDate: (d['dueDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      billType: d['billType'] as String? ?? 'common',
+      categories: categories,
     );
   }
 
@@ -68,12 +151,36 @@ class BillModel {
         'month': month,
         'dueDate': Timestamp.fromDate(dueDate),
         'createdAt': Timestamp.fromDate(createdAt),
+        'billType': billType,
+        if (categories.isNotEmpty)
+          'categories': categories.map((c) => c.toMap()).toList(),
       };
 
-  /// Core bill-split computation.
-  double get perFlatShare => totalAmount / totalFlats;
+  /// Per-flat share for display (sum of each category's per-flat contribution).
+  /// For hybrid: uses defaultAmount / totalFlats as display estimate.
+  double get perFlatShare {
+    if (categories.isNotEmpty) {
+      return categories.fold(0.0, (s, c) {
+        switch (c.type) {
+          case 'common': return s + c.totalAmount / totalFlats;
+          case 'hybrid': return s + c.defaultAmount / totalFlats;
+          case 'individual': return s; // no single representative value
+          default: return s + c.totalAmount / totalFlats;
+        }
+      });
+    }
+    return totalFlats > 0 ? totalAmount / totalFlats : 0;
+  }
 
-  /// Aggregate status derived from payment records.
+  /// This user's total amount due for this bill (sum across all categories).
+  double amountForUser(String userId) {
+    if (categories.isNotEmpty) {
+      return categories.fold(
+          0.0, (s, c) => s + c.amountForUser(userId, totalFlats));
+    }
+    return perFlatShare;
+  }
+
   String overallStatus(List<BillPayment> payments) {
     if (payments.isEmpty) return BillStatus.pending;
     final paid = payments.where((p) => p.isPaid).length;
@@ -94,6 +201,8 @@ class BillModel {
 }
 
 /// One payment record per (bill, flat/user) pair.
+/// [amount] stores the per-user amount for individual bills; null for common
+/// bills (derive from bill.perFlatShare in that case).
 class BillPayment {
   final String id;
   final String billId;
@@ -103,6 +212,7 @@ class BillPayment {
   DateTime? paidDate;
   String? transactionId;
   bool adminVerified;
+  final double? amount; // explicit per-user amount (individual bills only)
 
   BillPayment({
     required this.id,
@@ -113,6 +223,7 @@ class BillPayment {
     this.paidDate,
     this.transactionId,
     this.adminVerified = false,
+    this.amount,
   });
 
   bool get isPaid => status == BillStatus.paid;
@@ -130,6 +241,7 @@ class BillPayment {
       paidDate: (d['paidDate'] as Timestamp?)?.toDate(),
       transactionId: d['transactionId'] as String?,
       adminVerified: d['adminVerified'] as bool? ?? false,
+      amount: (d['amount'] as num?)?.toDouble(),
     );
   }
 
@@ -141,6 +253,7 @@ class BillPayment {
         'paidDate': paidDate != null ? Timestamp.fromDate(paidDate!) : null,
         'transactionId': transactionId,
         'adminVerified': adminVerified,
+        if (amount != null) 'amount': amount,
         if (apartmentId != null) 'apartmentId': apartmentId,
       };
 
@@ -159,6 +272,7 @@ class BillPayment {
       paidDate: paidDate ?? this.paidDate,
       transactionId: transactionId ?? this.transactionId,
       adminVerified: adminVerified ?? this.adminVerified,
+      amount: amount,
     );
   }
 }

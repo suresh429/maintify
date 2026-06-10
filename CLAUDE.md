@@ -118,14 +118,14 @@ apartments/{id}:
 ```
 screens/
 ├── login_screen.dart              ← AppTextField + Forgot Password bottom sheet
-├── dashboard_router.dart          ← Role router + _FirstLoginWrapper + provider startListening calls
+├── dashboard_router.dart          ← Role router + _FirstLoginWrapper + _StreamStarter (manages listener lifecycle) + provider startListening calls
 ├── splash_screen.dart
 ├── admin/                         ← 7 screens: dashboard, create-bill, complaints, manage-users,
 │                                    mark-paid, monthly-bill-detail, transfer-president
 ├── super_admin/                   ← 6 screens: dashboard, apartments, reports, assign-admin,
 │                                    assign-president, create-apartment
-├── user/                          ← 6 screens: dashboard, bills, monthly-bill-detail,
-│                                    payment-history, complaints, profile
+├── user/                          ← 7 screens: dashboard, bills, monthly-bill-detail,
+│                                    payment-history, i-paid, complaints, profile
 └── shared/
     ├── chat_screen.dart           ← Complaint message threads
     └── notifications_screen.dart

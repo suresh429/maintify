@@ -345,14 +345,14 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
                             .copyWith(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(width: 12),
-                      // My share + status icon
+                      // My share + status icon (uses per-user amount for individual bills)
                       SizedBox(
                         width: 60,
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             Text(
-                              AppUtils.formatCurrency(v.bill.perFlatShare),
+                              AppUtils.formatCurrency(v.userAmount),
                               style: AppTextStyles.bodySmall(
                                       color: AppColors.textPrimary)
                                   .copyWith(fontWeight: FontWeight.w700),

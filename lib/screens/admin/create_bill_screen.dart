@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/bill_model.dart';
+import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/bill_provider.dart';
 import '../../providers/apartment_provider.dart';
@@ -18,17 +20,32 @@ class CreateBillScreen extends StatefulWidget {
   State<CreateBillScreen> createState() => _CreateBillScreenState();
 }
 
+/// One billing line-item. type='common' splits total equally; type='hybrid'
+/// uses a per-flat default with optional per-user overrides.
 class _LineItem {
   final TextEditingController titleCtrl;
+  // common → total amount; hybrid → default per-flat amount
   final TextEditingController amountCtrl;
   String category;
+  String type; // 'common' | 'hybrid'
+  bool showOverrides;
+  // userId → override amount (hybrid only; empty = use default)
+  final Map<String, TextEditingController> overrideCtrls;
 
-  _LineItem({required this.titleCtrl, required this.amountCtrl, String? category})
-      : category = category ?? 'Maintenance';
+  _LineItem({String? category, String? type})
+      : titleCtrl = TextEditingController(),
+        amountCtrl = TextEditingController(),
+        category = category ?? 'Maintenance',
+        type = type ?? 'common',
+        showOverrides = false,
+        overrideCtrls = {};
 
   void dispose() {
     titleCtrl.dispose();
     amountCtrl.dispose();
+    for (final c in overrideCtrls.values) {
+      c.dispose();
+    }
   }
 }
 
@@ -39,17 +56,14 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
   DateTime _dueDate = DateTime.now().add(const Duration(days: 10));
 
   static const _categories = [
-    'Maintenance', 'Water', 'Lift', 'Security', 'Parking', 'Amenities', 'Other',
+    'Maintenance', 'Water', 'Lift', 'Security', 'Parking', 'Amenities', 'Garbage', 'Other',
   ];
 
   @override
   void initState() {
     super.initState();
     _selectedMonth = AppUtils.formatMonthYear(DateTime.now());
-    _lineItems.add(_LineItem(
-      titleCtrl: TextEditingController(),
-      amountCtrl: TextEditingController(),
-    ));
+    _lineItems.add(_LineItem());
   }
 
   @override
@@ -60,10 +74,23 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     super.dispose();
   }
 
-  double get _totalAmount {
-    return _lineItems.fold(0.0, (s, item) {
-      return s + (double.tryParse(item.amountCtrl.text) ?? 0);
-    });
+  /// Computed total to display in the summary banner.
+  double _computedTotal(List<UserModel> residents, int totalFlats) {
+    double total = 0;
+    for (final item in _lineItems) {
+      final amount = double.tryParse(item.amountCtrl.text) ?? 0;
+      if (item.type == 'common') {
+        total += amount;
+      } else {
+        // Hybrid: sum override-or-default for each resident
+        for (final r in residents) {
+          final overrideText = item.overrideCtrls[r.id]?.text.trim() ?? '';
+          final override = double.tryParse(overrideText);
+          total += override ?? amount;
+        }
+      }
+    }
+    return total;
   }
 
   Future<void> _pickDate() async {
@@ -82,7 +109,6 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     if (picked != null) setState(() => _dueDate = picked);
   }
 
-  /// Returns DateTime objects for the last 12 months (current month first).
   List<DateTime> _generateMonths() {
     final now = DateTime.now();
     return List.generate(12, (i) => DateTime(now.year, now.month - i));
@@ -110,7 +136,6 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
             ),
             child: Column(
               children: [
-                // Handle + title (fixed)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                   child: Column(
@@ -133,7 +158,6 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                   ),
                 ),
                 const Divider(height: 1),
-                // Scrollable month list
                 Flexible(
                   child: ListView.builder(
                     controller: scrollCtrl,
@@ -203,22 +227,22 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     if (picked != null) setState(() => _selectedMonth = picked);
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit(
+      List<UserModel> residents, int totalFlats, String aptId) async {
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthProvider>();
-    final aptId = auth.currentUser?.apartmentId;
-    if (aptId == null || aptId.isEmpty) {
-      AppUtils.showSnackBar(context, 'Apartment not found', isError: true);
-      return;
-    }
-    final apt = context.read<ApartmentProvider>().findById(aptId);
-    if (apt == null) {
+    if (aptId.isEmpty) {
       AppUtils.showSnackBar(context, 'Apartment not found', isError: true);
       return;
     }
 
     final billProvider = context.read<BillProvider>();
+    if (residents.isEmpty) {
+      AppUtils.showSnackBar(context, 'No residents found in this apartment',
+          isError: true);
+      return;
+    }
 
     if (billProvider.hasMonthlyBill(aptId, _selectedMonth)) {
       AppUtils.showSnackBar(
@@ -228,37 +252,65 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
       return;
     }
 
-    final residents = context.read<UserProvider>().residentsForApartment(aptId);
-    if (residents.isEmpty) {
-      AppUtils.showSnackBar(context, 'No residents found in this apartment',
-          isError: true);
-      return;
+    // Build BillCategory list from line items
+    final categories = <BillCategory>[];
+    for (final item in _lineItems) {
+      final title = item.titleCtrl.text.trim();
+      final amount = double.parse(item.amountCtrl.text.trim());
+
+      if (item.type == 'common') {
+        categories.add(BillCategory(
+          name: title,
+          type: 'common',
+          totalAmount: amount,
+        ));
+        debugPrint('[FLOW] Category: $title, type=common, total=₹${amount.toStringAsFixed(0)}, per-flat=₹${(amount / totalFlats).toStringAsFixed(0)}');
+      } else {
+        // Hybrid: compute total from override-or-default for each resident
+        final userOverrides = <String, double>{};
+        double hybridTotal = 0;
+        for (final r in residents) {
+          final overrideText = item.overrideCtrls[r.id]?.text.trim() ?? '';
+          final overrideAmount = double.tryParse(overrideText);
+          if (overrideAmount != null && overrideAmount != amount) {
+            userOverrides[r.id] = overrideAmount;
+            hybridTotal += overrideAmount;
+          } else {
+            hybridTotal += amount;
+          }
+        }
+        categories.add(BillCategory(
+          name: title,
+          type: 'hybrid',
+          totalAmount: hybridTotal,
+          defaultAmount: amount,
+          userOverrides: userOverrides,
+        ));
+        debugPrint('[FLOW] Category: $title, type=hybrid, default=₹${amount.toStringAsFixed(0)}, overrides=${userOverrides.length}, total=₹${hybridTotal.toStringAsFixed(0)}');
+      }
     }
 
-    final lineItems = _lineItems.map((item) => (
-          title: item.titleCtrl.text.trim(),
-          category: item.category,
-          amount: double.parse(item.amountCtrl.text.trim()),
-        )).toList();
-
-    await billProvider.createMonthlyBill(
+    await billProvider.createBillForMonth(
       apartmentId: aptId,
       adminId: auth.currentUser?.id ?? '',
       month: _selectedMonth,
       dueDate: _dueDate,
-      lineItems: lineItems,
-      totalFlats: apt.totalFlats,
+      categories: categories,
+      totalFlats: totalFlats,
       residents: residents,
       notificationProvider: context.read<NotificationProvider>(),
     );
 
     if (!mounted) return;
+    final totalAmount = _computedTotal(residents, totalFlats);
     AppUtils.showSnackBar(
       context,
       '$_selectedMonth bill created for ${residents.length} residents! '
-      '(${AppUtils.formatCurrency(_totalAmount / apt.totalFlats)}/flat)',
+      '(${AppUtils.formatCurrency(totalAmount / totalFlats)}/flat avg)',
       color: AppColors.green,
     );
+
+    if (!mounted) return;
     Navigator.pop(context);
   }
 
@@ -270,7 +322,8 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     final residents = context.read<UserProvider>().residentsForApartment(aptId);
     final theme = RoleTheme.of(UserRole.admin);
     final totalFlats = apt?.totalFlats ?? residents.length;
-    final perFlatShare = totalFlats > 0 ? _totalAmount / totalFlats : 0.0;
+    final totalAmount = _computedTotal(residents, totalFlats);
+    final perFlatAvg = totalFlats > 0 ? totalAmount / totalFlats : 0.0;
 
     return Scaffold(
       backgroundColor: AppColors.lightGray,
@@ -335,7 +388,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // Month selector
               _SectionLabel('Billing Month'),
@@ -365,19 +418,14 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
 
               const SizedBox(height: 20),
 
-              // Line items
+              // Bill categories
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _SectionLabel('Bill Categories'),
                   TextButton.icon(
                     onPressed: () {
-                      setState(() {
-                        _lineItems.add(_LineItem(
-                          titleCtrl: TextEditingController(),
-                          amountCtrl: TextEditingController(),
-                        ));
-                      });
+                      setState(() => _lineItems.add(_LineItem()));
                     },
                     icon: const Icon(Icons.add_rounded,
                         size: 18, color: AppColors.blue),
@@ -391,113 +439,12 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
               ..._lineItems.asMap().entries.map((entry) {
                 final idx = entry.key;
                 final item = entry.value;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text('Item ${idx + 1}',
-                              style: AppTextStyles.label(
-                                  color: theme.primary)
-                                  .copyWith(fontWeight: FontWeight.w600)),
-                          const Spacer(),
-                          if (_lineItems.length > 1)
-                            GestureDetector(
-                              onTap: () => setState(() {
-                                _lineItems[idx].dispose();
-                                _lineItems.removeAt(idx);
-                              }),
-                              child: const Icon(Icons.remove_circle_outline,
-                                  color: AppColors.overdue, size: 20),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Category
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.lightGray,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: item.category,
-                            isExpanded: true,
-                            isDense: true,
-                            style: AppTextStyles.bodyMedium(
-                                color: AppColors.textPrimary),
-                            icon: const Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                size: 20),
-                            items: _categories
-                                .map((c) => DropdownMenuItem(
-                                    value: c, child: Text(c)))
-                                .toList(),
-                            onChanged: (v) =>
-                                setState(() => item.category = v!),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Title
-                      TextFormField(
-                        controller: item.titleCtrl,
-                        style: AppTextStyles.bodyLarge(),
-                        decoration: InputDecoration(
-                          hintText: 'Description (e.g., Water Charges)',
-                          hintStyle: AppTextStyles.bodyMedium(),
-                          prefixIcon: const Icon(Icons.receipt_outlined,
-                              size: 18),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                        ),
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Enter description' : null,
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Amount
-                      TextFormField(
-                        controller: item.amountCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        style: AppTextStyles.bodyLarge(),
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          hintText: 'Total amount (₹)',
-                          hintStyle: AppTextStyles.bodyMedium(),
-                          prefixIcon: const Icon(
-                              Icons.currency_rupee_outlined,
-                              size: 18),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Enter amount';
-                          final a = double.tryParse(v);
-                          if (a == null || a <= 0) return 'Enter valid amount';
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                );
+                return _buildLineItemCard(
+                    idx, item, residents, totalFlats, theme.primary);
               }),
 
               // Total summary
-              if (_totalAmount > 0) ...[
+              if (totalAmount > 0) ...[
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -514,7 +461,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                       Expanded(
                         child: RichText(
                           text: TextSpan(
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 13,
                               color: AppColors.textPrimary,
@@ -522,17 +469,17 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                             children: [
                               TextSpan(
                                 text:
-                                    'Total ${AppUtils.formatCurrency(_totalAmount)} ÷ $totalFlats flats = ',
+                                    'Total ${AppUtils.formatCurrency(totalAmount)} · avg ',
                               ),
                               TextSpan(
-                                text: AppUtils.formatCurrency(perFlatShare),
+                                text: AppUtils.formatCurrency(perFlatAvg),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: theme.primary,
                                   fontSize: 15,
                                 ),
                               ),
-                              const TextSpan(text: ' per flat'),
+                              const TextSpan(text: '/flat'),
                             ],
                           ),
                         ),
@@ -618,7 +565,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                   gradient: theme.gradient,
                   icon: Icons.add_circle_outline,
                   isLoading: bp.isLoading,
-                  onPressed: _submit,
+                  onPressed: () => _submit(residents, totalFlats, aptId),
                 ),
               ),
 
@@ -626,6 +573,278 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLineItemCard(
+      int idx, _LineItem item, List<UserModel> residents, int totalFlats, Color primary) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+            child: Row(
+              children: [
+                Text('Item ${idx + 1}',
+                    style: AppTextStyles.label(color: primary)
+                        .copyWith(fontWeight: FontWeight.w600)),
+                const Spacer(),
+                if (_lineItems.length > 1)
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      _lineItems[idx].dispose();
+                      _lineItems.removeAt(idx);
+                    }),
+                    child: const Icon(Icons.remove_circle_outline,
+                        color: AppColors.overdue, size: 20),
+                  ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Category dropdown
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.lightGray,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: item.category,
+                      isExpanded: true,
+                      isDense: true,
+                      style: AppTextStyles.bodyMedium(
+                          color: AppColors.textPrimary),
+                      icon: const Icon(
+                          Icons.keyboard_arrow_down_rounded, size: 20),
+                      items: _categories
+                          .map((c) =>
+                              DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (v) =>
+                          setState(() => item.category = v!),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Type toggle: Common / Hybrid
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.lightGray,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.all(3),
+                  child: Row(
+                    children: [
+                      _TypeChip(
+                        label: 'Common',
+                        sublabel: 'Split equally',
+                        isActive: item.type == 'common',
+                        color: primary,
+                        onTap: () => setState(() => item.type = 'common'),
+                      ),
+                      _TypeChip(
+                        label: 'Hybrid',
+                        sublabel: 'Default + overrides',
+                        isActive: item.type == 'hybrid',
+                        color: primary,
+                        onTap: () => setState(() => item.type = 'hybrid'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Description
+                TextFormField(
+                  controller: item.titleCtrl,
+                  style: AppTextStyles.bodyLarge(),
+                  decoration: InputDecoration(
+                    hintText: 'Description (e.g., Water Charges)',
+                    hintStyle: AppTextStyles.bodyMedium(),
+                    prefixIcon:
+                        const Icon(Icons.receipt_outlined, size: 18),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                  ),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? 'Enter description' : null,
+                ),
+                const SizedBox(height: 8),
+
+                // Amount field
+                TextFormField(
+                  controller: item.amountCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true),
+                  style: AppTextStyles.bodyLarge(),
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: item.type == 'common'
+                        ? 'Total amount (₹)'
+                        : 'Default per flat (₹)',
+                    hintStyle: AppTextStyles.bodyMedium(),
+                    prefixIcon: const Icon(
+                        Icons.currency_rupee_outlined, size: 18),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Enter amount';
+                    final a = double.tryParse(v);
+                    if (a == null || a < 0) return 'Enter valid amount';
+                    return null;
+                  },
+                ),
+
+                // Hybrid: override section toggle + per-resident inputs
+                if (item.type == 'hybrid') ...[
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () => setState(
+                        () => item.showOverrides = !item.showOverrides),
+                    child: Row(
+                      children: [
+                        Icon(
+                          item.showOverrides
+                              ? Icons.expand_less_rounded
+                              : Icons.expand_more_rounded,
+                          size: 18,
+                          color: primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          item.showOverrides
+                              ? 'Hide custom amounts'
+                              : 'Set custom amounts (optional)',
+                          style: AppTextStyles.label(color: primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (item.showOverrides) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Leave blank to use the default amount above',
+                      style: AppTextStyles.caption(
+                          color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 8),
+                    ...residents.map((r) {
+                      item.overrideCtrls.putIfAbsent(
+                          r.id, () => TextEditingController());
+                      final ctrl = item.overrideCtrls[r.id]!;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  r.avatarInitials,
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: primary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(r.name,
+                                      style: AppTextStyles.bodyMedium(
+                                              color: AppColors.textPrimary)
+                                          .copyWith(
+                                              fontWeight: FontWeight.w500),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                  Text('Unit ${r.unit}',
+                                      style: AppTextStyles.caption()),
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              width: 90,
+                              child: TextFormField(
+                                controller: ctrl,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                textAlign: TextAlign.right,
+                                style: AppTextStyles.bodyLarge().copyWith(
+                                    fontWeight: FontWeight.w600),
+                                onChanged: (_) => setState(() {}),
+                                decoration: InputDecoration(
+                                  hintText: item.amountCtrl.text.isEmpty
+                                      ? '₹0'
+                                      : '₹${item.amountCtrl.text}',
+                                  hintStyle: AppTextStyles.bodyMedium(
+                                      color: AppColors.textSecondary),
+                                  prefixText: ctrl.text.isEmpty ? '' : '₹',
+                                  prefixStyle: AppTextStyles.bodyMedium(
+                                      color: AppColors.textSecondary),
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 8),
+                                  isDense: true,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(
+                                        color: Colors.grey.shade300),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(
+                                        color: Colors.grey.shade300),
+                                  ),
+                                ),
+                                validator: (v) {
+                                  if (v == null || v.isEmpty) return null;
+                                  final a = double.tryParse(v);
+                                  if (a == null || a < 0) return 'Invalid';
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -641,6 +860,73 @@ class _SectionLabel extends StatelessWidget {
       text,
       style: AppTextStyles.label(color: AppColors.textPrimary)
           .copyWith(fontWeight: FontWeight.w600),
+    );
+  }
+}
+
+class _TypeChip extends StatelessWidget {
+  final String label;
+  final String sublabel;
+  final bool isActive;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _TypeChip({
+    required this.label,
+    required this.sublabel,
+    required this.isActive,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.all(2),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    )
+                  ]
+                : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isActive ? color : AppColors.textSecondary,
+                ),
+              ),
+              Text(
+                sublabel,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 9,
+                  color: isActive
+                      ? color.withOpacity(0.7)
+                      : AppColors.textSecondary.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
