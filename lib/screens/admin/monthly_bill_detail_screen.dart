@@ -121,6 +121,11 @@ class MonthlyBillDetailScreen extends StatelessWidget {
           ),
 
           // ── Section 4: Flat-wise Status ──────────────────────────────────
+          //
+          // Build a userId → actual amount map from stored payment docs.
+          // Sums across all bills in the month (multi-bill months supported).
+          // Falls back to bill.perFlatShare per payment for legacy records
+          // that pre-date the per-user amount field.
           SliverList(
             delegate: SliverChildBuilderDelegate(
               (ctx, i) {
@@ -128,6 +133,17 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                 final isPaid = fresh.isUserFullyPaid(flat.userId);
                 final paidDate = fresh.userPaidDate(flat.userId);
                 final userName = ctx.read<UserProvider>().findById(flat.userId)?.name;
+
+                // Use the stored payment amount — single source of truth.
+                // Avoids re-computing splits and correctly handles hybrid /
+                // individual categories and excluded residents.
+                final billById = {for (final b in fresh.bills) b.id: b};
+                final userAmount = fresh.allPayments
+                    .where((p) => p.userId == flat.userId)
+                    .fold<double>(
+                      0.0,
+                      (sum, p) => sum + (p.amount ?? (billById[p.billId]?.perFlatShare ?? 0.0)),
+                    );
 
                 return Padding(
                   padding: EdgeInsets.fromLTRB(
@@ -137,7 +153,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                     userName: userName,
                     isPaid: isPaid,
                     paidDate: paidDate,
-                    perFlatShare: fresh.perFlatShare,
+                    amount: userAmount,
                     theme: theme,
                     isLoading: billProvider.isLoading,
                     onMarkPaid: isPaid
@@ -838,7 +854,7 @@ class _FlatPaymentCard extends StatelessWidget {
   final String? userName;
   final bool isPaid;
   final DateTime? paidDate;
-  final double perFlatShare;
+  final double amount;
   final RoleTheme theme;
   final bool isLoading;
   final VoidCallback? onMarkPaid;
@@ -848,7 +864,7 @@ class _FlatPaymentCard extends StatelessWidget {
     this.userName,
     required this.isPaid,
     this.paidDate,
-    required this.perFlatShare,
+    required this.amount,
     required this.theme,
     required this.isLoading,
     this.onMarkPaid,
@@ -915,7 +931,7 @@ class _FlatPaymentCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        AppUtils.formatCurrency(perFlatShare),
+                        AppUtils.formatCurrency(amount),
                         style: AppTextStyles.caption(color: theme.primary)
                             .copyWith(fontWeight: FontWeight.w700),
                       ),
