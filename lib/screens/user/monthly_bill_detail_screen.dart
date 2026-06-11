@@ -540,15 +540,15 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
             Consumer<BillProvider>(
               builder: (_, bp, __) => CommonButton(
                 text:
-                    'Pay Now  ${AppUtils.formatCurrency(fresh.totalAmount)}',
+                    'Mark as Paid  ${AppUtils.formatCurrency(fresh.totalAmount)}',
                 gradient: theme.gradient,
-                icon: Icons.payment_rounded,
+                icon: Icons.check_circle_outline_rounded,
                 isLoading: bp.isLoading,
                 onPressed: () async {
                   await bp.userPayMonthlyBill(
                       summary.month, aptId, userId);
                   if (!context.mounted) return;
-                  AppUtils.showSnackBar(context, 'Payment successful!',
+                  AppUtils.showSnackBar(context, 'Marked as paid!',
                       color: AppColors.paid);
                 },
               ),

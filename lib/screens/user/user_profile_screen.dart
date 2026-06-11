@@ -190,8 +190,8 @@ class UserProfileScreen extends StatelessWidget {
                 // Phone
                 _MenuTile(
                   icon: Icons.phone_outlined,
-                  label: user.phone,
-                  subtitle: 'Contact number',
+                  label: 'Mobile',
+                  subtitle: user.phone.isNotEmpty ? user.phone : '—',
                   iconColor: AppColors.textSecondary,
                   onTap: null,
                 ),

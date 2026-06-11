@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'firebase_options.dart';
 import 'core/navigation_key.dart';
 import 'core/theme/app_theme.dart';
@@ -32,6 +33,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ── Hive (local session storage) ──────────────────────────────────────────
+  await Hive.initFlutter();
+  await Hive.openBox<String>('session');
 
   // ── Firebase ──────────────────────────────────────────────────────────────
   await Firebase.initializeApp(

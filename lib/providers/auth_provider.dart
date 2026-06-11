@@ -1,15 +1,28 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import '../models/user_model.dart';
 import '../core/theme/role_theme.dart';
 import '../core/services/firebase_auth_service.dart';
+import '../core/services/firestore_service.dart';
 import '../core/services/fcm_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final FirebaseAuthService _auth = FirebaseAuthService();
+  final FirestoreService _fs = FirestoreService();
 
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _error;
+
+  // ── Session management ────────────────────────────────────────────────────
+  // Tracks whether this device's session is still the active one.
+  // On login a unique sessionId is written to Firestore and stored locally.
+  // A real-time listener watches for changes; if another device logs in it
+  // overwrites the Firestore sessionId → this device is force-logged out.
+  String? _localSessionId;
+  StreamSubscription<String?>? _sessionSub;
+  bool _sessionExpired = false;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -17,6 +30,13 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoggedIn => _currentUser != null;
   UserRole? get role => _currentUser?.role;
   bool get isFirstLogin => _currentUser?.isFirstLogin ?? false;
+  /// True when this session was ended by a login from another device.
+  /// LoginScreen reads this to show a one-time banner, then clears it.
+  bool get sessionExpired => _sessionExpired;
+
+  void clearSessionExpired() {
+    _sessionExpired = false;
+  }
 
   // ── Login ─────────────────────────────────────────────────────────────────
 
@@ -37,15 +57,46 @@ class AuthProvider extends ChangeNotifier {
     _currentUser = result.user;
     notifyListeners();
 
-    // Initialise FCM in background — don't await to keep login fast.
-    // Errors are caught and logged; a failure here must never block login.
     if (_currentUser != null) {
+      // ── Session: register this login as the active session ────────────────
+      final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+      _localSessionId = sessionId;
+      Hive.box<String>('session').put('session_${_currentUser!.id}', sessionId);
+      // Write to Firestore in background — don't block the UI.
+      _fs.updateUser(_currentUser!.id, {'activeSessionId': sessionId})
+          .catchError((e) => debugPrint('[SESSION] Write failed: $e'));
+      _startSessionListener(_currentUser!.id);
+
+      // ── FCM: initialise in background ─────────────────────────────────────
       FcmService().init(_currentUser!.id).catchError((e) {
         debugPrint('[FCM] init error for ${_currentUser?.id}: $e');
       });
     }
 
     return true;
+  }
+
+  void _startSessionListener(String userId) {
+    _sessionSub?.cancel();
+    _sessionSub = _fs.streamUserSessionId(userId).listen((remoteId) {
+      // Ignore null (field not yet written) and initial echo of our own write.
+      if (remoteId == null || _localSessionId == null) return;
+      if (remoteId != _localSessionId) {
+        _forceLogout();
+      }
+    }, onError: (e) {
+      debugPrint('[SESSION] Listener error: $e');
+    });
+  }
+
+  Future<void> _forceLogout() async {
+    _sessionSub?.cancel();
+    _sessionSub = null;
+    _localSessionId = null;
+    await _auth.signOut();
+    _currentUser = null;
+    _sessionExpired = true;
+    notifyListeners();
   }
 
   // ── Change password ───────────────────────────────────────────────────────
@@ -87,10 +138,23 @@ class AuthProvider extends ChangeNotifier {
   // ── Logout ────────────────────────────────────────────────────────────────
 
   Future<void> logout() async {
+    _sessionSub?.cancel();
+    _sessionSub = null;
+    if (_currentUser != null) {
+      Hive.box<String>('session').delete('session_${_currentUser!.id}');
+    }
+    _localSessionId = null;
+    _sessionExpired = false;
     await _auth.signOut();
     _currentUser = null;
     _error = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _sessionSub?.cancel();
+    super.dispose();
   }
 
   void clearError() {

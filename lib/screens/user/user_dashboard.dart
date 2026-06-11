@@ -632,7 +632,7 @@ class _PendingMonthCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text('Pay Now',
+                Text('Mark as Paid',
                     style: AppTextStyles.caption(color: theme.primary)),
               ],
             ),

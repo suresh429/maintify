@@ -63,6 +63,14 @@ class FirestoreService {
   Future<void> updateUser(String uid, Map<String, dynamic> data) =>
       _db.collection('users').doc(uid).update(data);
 
+  /// Streams only the `activeSessionId` field from a user doc.
+  /// Used by [AuthProvider] to detect logins from other devices.
+  Stream<String?> streamUserSessionId(String uid) => _db
+      .collection('users')
+      .doc(uid)
+      .snapshots()
+      .map((doc) => doc.data()?['activeSessionId'] as String?);
+
   /// Admin-created user (no Firebase Auth yet). Stored in pending_users.
   Future<void> createPendingUser(Map<String, dynamic> data) =>
       _db.collection('pending_users').add(data);

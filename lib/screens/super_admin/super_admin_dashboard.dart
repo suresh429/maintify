@@ -280,21 +280,23 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
           ),
 
           const Divider(height: 1),
-          ListTile(
-            leading:
-                const Icon(Icons.logout_rounded, color: AppColors.overdue),
-            title: Text('Logout',
-                style: AppTextStyles.bodyLarge(color: AppColors.overdue)),
-            onTap: () async {
-              final confirm =
-                  await showLogoutSheet(context, UserRole.superAdmin);
-              if (confirm == true && mounted) {
-                context.read<AuthProvider>().logout();
-                Navigator.pushReplacementNamed(context, '/login');
-              }
-            },
+          SafeArea(
+            top: false,
+            child: ListTile(
+              leading:
+                  const Icon(Icons.logout_rounded, color: AppColors.overdue),
+              title: Text('Logout',
+                  style: AppTextStyles.bodyLarge(color: AppColors.overdue)),
+              onTap: () async {
+                final confirm =
+                    await showLogoutSheet(context, UserRole.superAdmin);
+                if (confirm == true && mounted) {
+                  context.read<AuthProvider>().logout();
+                  Navigator.pushReplacementNamed(context, '/login');
+                }
+              },
+            ),
           ),
-          const SizedBox(height: 12),
         ],
       ),
     );
@@ -322,12 +324,13 @@ class _DashboardHome extends StatelessWidget {
             ? 'Good afternoon,'
             : 'Good evening,';
 
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return RefreshIndicator(
       color: theme.primary,
       onRefresh: () async => dashboard.refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

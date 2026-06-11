@@ -62,6 +62,20 @@ class _LoginScreenState extends State<LoginScreen>
     _fadeAnim = Tween<double>(begin: 0, end: 1)
         .animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut));
     _animCtrl.forward();
+
+    // Show a one-time banner if this session was terminated by another login.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = context.read<AuthProvider>();
+      if (auth.sessionExpired) {
+        auth.clearSessionExpired();
+        AppUtils.showSnackBar(
+          context,
+          'Signed out — another device logged in with your account.',
+          color: Colors.redAccent,
+        );
+      }
+    });
   }
 
   @override
