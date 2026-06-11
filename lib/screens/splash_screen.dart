@@ -50,9 +50,13 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(milliseconds: 2400));
-    if (!mounted) return;
     final auth = context.read<AuthProvider>();
+    // Run splash delay and session restore in parallel so there's no extra wait
+    await Future.wait([
+      Future.delayed(const Duration(milliseconds: 2400)),
+      auth.tryRestoreSession(),
+    ]);
+    if (!mounted) return;
     Navigator.pushReplacementNamed(
       context,
       auth.isLoggedIn ? '/dashboard' : '/login',

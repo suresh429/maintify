@@ -58,10 +58,15 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     if (_currentUser != null) {
+      // ── Persist login state across restarts ───────────────────────────────
+      final box = Hive.box<String>('session');
+      box.put('isLoggedIn', 'true');
+      box.put('role', _currentUser!.role.name);
+
       // ── Session: register this login as the active session ────────────────
       final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
       _localSessionId = sessionId;
-      Hive.box<String>('session').put('session_${_currentUser!.id}', sessionId);
+      box.put('session_${_currentUser!.id}', sessionId);
       // Write to Firestore in background — don't block the UI.
       _fs.updateUser(_currentUser!.id, {'activeSessionId': sessionId})
           .catchError((e) => debugPrint('[SESSION] Write failed: $e'));
@@ -93,6 +98,9 @@ class AuthProvider extends ChangeNotifier {
     _sessionSub?.cancel();
     _sessionSub = null;
     _localSessionId = null;
+    final box = Hive.box<String>('session');
+    box.delete('isLoggedIn');
+    box.delete('role');
     await _auth.signOut();
     _currentUser = null;
     _sessionExpired = true;
@@ -140,15 +148,55 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     _sessionSub?.cancel();
     _sessionSub = null;
+    final box = Hive.box<String>('session');
     if (_currentUser != null) {
-      Hive.box<String>('session').delete('session_${_currentUser!.id}');
+      box.delete('session_${_currentUser!.id}');
     }
+    box.delete('isLoggedIn');
+    box.delete('role');
     _localSessionId = null;
     _sessionExpired = false;
     await _auth.signOut();
     _currentUser = null;
     _error = null;
     notifyListeners();
+  }
+
+  // ── Restore session after app restart ─────────────────────────────────────
+
+  /// Called from SplashScreen. Checks if a previous login was persisted in
+  /// Hive and, if so, re-hydrates [_currentUser] from Firestore using the
+  /// Firebase Auth token that Firebase keeps alive between restarts.
+  Future<void> tryRestoreSession() async {
+    final box = Hive.box<String>('session');
+    if (box.get('isLoggedIn') != 'true') return;
+
+    final uid = _auth.currentUid; // Firebase Auth persists this across restarts
+    if (uid == null) {
+      // Auth token expired or was revoked — clear stale flag
+      box.delete('isLoggedIn');
+      box.delete('role');
+      return;
+    }
+
+    try {
+      final user = await _fs.getUser(uid);
+      if (user == null) {
+        box.delete('isLoggedIn');
+        box.delete('role');
+        return;
+      }
+      _currentUser = user;
+      // Restore the active-session listener so single-device enforcement works
+      _localSessionId = box.get('session_$uid');
+      _startSessionListener(uid);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[AUTH] tryRestoreSession failed: $e');
+      // Network error — clear persisted state and fall back to login
+      box.delete('isLoggedIn');
+      box.delete('role');
+    }
   }
 
   @override
