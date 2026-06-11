@@ -997,71 +997,123 @@ void _showBillActionsSheet(
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
-    isScrollControlled: false,
-    builder: (_) => Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    isScrollControlled: true,
+    builder: (_) => SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                children: [
+                  _dashboardActionTile(
+                    icon: Icons.edit_outlined,
+                    title: 'Edit Bill',
+                    subtitle: 'Update categories, amounts or due date',
+                    color: AppColors.blue,
+                    onTap: () {
+                      Navigator.pop(context);
+                      showEditBillSheet(context,
+                          bill: bill, residents: residents);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  _dashboardActionTile(
+                    icon: Icons.delete_outline_rounded,
+                    title: 'Delete Bill',
+                    subtitle: 'Permanently remove bill and all payments',
+                    color: AppColors.overdue,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _confirmDeleteBill(context,
+                          billId: bill.id,
+                          billMonth: billMonth,
+                          billProvider: billProvider);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    ),
+  );
+}
+
+Widget _dashboardActionTile({
+  required IconData icon,
+  required String title,
+  required String subtitle,
+  required Color color,
+  required VoidCallback onTap,
+}) {
+  return InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(16),
+    child: Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.15)),
+      ),
+      child: Row(
         children: [
           Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(2),
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.edit_outlined,
-                  color: AppColors.blue, size: 20),
-            ),
-            title: Text('Edit Bill',
-                style: AppTextStyles.bodyLarge()
-                    .copyWith(fontWeight: FontWeight.w500)),
-            subtitle: Text('Update categories, amounts or due date',
-                style: AppTextStyles.caption()),
-            onTap: () {
-              Navigator.pop(context);
-              showEditBillSheet(context, bill: bill, residents: residents);
-            },
-          ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.overdue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.delete_outline_rounded,
-                  color: AppColors.overdue, size: 20),
-            ),
-            title: Text('Delete Bill',
-                style: AppTextStyles.bodyLarge().copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.overdue)),
-            subtitle: Text('Permanently remove bill and all payments',
-                style: AppTextStyles.caption()),
-            onTap: () {
-              Navigator.pop(context);
-              _confirmDeleteBill(context,
-                  billId: bill.id,
-                  billMonth: billMonth,
-                  billProvider: billProvider);
-            },
-          ),
-          const SizedBox(height: 16),
+          Icon(Icons.arrow_forward_ios_rounded, color: color, size: 14),
         ],
       ),
     ),
@@ -1076,22 +1128,77 @@ void _confirmDeleteBill(
 }) {
   showDialog<bool>(
     context: context,
-    builder: (_) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Text('Delete Bill'),
-      content: Text(
-          'Delete the $billMonth bill and all payment records? This cannot be undone.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
+    builder: (_) => Dialog(
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.overdue.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.warning_rounded,
+                  color: AppColors.overdue, size: 36),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Delete Bill?',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'This will permanently delete the $billMonth bill and all payment records. This cannot be undone.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 13,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Cancel',
+                        style: TextStyle(fontFamily: 'Poppins')),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.overdue,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Delete',
+                        style: TextStyle(
+                            fontFamily: 'Poppins', color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Delete',
-              style: TextStyle(color: AppColors.overdue)),
-        ),
-      ],
+      ),
     ),
   ).then((confirmed) async {
     if (confirmed != true) return;

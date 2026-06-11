@@ -587,37 +587,48 @@ class BillProvider extends ChangeNotifier {
     // eligibleCount must match BillModel.eligibleCount so stored amounts are consistent.
     final eligibleCount = (totalFlats - excludedUserIds.length).clamp(1, totalFlats);
 
+    // ── Step 1: compute amounts synchronously (pure Dart, no I/O) ────────────
+    final Map<String, double> userAmounts = {};
     for (final resident in residents) {
       if (excludedUserIds.contains(resident.id)) continue;
-      final userAmount = categories.fold(
+      userAmounts[resident.id] = categories.fold(
           0.0, (s, c) => s + c.amountForUser(resident.id, eligibleCount));
-      final paymentId = '${billId}_${resident.id}';
-      await _fs.setPayment(paymentId, {
-        'billId': billId,
-        'userId': resident.id,
-        'unitNumber': resident.unit,
-        'status': BillStatus.pending,
-        'amount': userAmount,
-        'paidDate': null,
-        'transactionId': null,
-        'adminVerified': false,
-        'apartmentId': apartmentId,
-      });
-      debugPrint('[USER] Created payment for userId: ${resident.id}, amount: ₹${userAmount.toStringAsFixed(0)}');
     }
-    debugPrint('[FLOW] Total payments created: ${residents.length}');
+    debugPrint('[FLOW] Computed amounts for ${userAmounts.length} residents');
 
-    final perFlatDisplay = totalFlats > 0 ? totalAmount / totalFlats : 0;
-    await notificationProvider.addAndPersistNotification(
-      title: 'New Bill for $month',
-      body: 'Monthly maintenance bill generated. '
-          '₹${perFlatDisplay.toStringAsFixed(0)} per flat due by '
-          '${dueDate.day}/${dueDate.month}/${dueDate.year}.',
-      type: NotificationType.bill,
-      targetRole: UserRole.user,
-      aptId: apartmentId,
-      targetUserIds: residents.map((u) => u.id).toList(),
+    // ── Step 2: write all payment docs in parallel ────────────────────────────
+    await Future.wait(
+      userAmounts.entries.map((entry) {
+        final resident = residents.firstWhere((r) => r.id == entry.key);
+        return _fs.setPayment('${billId}_${entry.key}', {
+          'billId': billId,
+          'userId': entry.key,
+          'unitNumber': resident.unit,
+          'status': BillStatus.pending,
+          'amount': entry.value,
+          'paidDate': null,
+          'transactionId': null,
+          'adminVerified': false,
+          'apartmentId': apartmentId,
+        });
+      }),
     );
+    debugPrint('[FLOW] All ${userAmounts.length} payment docs written');
+
+    // ── Step 3: write all notification docs in parallel ───────────────────────
+    final dueDateStr = '${dueDate.day}/${dueDate.month}/${dueDate.year}';
+    await Future.wait(
+      userAmounts.entries.map((entry) => _fs.addNotification({
+            'userId': entry.key,
+            'apartmentId': apartmentId,
+            'title': 'New Bill for $month',
+            'body': 'Your due amount is ₹${entry.value.toStringAsFixed(0)} — due by $dueDateStr.',
+            'type': NotificationType.bill,
+            'createdAt': FieldValue.serverTimestamp(),
+            'isRead': false,
+          })),
+    );
+    debugPrint('[FLOW] All ${userAmounts.length} notifications written');
 
     _isLoading = false;
     notifyListeners();

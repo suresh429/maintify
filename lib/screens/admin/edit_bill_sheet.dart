@@ -8,28 +8,52 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/app_utils.dart';
 import '../../widgets/common_button.dart';
 
-/// Opens the edit bill bottom sheet.
-Future<void> showEditBillSheet(
+/// Opens the edit bill as a full-screen page.
+void showEditBillSheet(
   BuildContext context, {
   required BillModel bill,
   required List<UserModel> residents,
 }) {
-  return showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => DraggableScrollableSheet(
-      initialChildSize: 0.92,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (_, scrollCtrl) => _EditBillContent(
-        bill: bill,
-        residents: residents,
-        scrollController: scrollCtrl,
-      ),
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => _EditBillPage(bill: bill, residents: residents),
     ),
   );
+}
+
+class _EditBillPage extends StatelessWidget {
+  final BillModel bill;
+  final List<UserModel> residents;
+  const _EditBillPage({required this.bill, required this.residents});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.lightGray,
+      appBar: AppBar(
+        backgroundColor: AppColors.blue,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Edit Bill',
+                style: AppTextStyles.heading3(color: Colors.white)),
+            Text(
+              bill.month,
+              style: AppTextStyles.caption(
+                  color: Colors.white.withOpacity(0.8)),
+            ),
+          ],
+        ),
+      ),
+      body: _EditBillContent(bill: bill, residents: residents),
+    );
+  }
 }
 
 // ── Editable line item ──────────────────────────────────────────────────────
@@ -71,12 +95,10 @@ class _EditLineItem {
 class _EditBillContent extends StatefulWidget {
   final BillModel bill;
   final List<UserModel> residents;
-  final ScrollController scrollController;
 
   const _EditBillContent({
     required this.bill,
     required this.residents,
-    required this.scrollController,
   });
 
   @override
@@ -251,21 +273,12 @@ class _EditBillContentState extends State<_EditBillContent> {
   Widget build(BuildContext context) {
     final s = _summary;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.lightGray,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    return ColoredBox(
+      color: AppColors.lightGray,
       child: Form(
         key: _formKey,
         child: CustomScrollView(
-          controller: widget.scrollController,
           slivers: [
-            // ── Sticky header ─────────────────────────────────────────────
-            SliverToBoxAdapter(
-              child: _buildHeader(),
-            ),
-
             // ── Bill items ────────────────────────────────────────────────
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
@@ -345,61 +358,6 @@ class _EditBillContentState extends State<_EditBillContent> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // ── Header ──────────────────────────────────────────────────────────────
-
-  Widget _buildHeader() {
-    return Container(
-      color: AppColors.white,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 10),
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.edit_rounded,
-                      color: _primaryColor, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Edit Bill',
-                        style: AppTextStyles.heading3()),
-                    Text(
-                      widget.bill.month,
-                      style: AppTextStyles.caption(
-                          color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          const SizedBox(height: 16),
-        ],
       ),
     );
   }
