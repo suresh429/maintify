@@ -71,7 +71,25 @@ All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `
 
 **`DashboardProvider` important note:** Its stats getters read from `MockXxx` statics only. This is intentional — it's kept accurate because `UserProvider`, `ApartmentProvider`, and `BillProvider` all call `replaceAll()` in their stream listeners.
 
-**Bill logic:** `BillModel` is apartment-wide; `BillPayment` is per-flat. `perFlatShare = totalAmount / totalFlats`. Creating a bill auto-generates a `BillPayment` for each flat.
+**Bill logic:** `BillModel` is apartment-wide; `BillPayment` is per-flat. Creating a bill auto-generates a `BillPayment` for each flat. Bills now contain multiple `BillCategory` items with per-category split types. `BillModel.perFlatShare` sums contributions across all categories. `BillModel.eligibleCount` = total flats minus `excludedUserIds`. Excluded residents pay ₹0 and don't count toward splits.
+
+### Bill Model: Multi-Category Architecture
+
+`BillModel` contains a `categories` list of `BillCategory` objects. Each category has a split type:
+
+| Type | Behavior |
+|---|---|
+| `common` | `totalAmount` split equally across all eligible flats |
+| `hybrid` | `defaultAmount` per flat, with per-user overrides via `userOverrides` map |
+| `individual` | Fully custom — only `userOverrides` entries owe anything |
+
+`BillCategory.amountForUser(userId, eligibleCount)` returns the computed amount for a resident. Predefined category names: Maintenance, Water, Lift, Security, Parking, Amenities, Garbage, Other.
+
+**Bill editing:** `showEditBillSheet(context, bill, residents)` opens a `DraggableScrollableSheet` (initial size 0.92) from `lib/screens/admin/edit_bill_sheet.dart`. Admins can modify items, split types, per-resident overrides, excluded residents, and due date. On save, only **unpaid** `BillPayment` records are updated — paid records remain untouched. Entry point: edit button in `monthly_bill_detail_screen.dart`.
+
+**`BillProvider` key methods:** `adminEditBill(billId, categories, dueDate, residents, excludedUserIds)`, `adminDeleteBill(billId)`.
+
+**`MonthlyBillSummary`** (in `bill_provider.dart`): Aggregates all bills in a month for an apartment. Exposes `totalAmount`, `perFlatShare`, `fullyPaidFlats`, `pendingFlats`, `overallStatus`, and helpers `isUserFullyPaid(userId)`, `userPaidDate(userId)`.
 
 ### Authentication & User Creation Flow
 
@@ -84,7 +102,7 @@ Login goes through `FirebaseAuthService.signIn()`:
    - **If role == admin**: patches `apartments/{aptId}` with `presidentId: realUid, presidentName: name`
    - Deletes the `pending_users` doc
 
-`UserProvider.createAdmin(...)` and `addMember(...)` write to `pending_users` (not `users`). They return a generated password to show in `AppUtils.showGeneratedCredentials()`. Password generation lives in `AppUtils`: `generateAdminPassword(aptName)`, `generateUserPassword(name, flatNo)`.
+`UserProvider.createAdmin(...)` and `addMember(...)` write to `pending_users` (not `users`). They return a generated password to show in `AppUtils.showGeneratedCredentials()`. Password generation: `AppUtils.generateAdminPassword(aptName)`, `generateUserPassword(name, flatNo)`. `AppUtils.displayFirstName(fullName)` strips leading initials (e.g. "G. Srikanth" → "Srikanth").
 
 ### President Assignment
 
@@ -108,7 +126,7 @@ apartments/{id}:
 
 | Service | Purpose |
 |---|---|
-| `FirestoreService` | Singleton — all collection reads/writes. Providers never import `FirebaseFirestore` directly. |
+| `FirestoreService` | Singleton — all collection reads/writes. Providers never import `FirebaseFirestore` directly. Includes `updateBill`, `updatePayment`, `deleteBill`, `deleteAllPaymentsForBill`. |
 | `FirebaseAuthService` | Wraps `FirebaseAuth`. Handles sign-in, pending-user promotion, password change, reset email. |
 | `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). |
 | `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded`. |
@@ -120,8 +138,8 @@ screens/
 ├── login_screen.dart              ← AppTextField + Forgot Password bottom sheet
 ├── dashboard_router.dart          ← Role router + _FirstLoginWrapper + _StreamStarter (manages listener lifecycle) + provider startListening calls
 ├── splash_screen.dart
-├── admin/                         ← 7 screens: dashboard, create-bill, complaints, manage-users,
-│                                    mark-paid, monthly-bill-detail, transfer-president
+├── admin/                         ← 8 screens: dashboard, create-bill, edit-bill-sheet, complaints,
+│                                    manage-users, mark-paid, monthly-bill-detail, transfer-president
 ├── super_admin/                   ← 6 screens: dashboard, apartments, reports, assign-admin,
 │                                    assign-president, create-apartment
 ├── user/                          ← 7 screens: dashboard, bills, monthly-bill-detail,

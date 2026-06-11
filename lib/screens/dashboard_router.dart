@@ -68,37 +68,43 @@ class _StreamStarterState extends State<_StreamStarter> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_started) return;
-    _started = true;
+    _started = true; // set synchronously so rebuilds before the frame don't double-start
 
-    final auth = context.read<AuthProvider>();
-    final user = auth.currentUser!;
-    final aptId = user.apartmentId ?? '';
-    final role = auth.role!;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
 
-    // Start all Firestore listeners
-    context.read<ApartmentProvider>().startListening();
-    context.read<UserProvider>().startListening();
-    // Each user only sees notifications written with their own userId.
-    context.read<NotificationProvider>().startListening(user.id);
-    context.read<MeetingProvider>().startListening(aptId);
+      final auth = context.read<AuthProvider>();
+      final user = auth.currentUser!;
+      final aptId = user.apartmentId ?? '';
+      final role = auth.role!;
 
-    switch (role) {
-      case UserRole.superAdmin:
-        context.read<BillProvider>().startListeningAll();
-        break;
-      case UserRole.admin:
-        context.read<BillProvider>().startListeningForApartment(aptId);
-        context
-            .read<ComplaintProvider>()
-            .startListeningForApartment(aptId);
-        break;
-      case UserRole.user:
-        context.read<BillProvider>().startListeningForApartment(aptId);
-        context
-            .read<ComplaintProvider>()
-            .startListeningForUser(user.id);
-        break;
-    }
+      // Start all Firestore listeners
+      context.read<ApartmentProvider>().startListening();
+      context.read<UserProvider>().startListening();
+      // Each user only sees notifications written with their own userId.
+      context.read<NotificationProvider>().startListening(user.id);
+      context.read<MeetingProvider>().startListening(aptId);
+
+      switch (role) {
+        case UserRole.superAdmin:
+          context.read<BillProvider>().startListeningAll();
+          break;
+        case UserRole.admin:
+          context.read<BillProvider>().startListeningForApartment(aptId);
+          context
+              .read<ComplaintProvider>()
+              .startListeningForApartment(aptId);
+          break;
+        case UserRole.user:
+          // Pass userId so BillProvider streams only this user's payment docs,
+          // avoiding loading every resident's payment records.
+          context.read<BillProvider>().startListeningForApartment(aptId, userId: user.id);
+          context
+              .read<ComplaintProvider>()
+              .startListeningForUser(user.id);
+          break;
+      }
+    });
   }
 
   @override

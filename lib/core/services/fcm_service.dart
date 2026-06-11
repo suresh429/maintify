@@ -134,6 +134,19 @@ class FcmService {
 
   Future<void> _saveToken(String userId) async {
     try {
+      // On iOS, getToken() will fail if the APNS token hasn't been assigned yet.
+      // Wait until it's available before requesting the FCM token.
+      if (Platform.isIOS) {
+        final apnsToken = await _messaging.getAPNSToken();
+        if (apnsToken == null) {
+          if (kDebugMode) {
+            debugPrint('[FCM] ⚠ APNS token not ready for $userId — skipping FCM token save. '
+                'Token will be saved on next login once APNS is ready.');
+          }
+          return;
+        }
+      }
+
       final token = await _messaging.getToken();
       if (token == null) {
         if (kDebugMode) {

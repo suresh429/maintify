@@ -163,46 +163,84 @@ class BillProvider extends ChangeNotifier {
   // True only during write mutations (createBill, markPaid, etc.).
   bool _isLoading = false;
 
+  // Independent per-stream flags so _isInitialLoading is cleared only once
+  // both streams have responded (data or error). Avoids depending on ordering.
+  bool _billsLoaded = false;
+  bool _paymentsLoaded = false;
+
   bool get isInitialLoading => _isInitialLoading;
   bool get isLoading => _isLoading;
+
+  // Clears _isInitialLoading once both streams have fired at least once.
+  // Does NOT call notifyListeners — callers do that immediately after.
+  void _checkInitialLoadDone() {
+    if (_billsLoaded && _paymentsLoaded) {
+      _isInitialLoading = false;
+    }
+  }
 
   // ── Stream management ─────────────────────────────────────────────────────
 
   /// Subscribe to bills and payments for [aptId]. Call after login.
+  ///
+  /// Pass [userId] for the `user` role — payments are then scoped to that
+  /// user's own records only (`streamPaymentsForUser`), which is both faster
+  /// and avoids loading every resident's payment data unnecessarily.
+  /// Omit [userId] (admin role) to load all apartment payments.
+  ///
   /// Performs a hard reset first — never shows stale data from a previous session.
-  void startListeningForApartment(String aptId) {
+  /// Both streams run independently; _isInitialLoading clears once each has
+  /// fired at least once (data or error), so ordering never matters.
+  void startListeningForApartment(String aptId, {String? userId}) {
     _billSub?.cancel();
     _paymentSub?.cancel();
 
-    // Hard reset: clear local lists + mock statics before any server data arrives.
+    // Hard reset: clear local lists, flags, and mock statics before any data arrives.
     _bills = [];
     _payments = [];
+    _billsLoaded = false;
+    _paymentsLoaded = false;
     _isInitialLoading = true;
     MockBillData.replaceAll([], []);
     notifyListeners();
 
+    // ── Bills stream ──────────────────────────────────────────────────────────
     _billSub = _fs.streamBillsForApartment(aptId).listen((bills) {
       debugPrint('[REALTIME] Bills updated: ${bills.length} doc(s) for apt $aptId');
       _bills = bills;
-      _isInitialLoading = false; // first server snapshot received
+      _billsLoaded = true;
       MockBillData.replaceAll(_bills, _payments);
+      _checkInitialLoadDone();
       notifyListeners();
     }, onError: (e) {
-      // Errors here are almost always a missing Firestore composite index.
-      // Run: firebase deploy --only firestore:indexes  to deploy firestore.indexes.json
+      // Almost always a missing Firestore composite index.
+      // Fix: firebase deploy --only firestore:indexes
       debugPrint('[REALTIME] Bills stream ERROR (apt $aptId): $e');
-      _isInitialLoading = false;
+      _billsLoaded = true; // treat error as "responded" so shimmer can clear
+      _checkInitialLoadDone();
       notifyListeners();
     });
 
-    _paymentSub =
-        _fs.streamPaymentsForApartment(aptId).listen((payments) {
-      debugPrint('[REALTIME] Payments updated: ${payments.length} doc(s) for apt $aptId');
+    // ── Payments stream ───────────────────────────────────────────────────────
+    // User role: stream only this user's own payment docs.
+    // Admin role (userId == null): stream all apartment payments.
+    final paymentStream = userId != null
+        ? _fs.streamPaymentsForUser(userId)
+        : _fs.streamPaymentsForApartment(aptId);
+
+    _paymentSub = paymentStream.listen((payments) {
+      debugPrint('[REALTIME] Payments updated: ${payments.length} doc(s)'
+          '${userId != null ? " for user $userId" : " for apt $aptId"}');
       _payments = payments;
+      _paymentsLoaded = true;
       MockBillData.replaceAll(_bills, _payments);
+      _checkInitialLoadDone();
       notifyListeners();
     }, onError: (e) {
-      debugPrint('[REALTIME] Payments stream ERROR (apt $aptId): $e');
+      debugPrint('[REALTIME] Payments stream ERROR: $e');
+      _paymentsLoaded = true; // treat error as "responded" so shimmer can clear
+      _checkInitialLoadDone();
+      notifyListeners();
     });
   }
 
@@ -546,10 +584,13 @@ class BillProvider extends ChangeNotifier {
     });
     debugPrint('[FLOW] Bill doc created: $billId, total=₹${totalAmount.toStringAsFixed(0)}');
 
+    // eligibleCount must match BillModel.eligibleCount so stored amounts are consistent.
+    final eligibleCount = (totalFlats - excludedUserIds.length).clamp(1, totalFlats);
+
     for (final resident in residents) {
       if (excludedUserIds.contains(resident.id)) continue;
       final userAmount = categories.fold(
-          0.0, (s, c) => s + c.amountForUser(resident.id, totalFlats));
+          0.0, (s, c) => s + c.amountForUser(resident.id, eligibleCount));
       final paymentId = '${billId}_${resident.id}';
       await _fs.setPayment(paymentId, {
         'billId': billId,
