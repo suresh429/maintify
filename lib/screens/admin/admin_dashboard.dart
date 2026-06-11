@@ -677,7 +677,7 @@ class _AdminHome extends StatelessWidget {
                     billProvider.rawBillById(bill.id) ?? bill;
                 final residents = context
                     .read<UserProvider>()
-                    .residentsForApartment(aptId);
+                    .membersForApartment(aptId);
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.fromLTRB(14, 14, 4, 14),

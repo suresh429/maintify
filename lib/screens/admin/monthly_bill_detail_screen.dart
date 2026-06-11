@@ -47,7 +47,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
         ? context.read<BillProvider>().rawBillById(rawBillId)
         : null;
     final residents =
-        context.read<UserProvider>().residentsForApartment(aptId);
+        context.read<UserProvider>().membersForApartment(aptId);
 
     return Scaffold(
       backgroundColor: AppColors.lightGray,

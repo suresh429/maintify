@@ -324,7 +324,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     final auth = context.read<AuthProvider>();
     final aptId = auth.currentUser?.apartmentId ?? '';
     final apt = context.read<ApartmentProvider>().findById(aptId);
-    final residents = context.read<UserProvider>().residentsForApartment(aptId);
+    final residents = context.read<UserProvider>().membersForApartment(aptId);
     final theme = RoleTheme.of(UserRole.admin);
     final totalFlats = apt?.totalFlats ?? residents.length;
     final totalAmount = _computedTotal(residents, totalFlats);

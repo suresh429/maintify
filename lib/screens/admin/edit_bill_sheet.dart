@@ -51,7 +51,7 @@ class _EditBillPage extends StatelessWidget {
           ],
         ),
       ),
-      body: _EditBillContent(bill: bill, residents: residents),
+      body: SafeArea(child: _EditBillContent(bill: bill, residents: residents)),
     );
   }
 }
@@ -281,7 +281,7 @@ class _EditBillContentState extends State<_EditBillContent> {
           slivers: [
             // ── Bill items ────────────────────────────────────────────────
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
               sliver: SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
