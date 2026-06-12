@@ -71,16 +71,7 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF141E30), // dark navy — top
-              Color(0xFF243B55), // deep blue — bottom
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        color: Colors.white,
         child: SafeArea(
           child: Stack(
             children: [
@@ -114,7 +105,7 @@ class _SplashScreenState extends State<SplashScreen>
                           fontFamily: 'Poppins',
                           fontSize: 38,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: Color(0xFF2A2D3E), // dark navy
                           letterSpacing: 2.0,
                         ),
                       ),
@@ -131,7 +122,7 @@ class _SplashScreenState extends State<SplashScreen>
                           fontFamily: 'Poppins',
                           fontSize: 13,
                           fontWeight: FontWeight.w400,
-                          color: Color(0xFFFECB6E), // gold
+                          color: Color(0xFF684505), // gold
                           letterSpacing: 1.2,
                         ),
                       ),

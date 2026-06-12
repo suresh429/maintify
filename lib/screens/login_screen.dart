@@ -398,7 +398,7 @@ class _LoginScreenState extends State<LoginScreen>
                       const SizedBox(height: 24),
 
                       // Quick Login
-                      Container(
+                     /* Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           color: AppColors.white,
@@ -469,7 +469,7 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           ],
                         ),
-                      ),
+                      ),*/
 
                       const SizedBox(height: 32),
                       Center(

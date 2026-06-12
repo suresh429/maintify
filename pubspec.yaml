@@ -38,31 +38,37 @@ flutter:
     - assets/
 
 flutter_native_splash:
-  # 🔵 BRAND BACKGROUND (instead of white)
-  color: "#1E3A8A"
-  color_dark: "#1E3A8A"
+  # ── Background ──────────────────────────────────────────────────────────────
+  # Dark navy — matches Flutter SplashScreen gradient start (#141E30)
+  color: "#FFFFFF"
+  color_dark: "#FFFFFF"
 
+  # ── Logo image ──────────────────────────────────────────────────────────────
   image: assets/app_logo.png
   image_dark: assets/app_logo.png
 
+  # ── Layout ──────────────────────────────────────────────────────────────────
+  # Keep content inside safe bounds, no forced fullscreen
   fullscreen: false
 
+  # ── Android (pre-12) ────────────────────────────────────────────────────────
   android: true
   android_gravity: center
+  # Scale the icon to ~38 % of the shortest screen edge (standard safe zone)
   android_screen_orientation: portrait
 
+  # ── Android 12+ (API 31+) — windowSplashScreen API ─────────────────────────
   android_12:
+    # Solid icon on dark background — white circular badge removed
     image: assets/android12.png
     image_dark: assets/android12.png
+    color: "#FFFFFF"
+    color_dark: "#FFFFFF"
+    # Icon background matches outer background → seamless look
+    icon_background_color: "#141E30"
+    icon_background_color_dark: "#141E30"
 
-    # 🔵 IMPORTANT: same as background (no circle effect)
-    color: "#1E3A8A"
-    color_dark: "#1E3A8A"
-
-    # 🔥 KEY FIX → REMOVE white circle
-    icon_background_color: "#1E3A8A"
-    icon_background_color_dark: "#1E3A8A"
-
+  # ── iOS ─────────────────────────────────────────────────────────────────────
   ios: true
   ios_content_mode: center
 
