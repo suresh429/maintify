@@ -254,14 +254,11 @@ class _LoginScreenState extends State<LoginScreen>
                       // Brand
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: const Icon(Icons.apartment_rounded,
-                                color: Colors.white, size: 28),
+                          Image.asset(
+                            'assets/app_logo.png',
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.contain,
                           ),
                           const SizedBox(width: 12),
                           Column(

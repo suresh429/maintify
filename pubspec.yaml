@@ -28,9 +28,64 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_native_splash: ^2.4.3
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/
+
+flutter_native_splash:
+  # 🔵 BRAND BACKGROUND (instead of white)
+  color: "#1E3A8A"
+  color_dark: "#1E3A8A"
+
+  image: assets/app_logo.png
+  image_dark: assets/app_logo.png
+
+  fullscreen: false
+
+  android: true
+  android_gravity: center
+  android_screen_orientation: portrait
+
+  android_12:
+    image: assets/android12.png
+    image_dark: assets/android12.png
+
+    # 🔵 IMPORTANT: same as background (no circle effect)
+    color: "#1E3A8A"
+    color_dark: "#1E3A8A"
+
+    # 🔥 KEY FIX → REMOVE white circle
+    icon_background_color: "#1E3A8A"
+    icon_background_color_dark: "#1E3A8A"
+
+  ios: true
+  ios_content_mode: center
+
+flutter_launcher_icons:
+  # ── Android ─────────────────────────────────────────────────────────────────
+  android: "ic_launcher"
+  min_sdk_android: 21
+
+  # Adaptive icon (Android 8+ / API 26+):
+  #   • foreground — logo centred within the 72 dp safe zone
+  #   • background — white so logo is clearly visible on any shape mask
+  adaptive_icon_foreground: "assets/app_logo.png"
+  adaptive_icon_background: "#FFFFFF"
+
+  # Legacy icon (< API 26) — white background so logo stands out
+  image_path_android: "assets/app_logo.png"
+
+  # ── iOS ─────────────────────────────────────────────────────────────────────
+  ios: true
+  image_path_ios: "assets/app_logo.png"
+  # App Store requirement: no alpha channel in launcher icons
+  remove_alpha_ios: true
+
+  # ── Remove web/desktop targets (not needed) ──────────────────────────────────
+  web:
+    generate: false

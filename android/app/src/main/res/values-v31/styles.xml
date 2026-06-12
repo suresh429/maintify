@@ -7,9 +7,13 @@
 -->
 <resources>
     <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
-        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
-        <item name="android:windowSplashScreenIconBackgroundColor">@color/splash_background</item>
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:windowSplashScreenBackground">#1E3A8A</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/android12splash</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#1E3A8A</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@color/splash_background</item>

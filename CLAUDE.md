@@ -131,6 +131,8 @@ apartments/{id}:
 | `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). |
 | `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded`. |
 
+**Hive session persistence:** `AuthProvider` uses a Hive box named `'session'` (opened in `main.dart`) to persist `isLoggedIn` and `role` keys across cold starts. On login these are written; on logout/password-change they are deleted. `AuthProvider` reads this box at startup to restore session state before Firebase's async auth state resolves.
+
 ### Screen Layout
 
 ```

@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Pre-Flutter launch background (below API 31).
-  Solid dark-navy matches the Flutter SplashScreen gradient start colour.
--->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/splash_background" />
     <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/ic_splash" />
+        <bitmap android:gravity="fill" android:src="@drawable/background"/>
+    </item>
+    <item>
+        <bitmap android:gravity="center" android:src="@drawable/splash"/>
     </item>
 </layer-list>
