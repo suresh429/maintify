@@ -58,10 +58,16 @@ class AppTextStyles {
       );
 
   static TextStyle caption({Color? color}) => GoogleFonts.poppins(
-        fontSize: 9,
+        fontSize: 12,
         fontWeight: FontWeight.w400,
         color: color ?? AppColors.textSecondary,
       );
+
+  static TextStyle toolTip({Color? color}) => GoogleFonts.poppins(
+    fontSize: 8,
+    fontWeight: FontWeight.w400,
+    color: color ?? AppColors.textSecondary,
+  );
 
   static TextStyle amount({Color? color}) => GoogleFonts.poppins(
         fontSize: 24,

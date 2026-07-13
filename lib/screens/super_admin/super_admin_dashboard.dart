@@ -14,6 +14,7 @@ import 'apartments_screen.dart';
 import 'assign_president_screen.dart';
 import 'reports_screen.dart';
 import '../../providers/notification_provider.dart';
+import '../shared/fcm_debug_screen.dart';
 import '../shared/notifications_screen.dart';
 import '../../widgets/logout_sheet.dart';
 
@@ -279,6 +280,27 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
             ),
           ),
 
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.developer_mode_rounded,
+                color: AppColors.textSecondary, size: 22),
+            title: const Text(
+              'FCM Debug',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FcmDebugScreen()),
+              );
+            },
+          ),
           const Divider(height: 1),
           SafeArea(
             top: false,

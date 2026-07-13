@@ -321,7 +321,7 @@ class _PresidentSignupScreenState extends State<PresidentSignupScreen>
                                     alignment: Alignment.centerLeft,
                                     child: Text(
                                       'The Apartment Code is provided by your Super Admin.',
-                                      style: AppTextStyles.caption(),
+                                      style: AppTextStyles.toolTip(),
                                     ),
                                   ),
                                   const SizedBox(height: 16),

@@ -188,6 +188,10 @@ class AuthProvider extends ChangeNotifier {
       // Restore the active-session listener so single-device enforcement works
       _localSessionId = box.get('session_$uid');
       _startSessionListener(uid);
+      // Re-init FCM so the token is refreshed and printed on every app start
+      FcmService().init(uid).catchError((e) {
+        debugPrint('[FCM] init error on restore for $uid: $e');
+      });
       notifyListeners();
     } catch (e) {
       debugPrint('[AUTH] tryRestoreSession failed: $e');
