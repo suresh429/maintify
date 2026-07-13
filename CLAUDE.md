@@ -35,10 +35,8 @@ flutter pub get
 
 Three roles drive the entire app structure: `superAdmin`, `admin` (apartment president), and `user` (resident). `UserRole` is defined in `lib/core/theme/role_theme.dart` — **not** in `user_model.dart`. Role is determined at login via `AuthProvider`. `DashboardRouter` (`lib/screens/dashboard_router.dart`) watches `AuthProvider` and routes accordingly.
 
-**Test credentials** (password: `123456`, seeded via `DbSeeder` on first launch):
-- `superadmin@test.com` → SuperAdmin
-- `admin@test.com` → Admin (G. Srikanth, Flat 402, Samhith Residency)
-- `user@test.com` → User (Rohit, Flat 101)
+**Test credentials** (seeded via `DbSeeder` on first launch):
+- `superadmin@test.com` / `super@123` → SuperAdmin (only seeded account — no mock apartments/users/bills)
 
 **First-login flow:** New users have `isFirstLogin: true` and an auto-generated password. `DashboardRouter` wraps their dashboard in `_FirstLoginWrapper`, which opens a non-dismissible `showChangePasswordSheet(isFirstLogin: true)` via `addPostFrameCallback`. After password change, `isFirstLogin` becomes false in both Firebase Auth and the Firestore user doc.
 
@@ -62,6 +60,8 @@ Providers that use Firestore streams call `startListening(...)` from `DashboardR
 ### Data Layer: Firestore + Mock Static Sync
 
 All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `MockBillData`) exist **only for `DashboardProvider`**, which cannot hold Firestore streams of its own. Every provider's stream listener calls `MockFoo.replaceAll(list)` to keep statics in sync.
+
+**Models** live directly in `lib/` (e.g. `lib/user_model.dart`, `lib/bill_model.dart`) — there is no `lib/models/` subdirectory.
 
 **Key Firestore collections:**
 - `users/` — real Firebase Auth UID as document ID
@@ -128,8 +128,10 @@ apartments/{id}:
 |---|---|
 | `FirestoreService` | Singleton — all collection reads/writes. Providers never import `FirebaseFirestore` directly. Includes `updateBill`, `updatePayment`, `deleteBill`, `deleteAllPaymentsForBill`. |
 | `FirebaseAuthService` | Wraps `FirebaseAuth`. Handles sign-in, pending-user promotion, password change, reset email. |
-| `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). |
+| `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). Uses `navigatorKey` for out-of-tree navigation on notification tap. |
 | `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded`. |
+
+**`navigatorKey`** (`lib/core/navigation_key.dart`): App-wide `GlobalKey<NavigatorState>` registered in `main.dart`. Required for `FcmService` to navigate when no `BuildContext` is available.
 
 **Hive session persistence:** `AuthProvider` uses a Hive box named `'session'` (opened in `main.dart`) to persist `isLoggedIn` and `role` keys across cold starts. On login these are written; on logout/password-change they are deleted. `AuthProvider` reads this box at startup to restore session state before Firebase's async auth state resolves.
 
@@ -159,6 +161,7 @@ screens/
   - `AppColors.green` = `#C39A51` — golden/amber, **not for payment status**
   - Role gradients: `superAdminGradient` (violet), `adminGradient` (blue), `userGradient` (gold → dark navy)
 - **Role theming:** `RoleTheme.of(UserRole.x)` → `.gradient`, `.primary`, `.secondary`
+- **Text styles:** `AppTextStyles` in `lib/core/theme/app_text_styles.dart` — use `AppTextStyles.heading1/2/3()`, `.subheading()`, `.bodyLarge/Medium/Small()`, `.label()`, `.caption()`, `.amount()`, `.buttonText()`. All accept an optional `color` override.
 - **Spacing/constants:** `AppConstants` in `lib/core/constants/app_constants.dart`
 
 ### Widget Library (`lib/widgets/`)

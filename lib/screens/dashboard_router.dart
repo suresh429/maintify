@@ -7,8 +7,8 @@ import '../providers/complaint_provider.dart';
 import '../providers/meeting_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/user_provider.dart';
+import '../providers/registration_provider.dart';
 import '../core/theme/role_theme.dart';
-import '../widgets/change_password_sheet.dart';
 import 'super_admin/super_admin_dashboard.dart';
 import 'admin/admin_dashboard.dart';
 import 'user/user_dashboard.dart';
@@ -40,13 +40,7 @@ class DashboardRouter extends StatelessWidget {
 
     // Wrap with _StreamStarter so all Firestore listeners are started exactly
     // once per authenticated session (it's idempotent thanks to _started flag).
-    final dashboard = _StreamStarter(child: _dashboardFor(auth.role));
-
-    if (auth.isFirstLogin) {
-      return _FirstLoginWrapper(child: dashboard);
-    }
-
-    return dashboard;
+    return _StreamStarter(child: _dashboardFor(auth.role));
   }
 }
 
@@ -91,9 +85,8 @@ class _StreamStarterState extends State<_StreamStarter> {
           break;
         case UserRole.admin:
           context.read<BillProvider>().startListeningForApartment(aptId);
-          context
-              .read<ComplaintProvider>()
-              .startListeningForApartment(aptId);
+          context.read<ComplaintProvider>().startListeningForApartment(aptId);
+          context.read<RegistrationProvider>().startListeningRequests(aptId);
           break;
         case UserRole.user:
           // Pass userId so BillProvider streams only this user's payment docs,
@@ -111,29 +104,3 @@ class _StreamStarterState extends State<_StreamStarter> {
   Widget build(BuildContext context) => widget.child;
 }
 
-/// Wraps the dashboard and forces the change-password bottom sheet open on
-/// first frame. The sheet is non-dismissible — once the user sets a new
-/// password [AuthProvider.isFirstLogin] becomes false and the wrapper is
-/// removed from the tree by [DashboardRouter].
-class _FirstLoginWrapper extends StatefulWidget {
-  final Widget child;
-  const _FirstLoginWrapper({required this.child});
-
-  @override
-  State<_FirstLoginWrapper> createState() => _FirstLoginWrapperState();
-}
-
-class _FirstLoginWrapperState extends State<_FirstLoginWrapper> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        showChangePasswordSheet(context, isFirstLogin: true);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
-}

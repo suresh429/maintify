@@ -5,6 +5,7 @@ import '../models/user_model.dart';
 import '../core/theme/role_theme.dart';
 import '../core/services/firestore_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'notification_provider.dart';
 
 class ApartmentProvider extends ChangeNotifier {
   final FirestoreService _fs = FirestoreService();
@@ -34,34 +35,11 @@ class ApartmentProvider extends ChangeNotifier {
       _isInitialLoading = false;
       MockApartments.replaceAll(list); // keep statics in sync
       notifyListeners();
-      // Migrate any apartments still holding a pending_* presidentId
-      for (final apt in list) {
-        if (apt.presidentId != null && apt.presidentId!.startsWith('pending_')) {
-          _migratePendingPresident(apt);
-        }
-      }
     }, onError: (e) {
       debugPrint('[REALTIME] Apartments stream ERROR: $e');
       _isInitialLoading = false;
       notifyListeners();
     });
-  }
-
-  /// Finds the real admin user for [apt] and updates the apartment document.
-  Future<void> _migratePendingPresident(ApartmentModel apt) async {
-    final realAdmin = await _fs.findAdminForApartment(apt.id);
-    if (realAdmin == null) {
-      // No real admin yet — just clear the invalid pending ID
-      await _fs.updateApartment(apt.id, {
-        'presidentId': null,
-        'presidentName': apt.presidentName,
-      });
-    } else {
-      await _fs.updateApartment(apt.id, {
-        'presidentId': realAdmin.id,
-        'presidentName': realAdmin.name,
-      });
-    }
   }
 
   @override
@@ -105,6 +83,7 @@ class ApartmentProvider extends ChangeNotifier {
     String newPresidentId,
     String newPresidentName, {
     String? oldPresidentId,
+    NotificationProvider? notifProvider,
   }) async {
     if (isPresidentElsewhere(newPresidentId, excludingAptId: aptId)) {
       throw StateError('User is already president of another apartment');
@@ -127,33 +106,68 @@ class ApartmentProvider extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+
+    // In-app notifications (Fire-and-forget; FCM push is handled by Cloud Function)
+    if (notifProvider != null) {
+      notifProvider
+          .addAndPersistNotification(
+            title: 'You Are Now the Apartment President',
+            body: 'You have been assigned as president of the apartment.',
+            type: 'president_transfer',
+            targetRole: UserRole.admin,
+            targetUserIds: [newPresidentId],
+          )
+          .catchError((e) => debugPrint('[NOTIF] president_transfer new: $e'));
+
+      if (oldPresidentId != null && oldPresidentId != newPresidentId) {
+        notifProvider
+            .addAndPersistNotification(
+              title: 'President Role Transferred',
+              body: 'Your president role has been transferred to $newPresidentName.',
+              type: 'president_transfer',
+              targetRole: UserRole.user,
+              targetUserIds: [oldPresidentId],
+            )
+            .catchError((e) => debugPrint('[NOTIF] president_transfer old: $e'));
+      }
+    }
   }
 
   Future<void> createApartment({
     String? id,
     required String name,
-    required String address,
-    required String city,
     required int totalFlats,
-    List<String> amenities = const [],
-    // presidentId is intentionally NOT accepted here — a pending_users record
-    // never has a real UID. presidentId is set atomically via assignPresidentBatch
-    // after the admin's first login creates their real users/ document.
     String? presidentName,
+    String? presidentEmail,
+    String? presidentPhone,
+    // New canonical field name
+    String? code,
+    // Legacy / UI-facing aliases (accepted but not written to Firestore)
+    @Deprecated('Field removed from schema') String? address,
+    @Deprecated('Field removed from schema') String? city,
+    @Deprecated('Field removed from schema') List<String> amenities = const [],
+    @Deprecated('Use code instead') String? apartmentCode,
   }) async {
     _isLoading = true;
     notifyListeners();
 
-    final docId = id ?? 'apt_${DateTime.now().millisecondsSinceEpoch}';
+    final now = DateTime.now();
+    final docId = id ?? 'apt_${now.millisecondsSinceEpoch}';
+    // Prefer explicit `code`, fall back to legacy `apartmentCode`
+    final resolvedCode = code ?? apartmentCode ?? '';
+
     final data = {
       'name': name,
-      'address': address,
-      'city': city,
+      'code': resolvedCode,
       'totalFlats': totalFlats,
       'presidentId': null,
       'presidentName': presidentName,
-      'amenities': amenities,
-      'createdAt': Timestamp.fromDate(DateTime.now()),
+      'presidentEmail': presidentEmail,
+      'presidentPhone': presidentPhone,
+      'status': 'waiting_for_president',
+      'occupiedFlats': 0,
+      'createdAt': Timestamp.fromDate(now),
+      'updatedAt': Timestamp.fromDate(now),
     };
 
     await _fs.createApartment(docId, data);

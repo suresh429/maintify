@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -5,7 +6,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/app_utils.dart';
 import '../../providers/apartment_provider.dart';
-import '../../providers/user_provider.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/common_button.dart';
 
@@ -19,94 +19,58 @@ class CreateApartmentScreen extends StatefulWidget {
 class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Apartment fields
-  final _nameCtrl = TextEditingController();
-  final _addressCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
-  final _flatsCtrl = TextEditingController();
-  final _amenityCtrl = TextEditingController();
-  final List<String> _amenities = [];
-
-  // President (Admin) fields
+  final _nameCtrl          = TextEditingController();
+  final _flatsCtrl         = TextEditingController();
   final _presidentNameCtrl = TextEditingController();
-  final _presidentEmailCtrl = TextEditingController();
-  final _presidentFlatCtrl = TextEditingController();
+  final _presidentEmailCtrl= TextEditingController();
+  final _presidentPhoneCtrl= TextEditingController();
 
   bool _isSubmitting = false;
-
-  static const List<String> _commonAmenities = [
-    'Parking', 'Gym', 'Pool', 'Garden', 'Security',
-    'Lift', 'Clubhouse', 'Tennis Court', 'Play Area',
-  ];
 
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _addressCtrl.dispose();
-    _cityCtrl.dispose();
     _flatsCtrl.dispose();
-    _amenityCtrl.dispose();
     _presidentNameCtrl.dispose();
     _presidentEmailCtrl.dispose();
-    _presidentFlatCtrl.dispose();
+    _presidentPhoneCtrl.dispose();
     super.dispose();
   }
 
-  void _toggleAmenity(String a) {
-    setState(() {
-      if (_amenities.contains(a)) {
-        _amenities.remove(a);
-      } else {
-        _amenities.add(a);
-      }
-    });
+  /// First 4 alpha chars of apartment name (uppercase, padded with 'X')
+  /// followed by 4 random digits.  e.g. "SAMH4721".
+  String _generateCode(String aptName) {
+    final clean = aptName.toUpperCase().replaceAll(RegExp(r'[^A-Z]'), '');
+    final letters =
+        clean.length >= 4 ? clean.substring(0, 4) : clean.padRight(4, 'X');
+    final digits = (1000 + Random().nextInt(9000)).toString();
+    return '$letters$digits';
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isSubmitting = true);
 
     try {
-      final userProvider = context.read<UserProvider>();
       final aptProvider = context.read<ApartmentProvider>();
-
       final aptName = _nameCtrl.text.trim();
+      final aptId   = 'apt_${DateTime.now().millisecondsSinceEpoch}';
+      final code    = _generateCode(aptName);
 
-      // Pre-generate apartment ID so admin can reference it before the apt exists
-      final aptId = 'apt_${DateTime.now().millisecondsSinceEpoch}';
-
-      // 1. Create admin user (password auto-generated)
-      final adminResult = userProvider.createAdmin(
-        name: _presidentNameCtrl.text.trim(),
-        email: _presidentEmailCtrl.text.trim(),
-        aptName: aptName,
-        aptId: aptId,
-        unit: _presidentFlatCtrl.text.trim(),
-      );
-
-      // 2. Create apartment — presidentId is set to null until the admin's
-      // first login creates their real users/ document and patches the apt.
       await aptProvider.createApartment(
         id: aptId,
         name: aptName,
-        address: _addressCtrl.text.trim(),
-        city: _cityCtrl.text.trim(),
         totalFlats: int.parse(_flatsCtrl.text.trim()),
-        amenities: List.from(_amenities),
         presidentName: _presidentNameCtrl.text.trim(),
+        presidentEmail: _presidentEmailCtrl.text.trim().toLowerCase(),
+        presidentPhone: _presidentPhoneCtrl.text.trim(),
+        code: code,
       );
 
       if (!mounted) return;
+      setState(() => _isSubmitting = false);
 
-      // 3. Show generated credentials to super admin
-      await AppUtils.showGeneratedCredentials(
-        context,
-        name: _presidentNameCtrl.text.trim(),
-        email: _presidentEmailCtrl.text.trim(),
-        password: adminResult.password,
-        role: 'Admin (President)',
-      );
+      await _showSuccessSheet(code, aptName);
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -119,6 +83,139 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
         isError: true,
       );
     }
+  }
+
+  Future<void> _showSuccessSheet(String code, String aptName) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Icon
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: AppColors.superAdminGradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.apartment_outlined,
+                  color: Colors.white, size: 36),
+            ),
+            const SizedBox(height: 16),
+
+            Text('Apartment Created!', style: AppTextStyles.heading3()),
+            const SizedBox(height: 4),
+            Text(aptName,
+                style: AppTextStyles.subheading(color: AppColors.textSecondary),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+
+            // Code display
+            Text('Apartment Code', style: AppTextStyles.label()),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+              decoration: BoxDecoration(
+                color: AppColors.superAdminGradient.first.withOpacity(0.07),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.superAdminGradient.last.withOpacity(0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: Text(
+                code,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.superAdminGradient.last,
+                  letterSpacing: 4,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Copy button
+            OutlinedButton.icon(
+              icon: const Icon(Icons.copy_rounded, size: 16),
+              label: const Text('Copy Code'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.superAdminGradient.last,
+                side: BorderSide(
+                    color: AppColors.superAdminGradient.last.withOpacity(0.4)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                textStyle: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: code));
+                AppUtils.showSnackBar(ctx, 'Apartment code copied!');
+              },
+            ),
+            const SizedBox(height: 20),
+
+            // Email sent note
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.paid.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.paid.withOpacity(0.2)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.mark_email_read_outlined,
+                      size: 16, color: AppColors.paid),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'An invitation email with this code has been sent to the president automatically.',
+                      style: AppTextStyles.caption(color: AppColors.paid),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            CommonButton(
+              text: 'Done',
+              gradient: AppColors.superAdminGradient,
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -175,9 +272,10 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
                               style: AppTextStyles.subheading(
                                   color: Colors.white)),
                           Text(
-                              'Fill in apartment details and assign an initial president',
-                              style: AppTextStyles.caption(
-                                  color: Colors.white.withOpacity(0.8))),
+                            'A unique code is generated and emailed to the president automatically.',
+                            style: AppTextStyles.caption(
+                                color: Colors.white.withOpacity(0.8)),
+                          ),
                         ],
                       ),
                     ),
@@ -205,122 +303,49 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
               ),
 
               const SizedBox(height: 16),
-              AppTextField(
-                label: 'Address',
-                hint: 'e.g., 14, Jubilee Hills',
-                controller: _addressCtrl,
-                textCapitalization: TextCapitalization.sentences,
-                prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Enter address' : null,
-              ),
 
-              const SizedBox(height: 16),
               AppTextField(
-                label: 'City',
-                hint: 'e.g., Hyderabad',
-                controller: _cityCtrl,
-                textCapitalization: TextCapitalization.words,
-                prefixIcon: const Icon(Icons.location_city_outlined, size: 20),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Enter city' : null,
-              ),
-
-              const SizedBox(height: 16),
-              AppTextField(
-                label: 'Total Flats (Hard Limit)',
+                label: 'Total Flats',
                 hint: 'e.g., 10',
                 controller: _flatsCtrl,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                prefixIcon: const Icon(Icons.door_front_door_outlined, size: 20),
-                helperText: 'Maximum members allowed (cannot exceed this limit)',
+                prefixIcon:
+                    const Icon(Icons.door_front_door_outlined, size: 20),
+                helperText: 'Hard limit — no more than this many residents',
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Enter number of flats';
                   final n = int.tryParse(v);
-                  if (n == null || n < 1) return 'Enter a valid number (≥ 1)';
+                  if (n == null || n < 1) return 'Must be ≥ 1';
                   return null;
                 },
               ),
 
-              const SizedBox(height: 20),
-              Text('Amenities',
-                  style: AppTextStyles.label(color: AppColors.textPrimary)
-                      .copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _commonAmenities.map((a) {
-                  final selected = _amenities.contains(a);
-                  return GestureDetector(
-                    onTap: () => _toggleAmenity(a),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? AppColors.purple.withOpacity(0.12)
-                            : AppColors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: selected
-                              ? AppColors.purple
-                              : Colors.grey.shade300,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Text(
-                        a,
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12,
-                          fontWeight: selected
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                          color: selected
-                              ? AppColors.purple
-                              : AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-
-              if (_amenities.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  'Selected: ${_amenities.join(', ')}',
-                  style: AppTextStyles.caption(color: AppColors.purple),
-                ),
-              ],
-
               const SizedBox(height: 32),
 
-              // ── Initial President (Admin) ─────────────────────────────────
+              // ── President Info ────────────────────────────────────────────
               _SectionHeader(
                 icon: Icons.manage_accounts_outlined,
-                title: 'Initial President (Admin)',
+                title: 'President Info',
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 10),
+
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppColors.blue.withOpacity(0.06),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: AppColors.blue.withOpacity(0.15)),
+                  border: Border.all(color: AppColors.blue.withOpacity(0.15)),
                 ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Icon(Icons.info_outline,
                         size: 16, color: AppColors.blue),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'This person will be created as the apartment president and can log in immediately.',
+                        'An invitation email with the Apartment Code will be sent to the president as soon as the apartment is created.',
                         style: AppTextStyles.caption(color: AppColors.blue),
                       ),
                     ),
@@ -335,59 +360,39 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
                 controller: _presidentNameCtrl,
                 keyboardType: TextInputType.name,
                 textCapitalization: TextCapitalization.words,
-                prefixIcon: const Icon(Icons.person_outline_rounded, size: 20),
+                prefixIcon:
+                    const Icon(Icons.person_outline_rounded, size: 20),
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Enter president name' : null,
               ),
 
               const SizedBox(height: 16),
-              AppTextField(
-                label: 'President Flat Number',
-                hint: 'e.g., 402',
-                controller: _presidentFlatCtrl,
-                textCapitalization: TextCapitalization.characters,
-                prefixIcon: const Icon(Icons.door_front_door_outlined, size: 20),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Enter flat number' : null,
-              ),
 
-              const SizedBox(height: 16),
               AppTextField(
-                label: 'Login Email',
-                hint: 'e.g., president@apartment.com',
+                label: 'President Email',
+                hint: 'e.g., president@example.com',
                 controller: _presidentEmailCtrl,
                 keyboardType: TextInputType.emailAddress,
                 prefixIcon: const Icon(Icons.email_outlined, size: 20),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Enter email';
                   if (!v.contains('@') || !v.contains('.')) {
-                    return 'Enter a valid email';
+                    return 'Enter a valid email address';
                   }
                   return null;
                 },
               ),
 
-              Container(
-                margin: const EdgeInsets.only(top: 14),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.paid.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.paid.withOpacity(0.2)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.auto_awesome_rounded,
-                        size: 16, color: AppColors.paid),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Login password will be auto-generated and shown after creation.',
-                        style: AppTextStyles.caption(color: AppColors.paid),
-                      ),
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 16),
+
+              AppTextField(
+                label: 'President Mobile',
+                hint: 'e.g., +91 98765 43210',
+                controller: _presidentPhoneCtrl,
+                keyboardType: TextInputType.phone,
+                prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Enter mobile number' : null,
               ),
 
               const SizedBox(height: 32),
@@ -434,4 +439,3 @@ class _SectionHeader extends StatelessWidget {
     );
   }
 }
-

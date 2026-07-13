@@ -6,6 +6,7 @@ import '../../models/bill_model.dart';
 import '../../models/complaint_model.dart';
 import '../../models/meeting_model.dart';
 import '../../models/notification_model.dart';
+import '../../models/resident_request_model.dart';
 import '../../core/theme/role_theme.dart';
 
 /// Central Firestore service — all collection reads/writes go through here.
@@ -71,11 +72,28 @@ class FirestoreService {
       .snapshots()
       .map((doc) => doc.data()?['activeSessionId'] as String?);
 
-  /// Admin-created user (no Firebase Auth yet). Stored in pending_users.
-  Future<void> createPendingUser(Map<String, dynamic> data) =>
-      _db.collection('pending_users').add(data);
-
   // ─────────────────────────────── APARTMENTS ─────────────────────────────────
+
+  /// Finds an apartment by its unique apartment code (case-sensitive).
+  /// Checks the new `code` field; falls back to legacy `apartmentCode` field.
+  Future<ApartmentModel?> findApartmentByCode(String code) async {
+    // Try new field name first
+    var snap = await _db
+        .collection('apartments')
+        .where('code', isEqualTo: code)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) {
+      // Fallback for legacy documents still using the old field name
+      snap = await _db
+          .collection('apartments')
+          .where('apartmentCode', isEqualTo: code)
+          .limit(1)
+          .get();
+    }
+    if (snap.docs.isEmpty) return null;
+    return ApartmentModel.fromFirestore(snap.docs.first);
+  }
 
   Stream<List<ApartmentModel>> streamApartments() => _db
       .collection('apartments')
@@ -322,4 +340,41 @@ class FirestoreService {
     await batch.commit();
     debugPrint('[CLEANUP] Deleted ${toDelete.length} legacy notification doc(s) (had targetRole, missing userId)');
   }
+
+  // ──────────────────────────── RESIDENT REQUESTS ──────────────────────────────
+
+  /// Real-time stream of resident join requests for an apartment.
+  Stream<List<ResidentRequestModel>> streamResidentRequests(String aptId) =>
+      _db
+          .collection('resident_requests')
+          .where('apartmentId', isEqualTo: aptId)
+          .orderBy('requestedAt', descending: true)
+          .snapshots()
+          .map((s) => s.docs.map(ResidentRequestModel.fromFirestore).toList());
+
+  Future<void> createResidentRequest(Map<String, dynamic> data) =>
+      _db.collection('resident_requests').add(data);
+
+  Future<void> updateResidentRequest(String id, Map<String, dynamic> data) =>
+      _db.collection('resident_requests').doc(id).update(data);
+
+  Future<void> deleteResidentRequest(String id) =>
+      _db.collection('resident_requests').doc(id).delete();
+
+  /// Returns true if there is a pending resident_request for the given UID.
+  Future<bool> hasResidentRequest(String uid) async {
+    final snap = await _db
+        .collection('resident_requests')
+        .where('uid', isEqualTo: uid)
+        .where('status', isEqualTo: 'pending')
+        .limit(1)
+        .get();
+    return snap.docs.isNotEmpty;
+  }
+
+  // ─────────────────────────────────── MAIL ────────────────────────────────────
+
+  /// Writes to the `mail` collection consumed by Firebase Trigger Email Extension.
+  Future<void> sendEmail(Map<String, dynamic> data) =>
+      _db.collection('mail').add(data);
 }

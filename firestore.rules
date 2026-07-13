@@ -29,29 +29,44 @@ service cloud.firestore {
     }
 
     // ── _meta (seeder flag) ──────────────────────────────────────────────────
+    // Restrict to server-side only in production; currently open for DbSeeder.
     match /_meta/{doc} {
-      allow read, write: if true; // open for seeder — tighten in production
+      allow read, write: if true;
     }
 
     // ── Users ────────────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn(); // new user self-registration
+      // Email uniqueness check during signup requires unauthenticated read.
+      allow read: if true;
+      allow create: if isSignedIn();
       allow update: if request.auth.uid == userId || isAdmin() || isSuperAdmin();
       allow delete: if isSuperAdmin();
     }
 
-    // ── Pending users (admin-created accounts waiting first login) ───────────
-    match /pending_users/{docId} {
-      allow read, write: if isSignedIn() || request.auth != null;
-      // Also allow unauthenticated reads so the first-login flow can check
-      allow read: if true;
+    // ── Resident registration requests ──────────────────────────────────────
+    // create is allowed without auth: the resident's Auth account is created
+    // then signed out before this write happens (to avoid auto-login).
+    // Reads are restricted to admins/superAdmins to protect PII.
+    match /resident_requests/{requestId} {
+      allow read: if isAdmin() || isSuperAdmin();
+      allow create: if true; // signup flow: auth account exists but not signed in
+      allow update: if isAdmin() || isSuperAdmin();
+      allow delete: if isAdmin() || isSuperAdmin();
+    }
+
+    // ── mail (Firebase Trigger Email extension) ──────────────────────────────
+    // Only Cloud Functions (server-side) should write here.
+    // Deny all client reads/writes for security.
+    match /mail/{docId} {
+      allow read, write: if false;
     }
 
     // ── Apartments ───────────────────────────────────────────────────────────
+    // Read is open to allow apartment code lookup during unauthenticated signup.
     match /apartments/{aptId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSuperAdmin() || isAdmin();
+      allow read: if true;
+      allow create: if isSuperAdmin();
+      allow update: if isSuperAdmin() || isAdminForApartment(aptId);
       allow delete: if isSuperAdmin();
     }
 
@@ -66,7 +81,8 @@ service cloud.firestore {
     match /payments/{paymentId} {
       allow read: if isMemberOfApartment(resource.data.apartmentId) ||
                      request.auth.uid == resource.data.userId;
-      allow create: if isSignedIn();
+      allow create: if request.auth.uid == request.resource.data.userId ||
+                       isAdminForApartment(request.resource.data.apartmentId);
       allow update: if isAdminForApartment(resource.data.apartmentId) ||
                        request.auth.uid == resource.data.userId;
       allow delete: if isSuperAdmin();
@@ -98,11 +114,23 @@ service cloud.firestore {
     }
 
     // ── Notifications ─────────────────────────────────────────────────────────
+    // Read is scoped to the notification's owner; admins can read all for
+    // management purposes. App-level queries always add userId == currentUser.
     match /notifications/{notifId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() &&
+                     (request.auth.uid == resource.data.userId ||
+                      isAdmin() || isSuperAdmin());
       allow create: if isAdmin() || isSuperAdmin();
       allow update: if isSignedIn(); // mark as read
       allow delete: if isSuperAdmin();
+    }
+
+    // ── Settings ─────────────────────────────────────────────────────────────
+    // Global app configuration. SuperAdmin can manage; all signed-in users can
+    // read (feature flags, maintenance banners, etc.).
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSuperAdmin();
     }
   }
 }

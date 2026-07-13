@@ -58,7 +58,7 @@ class AppTextStyles {
       );
 
   static TextStyle caption({Color? color}) => GoogleFonts.poppins(
-        fontSize: 11,
+        fontSize: 9,
         fontWeight: FontWeight.w400,
         color: color ?? AppColors.textSecondary,
       );

@@ -6,6 +6,7 @@ import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/apartment_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/common_button.dart';
 
@@ -63,6 +64,7 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
         _selectedUserId!,
         selectedUser.name,
         oldPresidentId: currentAdmin.id,
+        notifProvider: context.read<NotificationProvider>(),
       );
     }
 

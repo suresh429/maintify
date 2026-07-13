@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
+import '../../models/apartment_model.dart';
 
 /// Wraps all FirebaseAuth operations.
 /// Providers call this service; no UI has a direct Firebase dependency.
@@ -14,8 +15,8 @@ class FirebaseAuthService {
   // ── Sign in ───────────────────────────────────────────────────────────────
 
   /// Signs in with email/password.
-  /// If the account doesn't exist in FirebaseAuth yet but IS in `pending_users`
-  /// (admin-created account), promotes it to a real Auth + Firestore user.
+  /// If the Firebase Auth sign-in succeeds but no users doc exists, checks
+  /// resident_requests to return a helpful "pending approval" message.
   Future<({UserModel? user, String? error})> signIn(
     String email,
     String password,
@@ -27,76 +28,116 @@ class FirebaseAuthService {
       );
       final user = await _loadUserDoc(cred.user!.uid);
       if (user == null) {
+        // Check if this user has a pending resident request
+        final isPending = await _db
+            .collection('resident_requests')
+            .where('uid', isEqualTo: cred.user!.uid)
+            .where('status', isEqualTo: 'pending')
+            .limit(1)
+            .get();
         await _auth.signOut();
+        if (isPending.docs.isNotEmpty) {
+          return (
+            user: null,
+            error:
+                'Your registration is pending approval by the apartment president.',
+          );
+        }
         return (user: null, error: 'Account data not found. Contact support.');
       }
       return (user: user, error: null);
     } on FirebaseAuthException catch (e) {
-      // New user whose Auth account doesn't exist yet (admin created them in Firestore only)
-      if (e.code == 'user-not-found' ||
-          e.code == 'invalid-credential' ||
-          e.code == 'INVALID_LOGIN_CREDENTIALS') {
-        return _promotePendingUser(email.trim().toLowerCase(), password);
-      }
       return (user: null, error: _friendlyError(e.code));
     }
   }
 
-  /// Handles the first-ever login for an admin-created user:
-  /// finds them in `pending_users`, creates their Firebase Auth account,
-  /// migrates their Firestore doc, deletes the pending record.
-  Future<({UserModel? user, String? error})> _promotePendingUser(
-    String email,
-    String password,
-  ) async {
+  // ── President self-registration ───────────────────────────────────────────
+
+  /// Creates a Firebase Auth account for the apartment president and writes
+  /// the users doc and updates the apartment in a single flow.
+  Future<({UserModel? user, String? error})> registerPresident({
+    required String email,
+    required String password,
+    required ApartmentModel apt,
+    String unit = '',
+  }) async {
     try {
-      final snap = await _db
-          .collection('pending_users')
-          .where('email', isEqualTo: email)
-          .where('tempPassword', isEqualTo: password)
-          .limit(1)
-          .get();
-
-      if (snap.docs.isEmpty) {
-        return (user: null, error: 'No account found with this email.');
-      }
-
-      final pendingData = Map<String, dynamic>.from(snap.docs.first.data());
-      final pendingDocId = snap.docs.first.id;
-
-      // Create the real Firebase Auth account
+      // 1. Create Firebase Auth account
       final cred = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+      final uid = cred.user!.uid;
 
-      // Write Firestore user doc (drop the temp password)
-      pendingData.remove('tempPassword');
-      pendingData['isFirstLogin'] = true;
-      final realUid = cred.user!.uid;
-      await _db.collection('users').doc(realUid).set(pendingData);
+      // 2. Compute avatar initials from apt.presidentName
+      final name = apt.presidentName ?? email.split('@').first;
+      final words = name.trim().split(RegExp(r'\s+'));
+      final initials = words
+          .where((w) => w.isNotEmpty)
+          .take(2)
+          .map((w) => w[0].toUpperCase())
+          .join();
 
-      // If this user is an admin, patch the apartment so presidentId
-      // becomes the real UID (replacing null or any stale pending_* value).
-      final role = pendingData['role'] as String?;
-      final aptId = pendingData['apartmentId'] as String?;
-      final userName = pendingData['name'] as String?;
-      if (role == 'admin' && aptId != null && aptId.isNotEmpty) {
-        await _db.collection('apartments').doc(aptId).update({
-          'presidentId': realUid,
-          'presidentName': userName ?? '',
-        });
-      }
+      // 3. Write users/{uid} doc
+      await _db.collection('users').doc(uid).set({
+        'name': name,
+        'email': email,
+        'phone': apt.presidentPhone ?? '',
+        'role': 'admin',
+        'apartmentId': apt.id,
+        'unit': unit,
+        'avatarInitials': initials.isEmpty ? name[0].toUpperCase() : initials,
+        'isActive': true,
+        'joinedAt': Timestamp.fromDate(DateTime.now()),
+      });
 
-      // Remove from pending
-      await _db.collection('pending_users').doc(pendingDocId).delete();
+      // 4. Update apartment: set status='active', presidentId, occupiedFlats +1
+      await _db.collection('apartments').doc(apt.id).update({
+        'status': 'active',
+        'presidentId': uid,
+        'presidentName': name,
+        'occupiedFlats': FieldValue.increment(1),
+      });
 
-      final user = await _loadUserDoc(cred.user!.uid);
+      // 5. Return loaded UserModel
+      final user = await _loadUserDoc(uid);
       return (user: user, error: null);
     } on FirebaseAuthException catch (e) {
       return (user: null, error: _friendlyError(e.code));
     } catch (_) {
       return (user: null, error: 'An error occurred. Please try again.');
+    }
+  }
+
+  // ── Resident self-registration ────────────────────────────────────────────
+
+  /// Creates a Firebase Auth account for a resident then immediately signs out.
+  /// The caller is responsible for creating the resident_request doc with the
+  /// returned UID.
+  Future<({String? uid, String? error})> registerResident({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+    required ApartmentModel apt,
+    required String unit,
+  }) async {
+    try {
+      // 1. Create Firebase Auth account
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final uid = cred.user!.uid;
+
+      // 2. Sign out immediately — no users doc is written yet
+      await _auth.signOut();
+
+      return (uid: uid, error: null);
+    } on FirebaseAuthException catch (e) {
+      return (uid: null, error: _friendlyError(e.code));
+    } catch (_) {
+      return (uid: null, error: 'An error occurred. Please try again.');
     }
   }
 
@@ -116,10 +157,6 @@ class FirebaseAuthService {
       );
       await user.reauthenticateWithCredential(cred);
       await user.updatePassword(newPassword);
-      await _db
-          .collection('users')
-          .doc(user.uid)
-          .update({'isFirstLogin': false});
       return (ok: true, error: null);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'wrong-password' ||

@@ -107,7 +107,6 @@ class UserProfileScreen extends StatelessWidget {
             iconColor: AppColors.blue,
             children: [
               _InfoRow(label: 'Name', value: apt?.name ?? '—'),
-              _InfoRow(label: 'City', value: apt?.city ?? '—'),
               _InfoRow(
                   label: 'Total Flats',
                   value: '${apt?.totalFlats ?? 0} flats'),

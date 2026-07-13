@@ -9,7 +9,6 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../models/user_model.dart';
-import '../../widgets/app_text_field.dart';
 import '../../widgets/pill_filter_bar.dart';
 import '../../widgets/shimmer_loading.dart';
 
@@ -23,35 +22,6 @@ class ManageUsersScreen extends StatefulWidget {
 class _ManageUsersScreenState extends State<ManageUsersScreen> {
   String _search = '';
   String _filter = 'All';
-
-  void _showAddMemberSheet(String aptId, int maxFlats) async {
-    debugPrint('[FLOW] Add member sheet opened');
-
-    final result = await showModalBottomSheet<
-        ({String name, String email, String password})>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _AddMemberSheet(aptId: aptId, maxFlats: maxFlats),
-    );
-
-    if (result == null) return; // user cancelled
-    debugPrint('[FLOW] BottomSheet dismissed');
-
-    // Wait for the sheet close animation to complete before showing dialog.
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    if (!mounted) return;
-    debugPrint('[FLOW] Showing password dialog');
-
-    await AppUtils.showGeneratedCredentials(
-      context,
-      name: result.name,
-      email: result.email,
-      password: result.password,
-      role: 'Resident',
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -143,60 +113,17 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           ),
         ),
 
-        // Search bar + Add button row
+        // Search bar
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  onChanged: (v) => setState(() => _search = v),
-                  decoration: InputDecoration(
-                    hintText: 'Search members...',
-                    hintStyle: AppTextStyles.bodyMedium(),
-                    prefixIcon: const Icon(Icons.search_rounded,
-                        color: AppColors.textSecondary),
-                  ),
-                ),
-              ),
-              if (!isFull) ...[
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: () => _showAddMemberSheet(aptId, maxFlats),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: theme.gradient,
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: theme.primary.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.person_add_rounded,
-                            color: Colors.white, size: 18),
-                        const SizedBox(width: 6),
-                        Text('Add',
-                            style: AppTextStyles.buttonText(
-                                    color: Colors.white)
-                                .copyWith(fontSize: 13)),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ],
+          child: TextField(
+            onChanged: (v) => setState(() => _search = v),
+            decoration: InputDecoration(
+              hintText: 'Search members...',
+              hintStyle: AppTextStyles.bodyMedium(),
+              prefixIcon: const Icon(Icons.search_rounded,
+                  color: AppColors.textSecondary),
+            ),
           ),
         ),
 
@@ -233,323 +160,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                 ),
         ),
       ],
-    );
-  }
-}
-
-// ── Add Member Bottom Sheet ───────────────────────────────────────────────────
-
-class _AddMemberSheet extends StatefulWidget {
-  final String aptId;
-  final int maxFlats;
-  const _AddMemberSheet({required this.aptId, required this.maxFlats});
-
-  @override
-  State<_AddMemberSheet> createState() => _AddMemberSheetState();
-}
-
-class _AddMemberSheetState extends State<_AddMemberSheet> {
-  final _flatCtrl = TextEditingController();
-  final _nameCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
-  bool _isSaving = false;
-
-  @override
-  void dispose() {
-    _flatCtrl.dispose();
-    _nameCtrl.dispose();
-    _emailCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final name = _nameCtrl.text.trim();
-    final email = _emailCtrl.text.trim();
-    final flatNumber = _flatCtrl.text.trim();
-
-    setState(() => _isSaving = true);
-    debugPrint('[FLOW] Add member started');
-    try {
-      final password = context.read<UserProvider>().addMember(
-            flatNumber: flatNumber,
-            name: name,
-            email: email,
-            aptId: widget.aptId,
-            maxFlats: widget.maxFlats,
-          );
-      debugPrint('[FLOW] Add member success');
-      if (!mounted) return;
-      Navigator.of(context).pop((name: name, email: email, password: password));
-    } catch (e) {
-      debugPrint('[ERROR] Add member failed: $e');
-      if (mounted) {
-        setState(() => _isSaving = false);
-        AppUtils.showSnackBar(
-          context,
-          e.toString().replaceFirst('Exception: ', ''),
-          isError: true,
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = RoleTheme.of(UserRole.admin);
-
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Drag handle
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 12, bottom: 8),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.lightGray,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-
-                // Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: theme.gradient,
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.person_add_rounded,
-                            color: Colors.white, size: 20),
-                      ),
-                      const SizedBox(width: 14),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Add Member',
-                              style: AppTextStyles.subheading()),
-                          Text(
-                              '${widget.maxFlats - context.read<UserProvider>().memberCountForApartment(widget.aptId)} slot(s) remaining',
-                              style: AppTextStyles.caption()),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Flat Number field
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                  child: AppTextField(
-                    label: 'Flat Number',
-                    hint: 'e.g., 103, 203, 601',
-                    controller: _flatCtrl,
-                    textCapitalization: TextCapitalization.characters,
-                    focusColor: theme.primary,
-                    prefixIcon: const Icon(Icons.door_front_door_outlined),
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Flat number is required';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-
-                // Name field
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                  child: AppTextField(
-                    label: 'Resident Name',
-                    hint: 'e.g., Kiran, Meena Rao',
-                    controller: _nameCtrl,
-                    keyboardType: TextInputType.name,
-                    textCapitalization: TextCapitalization.words,
-                    focusColor: theme.primary,
-                    prefixIcon: const Icon(Icons.person_outline_rounded),
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Name is required';
-                      }
-                      if (v.trim().length < 2) {
-                        return 'Name must be at least 2 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-
-                // Email field
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                  child: AppTextField(
-                    label: 'Login Email',
-                    hint: 'e.g., kiran@apartment.com',
-                    controller: _emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
-                    focusColor: theme.primary,
-                    prefixIcon: const Icon(Icons.email_outlined),
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Email is required';
-                      }
-                      if (!v.contains('@') || !v.contains('.')) {
-                        return 'Enter a valid email';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-
-                // Auto-password notice
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.paid.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: AppColors.paid.withOpacity(0.2)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.auto_awesome_rounded,
-                            size: 16, color: AppColors.paid),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Password will be auto-generated and shown after adding.',
-                            style: AppTextStyles.caption(
-                                color: AppColors.paid),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Action buttons
-                Padding(
-                  padding: EdgeInsets.fromLTRB(20, 0, 20, 28 + MediaQuery.of(context).viewPadding.bottom),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed:
-                              _isSaving ? null : () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                                color: AppColors.textSecondary
-                                    .withOpacity(0.4)),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: Text('Cancel',
-                              style: AppTextStyles.buttonText(
-                                  color: AppColors.textSecondary)),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: _isSaving
-                            ? Container(
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: theme.gradient,
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Center(
-                                  child: SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                        color: Colors.white, strokeWidth: 2.5),
-                                  ),
-                                ),
-                              )
-                            : Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: theme.gradient,
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: theme.primary.withOpacity(0.3),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(12),
-                                    onTap: _save,
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 14),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          const Icon(
-                                              Icons.person_add_rounded,
-                                              color: Colors.white,
-                                              size: 18),
-                                          const SizedBox(width: 8),
-                                          Text('Add Member',
-                                              style: AppTextStyles.buttonText(
-                                                  color: Colors.white)),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -649,6 +259,7 @@ class _MemberCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Row(
                         children: [
+                          if (user.unit.isNotEmpty)
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),

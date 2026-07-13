@@ -15,12 +15,12 @@ import 'create_bill_screen.dart';
 import 'manage_users_screen.dart';
 import 'mark_paid_screen.dart';
 import 'admin_complaints_screen.dart';
-import 'transfer_president_screen.dart';
-import '../../widgets/change_password_sheet.dart';
-import '../../widgets/logout_sheet.dart';
+import 'resident_requests_screen.dart';
+import 'admin_profile_screen.dart';
 import '../../widgets/schedule_meeting_sheet.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/meeting_provider.dart';
+import '../../providers/registration_provider.dart';
 import '../../models/meeting_model.dart';
 import '../../models/bill_model.dart';
 import '../../models/user_model.dart';
@@ -94,9 +94,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   PreferredSizeWidget _buildAppBar(RoleTheme theme) {
-    final unread = context
-        .watch<NotificationProvider>()
-        .unreadCount(UserRole.admin);
+    final unread =
+        context.watch<NotificationProvider>().unreadCount(UserRole.admin);
+    final user = context.read<AuthProvider>().currentUser;
+
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -105,9 +106,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
         style: AppTextStyles.heading3(color: Colors.white),
       ),
       actions: [
+        // Notification bell
         SizedBox(
-          width: 48,
-          height: 48,
+          width: 44,
+          height: 44,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -147,21 +149,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ],
           ),
         ),
-        IconButton(
-          icon: const Icon(Icons.settings_outlined, color: Colors.white),
-          tooltip: 'Change Password',
-          onPressed: () => showChangePasswordSheet(context),
-        ),
-        IconButton(
-          icon: const Icon(Icons.logout_outlined, color: Colors.white),
-          onPressed: () async {
-            final confirm =
-                await showLogoutSheet(context, UserRole.admin);
-            if (confirm == true && mounted) {
-              context.read<AuthProvider>().logout();
-              Navigator.pushReplacementNamed(context, '/login');
-            }
-          },
+        // Profile avatar
+        Padding(
+          padding: const EdgeInsets.only(right: 14),
+          child: GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const AdminProfileScreen()),
+            ),
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.2),
+                border: Border.all(
+                    color: Colors.white.withOpacity(0.7), width: 1.5),
+              ),
+              child: Center(
+                child: Text(
+                  user?.avatarInitials ?? 'A',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ],
       flexibleSpace: Container(
@@ -410,63 +428,113 @@ class _AdminHome extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // Transfer Presidency action card
-            GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const TransferPresidentScreen()),
-              ),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
+            // ── Resident Requests (priority card) ────────────────────────
+            Consumer<RegistrationProvider>(
+              builder: (_, reg, __) {
+                final count = reg.pendingRequests.length;
+                final hasPending = count > 0;
+                return GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ResidentRequestsScreen()),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: hasPending
+                          ? AppColors.blue.withOpacity(0.06)
+                          : AppColors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: hasPending
+                          ? Border.all(
+                              color: AppColors.blue.withOpacity(0.35),
+                              width: 1.5)
+                          : null,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: theme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(Icons.swap_horiz_rounded,
-                          color: theme.primary, size: 22),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(11),
+                          decoration: BoxDecoration(
+                            color: hasPending
+                                ? AppColors.blue.withOpacity(0.12)
+                                : AppColors.lightGray,
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: Icon(
+                            Icons.person_add_alt_1_outlined,
+                            color: hasPending
+                                ? AppColors.blue
+                                : AppColors.textSecondary,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Resident Requests',
+                                  style: AppTextStyles.subheading()),
+                              const SizedBox(height: 1),
+                              Text(
+                                hasPending
+                                    ? '$count pending · Approve new residents'
+                                    : 'No pending requests',
+                                style: AppTextStyles.caption(
+                                  color: hasPending
+                                      ? AppColors.blue
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (hasPending)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 9, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: AppColors.blue,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '$count',
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: hasPending
+                              ? AppColors.blue
+                              : AppColors.textSecondary,
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Transfer Presidency',
-                              style: AppTextStyles.subheading()),
-                          Text(
-                              'Hand over management to another resident',
-                              style: AppTextStyles.caption()),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textSecondary),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 12),
 
-            // Schedule Meeting action card
+            // ── Schedule Meeting action card ──────────────────────────────
             GestureDetector(
               onTap: () async {
                 final scheduled =

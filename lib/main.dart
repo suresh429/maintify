@@ -15,8 +15,10 @@ import 'providers/user_provider.dart';
 import 'providers/complaint_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/meeting_provider.dart';
+import 'providers/registration_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/auth/signup_screen.dart';
 import 'screens/dashboard_router.dart';
 import 'core/services/db_seeder.dart';
 
@@ -80,6 +82,7 @@ class MaintifyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ComplaintProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => MeetingProvider()),
+        ChangeNotifierProvider(create: (_) => RegistrationProvider()),
       ],
       child: MaterialApp(
         title: 'Maintify',
@@ -90,6 +93,7 @@ class MaintifyApp extends StatelessWidget {
         routes: {
           '/': (_) => const SplashScreen(),
           '/login': (_) => const LoginScreen(),
+          '/signup': (_) => const SignupScreen(),
           '/dashboard': (_) => const DashboardRouter(),
         },
       ),

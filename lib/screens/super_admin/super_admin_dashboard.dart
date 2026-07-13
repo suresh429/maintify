@@ -555,7 +555,7 @@ class _ApartmentCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(apt.name, style: AppTextStyles.subheading()),
-                    Text('${apt.address}, ${apt.city}',
+                    Text(apt.code,
                         style: AppTextStyles.caption(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
@@ -600,27 +600,6 @@ class _ApartmentCard extends StatelessWidget {
               ),
             ],
           ),
-          if (apt.amenities.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: apt.amenities
-                  .take(4)
-                  .map((a) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.lightGray,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(a,
-                            style: AppTextStyles.caption(
-                                color: AppColors.textSecondary)),
-                      ))
-                  .toList(),
-            ),
-          ],
         ],
       ),
     );

@@ -8,7 +8,6 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../models/bill_model.dart';
-import '../../models/user_model.dart';
 import '../../providers/apartment_provider.dart';
 import '../../widgets/shimmer_loading.dart';
 import '../../widgets/apartment_header.dart';

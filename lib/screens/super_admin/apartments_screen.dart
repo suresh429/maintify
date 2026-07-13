@@ -24,7 +24,7 @@ class _ApartmentsScreenState extends State<ApartmentsScreen> {
     final filtered = aptProvider.apartments
         .where((a) =>
             a.name.toLowerCase().contains(_search.toLowerCase()) ||
-            a.city.toLowerCase().contains(_search.toLowerCase()))
+            a.code.toLowerCase().contains(_search.toLowerCase()))
         .toList();
 
     return Column(
@@ -206,7 +206,7 @@ class _ApartmentDetailCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(apt.name, style: AppTextStyles.subheading()),
-                      Text('${apt.address}, ${apt.city}',
+                      Text(apt.code,
                           style: AppTextStyles.caption(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
@@ -288,26 +288,6 @@ class _ApartmentDetailCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (apt.amenities.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: apt.amenities
-                        .map((a) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.lightGray,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(a,
-                                  style: AppTextStyles.caption(
-                                      color: AppColors.textSecondary)),
-                            ))
-                        .toList(),
-                  ),
-                ],
               ],
             ),
           ),

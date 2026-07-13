@@ -5,7 +5,6 @@ class UserModel {
   final String id;
   final String name;
   final String email;
-  final String password;
   final String phone;
   final UserRole role;
   final String? apartmentId;
@@ -13,13 +12,11 @@ class UserModel {
   final String avatarInitials;
   final DateTime joinedAt;
   final bool isActive;
-  final bool isFirstLogin;
 
   const UserModel({
     required this.id,
     required this.name,
     required this.email,
-    this.password = '123456',
     required this.phone,
     required this.role,
     this.apartmentId,
@@ -27,7 +24,6 @@ class UserModel {
     required this.avatarInitials,
     required this.joinedAt,
     this.isActive = true,
-    this.isFirstLogin = false,
   });
 
   String get roleLabel {
@@ -59,7 +55,6 @@ class UserModel {
       id: doc.id,
       name: d['name'] as String? ?? '',
       email: d['email'] as String? ?? '',
-      password: '', // never stored in Firestore
       phone: d['phone'] as String? ?? '',
       role: _roleFromString(d['role'] as String?),
       apartmentId: d['apartmentId'] as String?,
@@ -67,7 +62,6 @@ class UserModel {
       avatarInitials: d['avatarInitials'] as String? ?? '',
       joinedAt: (d['joinedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isActive: d['isActive'] as bool? ?? true,
-      isFirstLogin: d['isFirstLogin'] as bool? ?? false,
     );
   }
 
@@ -80,16 +74,14 @@ class UserModel {
         'unit': unit,
         'avatarInitials': avatarInitials,
         'isActive': isActive,
-        'isFirstLogin': isFirstLogin,
         'joinedAt': Timestamp.fromDate(joinedAt),
       };
 
-  UserModel copyWith({UserRole? role, String? password, bool? isFirstLogin}) {
+  UserModel copyWith({UserRole? role}) {
     return UserModel(
       id: id,
       name: name,
       email: email,
-      password: password ?? this.password,
       phone: phone,
       role: role ?? this.role,
       apartmentId: apartmentId,
@@ -97,7 +89,6 @@ class UserModel {
       avatarInitials: avatarInitials,
       joinedAt: joinedAt,
       isActive: isActive,
-      isFirstLogin: isFirstLogin ?? this.isFirstLogin,
     );
   }
 }
@@ -271,13 +262,6 @@ class MockUsers {
     final i = all.indexWhere((u) => u.id == userId);
     if (i != -1) {
       all[i] = all[i].copyWith(role: role);
-    }
-  }
-
-  static void updatePassword(String userId, String newPassword) {
-    final i = all.indexWhere((u) => u.id == userId);
-    if (i != -1) {
-      all[i] = all[i].copyWith(password: newPassword, isFirstLogin: false);
     }
   }
 

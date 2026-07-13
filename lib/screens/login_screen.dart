@@ -26,27 +26,6 @@ class _LoginScreenState extends State<LoginScreen>
   late Animation<Offset> _slideAnim;
   late Animation<double> _fadeAnim;
 
-  // Quick login options
-  static const List<Map<String, String>> _quickLogins = [
-    {
-      'label': 'Super Admin',
-      'email': 'superadmin@test.com',
-      'color': '8B5CF6',
-      'icon': 'shield',
-    },
-    {
-      'label': 'Admin',
-      'email': 'admin@test.com',
-      'color': '1E3A8A',
-      'icon': 'manage',
-    },
-    {
-      'label': 'Resident',
-      'email': 'user@test.com',
-      'color': '22C55E',
-      'icon': 'person',
-    },
-  ];
 
   @override
   void initState() {
@@ -85,13 +64,6 @@ class _LoginScreenState extends State<LoginScreen>
     _forgotEmailCtrl.dispose();
     _animCtrl.dispose();
     super.dispose();
-  }
-
-  void _quickFill(String email) {
-    setState(() {
-      _emailCtrl.text = email;
-      _passCtrl.text = '123456';
-    });
   }
 
   Future<void> _login() async {
@@ -188,12 +160,9 @@ class _LoginScreenState extends State<LoginScreen>
                           context, 'No account found with that email.',
                           isError: true);
                     } else {
-                      AppUtils.showGeneratedCredentials(
-                        context,
-                        name: email,
-                        email: email,
-                        password: result,
-                        role: 'Reset Password',
+                      AppUtils.showSnackBar(
+                          context,
+                          'Password reset email sent to $email.',
                       );
                     }
                   },
@@ -204,19 +173,6 @@ class _LoginScreenState extends State<LoginScreen>
         ),
       ),
     );
-  }
-
-  Color _quickColor(String hex) => Color(int.parse('FF$hex', radix: 16));
-
-  IconData _quickIcon(String icon) {
-    switch (icon) {
-      case 'shield':
-        return Icons.shield_outlined;
-      case 'manage':
-        return Icons.manage_accounts_outlined;
-      default:
-        return Icons.person_outline;
-    }
   }
 
   @override
@@ -471,11 +427,39 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ),*/
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'New to Maintify?',
+                            style: AppTextStyles.caption(
+                                color: AppColors.textSecondary),
+                          ),
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.pushNamed(context, '/signup'),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(
+                              'Sign Up',
+                              style: AppTextStyles.caption(
+                                      color: AppColors.blue)
+                                  .copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                       Center(
                         child: Text(
                           '© 2026 Maintify · All rights reserved',
-                          style: AppTextStyles.caption(),
+                          style: AppTextStyles.caption(
+                              color: AppColors.textSecondary),
                         ),
                       ),
                     ],

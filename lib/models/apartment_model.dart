@@ -3,24 +3,30 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ApartmentModel {
   final String id;
   final String name;
-  final String address;
-  final String city;
-  final int totalFlats;
-  final String? presidentId;
+  final String code;           // e.g. "SAMH4721"
+  final String status;         // "waiting_for_president" | "active" | "disabled"
   final String? presidentName;
-  final List<String> amenities;
+  final String? presidentEmail;
+  final String? presidentPhone;
+  final String? presidentId;
+  final int totalFlats;
+  final int occupiedFlats;
   final DateTime createdAt;
+  final DateTime? updatedAt;
 
   const ApartmentModel({
     required this.id,
     required this.name,
-    required this.address,
-    required this.city,
-    required this.totalFlats,
-    this.presidentId,
+    required this.code,
+    required this.status,
     this.presidentName,
-    this.amenities = const [],
+    this.presidentEmail,
+    this.presidentPhone,
+    this.presidentId,
+    required this.totalFlats,
+    this.occupiedFlats = 0,
     required this.createdAt,
+    this.updatedAt,
   });
 
   bool get hasPresident =>
@@ -31,57 +37,75 @@ class ApartmentModel {
     return ApartmentModel(
       id: doc.id,
       name: d['name'] as String? ?? '',
-      address: d['address'] as String? ?? '',
-      city: d['city'] as String? ?? '',
-      totalFlats: (d['totalFlats'] as int?) ?? 0,
-      presidentId: d['presidentId'] as String?,
+      // Support legacy docs that still store "apartmentCode"
+      code: (d['code'] ?? d['apartmentCode']) as String? ?? '',
+      status: d['status'] as String? ?? 'active',
       presidentName: d['presidentName'] as String?,
-      amenities: List<String>.from(d['amenities'] as List? ?? []),
+      presidentEmail: d['presidentEmail'] as String?,
+      presidentPhone: d['presidentPhone'] as String?,
+      presidentId: d['presidentId'] as String?,
+      totalFlats: (d['totalFlats'] as int?) ?? 0,
+      occupiedFlats: (d['occupiedFlats'] as int?) ?? 0,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
     );
   }
 
   Map<String, dynamic> toMap() => {
         'name': name,
-        'address': address,
-        'city': city,
-        'totalFlats': totalFlats,
-        'presidentId': presidentId,
+        'code': code,
+        'status': status,
         'presidentName': presidentName,
-        'amenities': amenities,
+        'presidentEmail': presidentEmail,
+        'presidentPhone': presidentPhone,
+        'presidentId': presidentId,
+        'totalFlats': totalFlats,
+        'occupiedFlats': occupiedFlats,
         'createdAt': Timestamp.fromDate(createdAt),
+        'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
       };
 
   ApartmentModel copyWith({
     String? presidentId,
     String? presidentName,
     bool clearPresident = false,
+    String? status,
+    String? code,
+    String? presidentEmail,
+    String? presidentPhone,
+    int? occupiedFlats,
+    DateTime? updatedAt,
   }) {
     return ApartmentModel(
       id: id,
       name: name,
-      address: address,
-      city: city,
-      totalFlats: totalFlats,
+      code: code ?? this.code,
+      status: status ?? this.status,
       presidentId: clearPresident ? null : (presidentId ?? this.presidentId),
-      presidentName: clearPresident ? null : (presidentName ?? this.presidentName),
-      amenities: amenities,
+      presidentName:
+          clearPresident ? null : (presidentName ?? this.presidentName),
+      presidentEmail: presidentEmail ?? this.presidentEmail,
+      presidentPhone: presidentPhone ?? this.presidentPhone,
+      totalFlats: totalFlats,
+      occupiedFlats: occupiedFlats ?? this.occupiedFlats,
       createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }
 
 class MockApartments {
-  // Mutable list so providers can add/update apartments at runtime.
   static final List<ApartmentModel> _list = [
     ApartmentModel(
       id: 'apt1',
       name: 'Samhith Residency',
-      address: '14, Jubilee Hills',
-      city: 'Hyderabad',
-      totalFlats: 10,
+      code: 'SAMH4721',
+      status: 'active',
       presidentId: 'u2',
-      amenities: ['Parking', 'Lift', 'Security', 'Garden', 'Gym'],
+      presidentName: 'G. Srikanth',
+      presidentEmail: 'admin@test.com',
+      totalFlats: 10,
+      occupiedFlats: 9,
       createdAt: DateTime(2021, 8, 15),
     ),
   ];
@@ -98,10 +122,12 @@ class MockApartments {
 
   static void add(ApartmentModel apt) => _list.add(apt);
 
-  static void assignPresident(String aptId, String presidentId, String presidentName) {
+  static void assignPresident(
+      String aptId, String presidentId, String presidentName) {
     final i = _list.indexWhere((a) => a.id == aptId);
     if (i != -1) {
-      _list[i] = _list[i].copyWith(presidentId: presidentId, presidentName: presidentName);
+      _list[i] =
+          _list[i].copyWith(presidentId: presidentId, presidentName: presidentName);
     }
   }
 

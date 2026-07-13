@@ -29,7 +29,6 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
   bool get isLoggedIn => _currentUser != null;
   UserRole? get role => _currentUser?.role;
-  bool get isFirstLogin => _currentUser?.isFirstLogin ?? false;
   /// True when this session was ended by a login from another device.
   /// LoginScreen reads this to show a one-time banner, then clears it.
   bool get sessionExpired => _sessionExpired;
@@ -127,7 +126,6 @@ class AuthProvider extends ChangeNotifier {
       return false;
     }
 
-    _currentUser = _currentUser!.copyWith(isFirstLogin: false);
     notifyListeners();
     return true;
   }

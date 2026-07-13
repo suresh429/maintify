@@ -6,6 +6,7 @@ import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../models/user_model.dart';
 import '../../providers/apartment_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/common_button.dart';
 
@@ -63,6 +64,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
           _selectedUserId!,
           selectedUser.name,
           oldPresidentId: oldPresidentId,
+          notifProvider: context.read<NotificationProvider>(),
         );
 
     if (!mounted) return;
@@ -222,7 +224,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                             ],
                           ),
                           Text(
-                            '${apt.totalFlats} flats · ${apt.city}',
+                            '${apt.totalFlats} flats',
                             style: AppTextStyles.caption(),
                           ),
                         ],

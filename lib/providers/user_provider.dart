@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../core/theme/role_theme.dart';
-import '../core/utils/app_utils.dart';
 import '../core/services/firestore_service.dart';
 
 class UserProvider extends ChangeNotifier {
@@ -126,101 +124,4 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Creates an admin user record in Firestore `pending_users`.
-  /// The Firebase Auth account is created on the user's first sign-in.
-  ({String id, String password}) createAdmin({
-    required String name,
-    required String email,
-    required String aptName,
-    required String aptId,
-    required String unit,
-  }) {
-    if (_users.any((u) =>
-        u.email.isNotEmpty &&
-        u.email.trim().toLowerCase() == email.trim().toLowerCase())) {
-      throw Exception('Email is already registered');
-    }
-
-    final words = name.trim().split(RegExp(r'\s+'));
-    final initials = words
-        .where((w) => w.isNotEmpty)
-        .take(2)
-        .map((w) => w[0].toUpperCase())
-        .join();
-
-    final password = AppUtils.generateAdminPassword(aptName);
-    final id = 'pending_${DateTime.now().millisecondsSinceEpoch}';
-
-    _fs.createPendingUser({
-      'name': name.trim(),
-      'email': email.trim().toLowerCase(),
-      'tempPassword': password,
-      'phone': '',
-      'role': UserRole.admin.name,
-      'apartmentId': aptId,
-      'unit': unit.trim(),
-      'avatarInitials':
-          initials.isEmpty ? name.trim()[0].toUpperCase() : initials,
-      'isActive': true,
-      'isFirstLogin': true,
-      'joinedAt': Timestamp.fromDate(DateTime.now()),
-    }).ignore();
-
-    notifyListeners();
-    return (id: id, password: password);
-  }
-
-  /// Adds a new resident via `pending_users`. Returns the generated password.
-  String addMember({
-    required String flatNumber,
-    required String name,
-    required String email,
-    required String aptId,
-    required int maxFlats,
-  }) {
-    final inApt = membersForApartment(aptId);
-
-    if (inApt.length >= maxFlats) {
-      throw Exception(
-          'All $maxFlats flats are occupied. Cannot add more members.');
-    }
-    if (inApt.any((u) => u.unit.trim() == flatNumber.trim())) {
-      throw Exception('Flat $flatNumber already has a member');
-    }
-
-    final trimmedEmail = email.trim().toLowerCase();
-    if (trimmedEmail.isNotEmpty &&
-        _users.any((u) =>
-            u.email.isNotEmpty &&
-            u.email.trim().toLowerCase() == trimmedEmail)) {
-      throw Exception('Email is already registered');
-    }
-
-    final words = name.trim().split(RegExp(r'\s+'));
-    final initials = words
-        .where((w) => w.isNotEmpty)
-        .take(2)
-        .map((w) => w[0].toUpperCase())
-        .join();
-
-    final password = AppUtils.generateUserPassword(name, flatNumber);
-
-    _fs.createPendingUser({
-      'name': name.trim(),
-      'email': trimmedEmail,
-      'tempPassword': password,
-      'phone': '',
-      'role': UserRole.user.name,
-      'apartmentId': aptId,
-      'unit': flatNumber.trim(),
-      'avatarInitials':
-          initials.isEmpty ? name.trim()[0].toUpperCase() : initials,
-      'isActive': true,
-      'isFirstLogin': true,
-      'joinedAt': Timestamp.fromDate(DateTime.now()),
-    }).ignore();
-
-    notifyListeners();
-    return password;
-  }
 }

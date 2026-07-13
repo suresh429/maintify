@@ -5,7 +5,6 @@ import '../models/bill_model.dart';
 import '../models/notification_model.dart';
 import '../models/user_model.dart';
 import '../core/services/firestore_service.dart';
-import '../core/theme/role_theme.dart';
 import 'notification_provider.dart';
 
 // ── Monthly grouping data classes (unchanged — UI depends on these) ───────────
@@ -617,18 +616,22 @@ class BillProvider extends ChangeNotifier {
 
     // ── Step 3: write all notification docs in parallel ───────────────────────
     final dueDateStr = '${dueDate.day}/${dueDate.month}/${dueDate.year}';
-    await Future.wait(
-      userAmounts.entries.map((entry) => _fs.addNotification({
-            'userId': entry.key,
-            'apartmentId': apartmentId,
-            'title': 'New Bill for $month',
-            'body': 'Your due amount is ₹${entry.value.toStringAsFixed(0)} — due by $dueDateStr.',
-            'type': NotificationType.bill,
-            'createdAt': FieldValue.serverTimestamp(),
-            'isRead': false,
-          })),
-    );
-    debugPrint('[FLOW] All ${userAmounts.length} notifications written');
+    try {
+      await Future.wait(
+        userAmounts.entries.map((entry) => _fs.addNotification({
+              'userId': entry.key,
+              'apartmentId': apartmentId,
+              'title': 'New Bill for $month',
+              'body': 'Your due amount is ₹${entry.value.toStringAsFixed(0)} — due by $dueDateStr.',
+              'type': NotificationType.bill,
+              'createdAt': FieldValue.serverTimestamp(),
+              'isRead': false,
+            })),
+      );
+      debugPrint('[FLOW] All ${userAmounts.length} notifications written');
+    } catch (e) {
+      debugPrint('[WARN] Bill notifications partially failed: $e');
+    }
 
     _isLoading = false;
     notifyListeners();
