@@ -14,7 +14,6 @@ import 'apartments_screen.dart';
 import 'assign_president_screen.dart';
 import 'reports_screen.dart';
 import '../../providers/notification_provider.dart';
-import '../shared/fcm_debug_screen.dart';
 import '../shared/notifications_screen.dart';
 import '../../widgets/logout_sheet.dart';
 
@@ -27,22 +26,20 @@ class SuperAdminDashboard extends StatefulWidget {
 }
 
 class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
-  int _drawerIndex = 0;
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  int _currentIndex = 0;
 
-  static const List<Map<String, dynamic>> _navItems = [
-    {'label': 'Dashboard', 'icon': Icons.dashboard_outlined},
-    {'label': 'Apartments', 'icon': Icons.apartment_outlined},
-    {'label': 'Assign President', 'icon': Icons.manage_accounts_outlined},
-    {'label': 'Reports', 'icon': Icons.bar_chart_outlined},
+  static const List<String> _titles = [
+    'Dashboard',
+    'Apartments',
+    'Assign President',
+    'Reports',
   ];
 
   @override
   void initState() {
     super.initState();
-    // president_registered → jump to Apartments drawer item (index 1).
     if (widget.notificationType == 'president_registered') {
-      _drawerIndex = 1;
+      _currentIndex = 1;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardProvider>().initialize();
@@ -50,7 +47,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   }
 
   Widget _buildBody() {
-    switch (_drawerIndex) {
+    switch (_currentIndex) {
       case 1:
         return const ApartmentsScreen();
       case 2:
@@ -68,24 +65,18 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     final auth = context.read<AuthProvider>();
 
     return Scaffold(
-      key: _scaffoldKey,
       backgroundColor: AppColors.lightGray,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu_rounded, color: Colors.white),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-        ),
         title: Text(
-          _navItems[_drawerIndex]['label'],
+          _titles[_currentIndex],
           style: AppTextStyles.heading3(color: Colors.white),
         ),
         actions: [
           Consumer<NotificationProvider>(
             builder: (context, notifProvider, _) {
-              final unread =
-                  notifProvider.unreadCount(UserRole.superAdmin);
+              final unread = notifProvider.unreadCount(UserRole.superAdmin);
               return SizedBox(
                 width: 48,
                 height: 48,
@@ -130,6 +121,18 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
               );
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.white),
+            tooltip: 'Logout',
+            onPressed: () async {
+              final confirm =
+                  await showLogoutSheet(context, UserRole.superAdmin);
+              if (confirm == true && mounted) {
+                auth.logout();
+                Navigator.pushReplacementNamed(context, '/login');
+              }
+            },
+          ),
           const SizedBox(width: 8),
         ],
         flexibleSpace: Container(
@@ -142,189 +145,43 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
           ),
         ),
       ),
-      drawer: _buildDrawer(theme, auth),
       body: _buildBody(),
-    );
-  }
-
-  Widget _buildDrawer(RoleTheme theme, AuthProvider auth) {
-    final user = auth.currentUser;
-    return Drawer(
-      child: Column(
-        children: [
-          // ── Gradient header ───────────────────────────────────────────
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 56, 20, 28),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: theme.gradient,
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (i) => setState(() => _currentIndex = i),
+          backgroundColor: Colors.white,
+          indicatorColor: theme.primary.withOpacity(0.12),
+          surfaceTintColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          elevation: 0,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard_rounded),
+              label: 'Dashboard',
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Circle avatar with initials
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: Colors.white.withOpacity(0.4), width: 2),
-                  ),
-                  child: Center(
-                    child: Text(
-                      user?.avatarInitials ?? 'SA',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  user?.name ?? 'Super Admin',
-                  style: AppTextStyles.subheading(color: Colors.white),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  user?.email ?? '',
-                  style: AppTextStyles.caption(
-                      color: Colors.white.withOpacity(0.75)),
-                ),
-                const SizedBox(height: 10),
-                // Role badge
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: Colors.white.withOpacity(0.35), width: 1),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.shield_outlined,
-                          color: Colors.white, size: 13),
-                      const SizedBox(width: 5),
-                      const Text(
-                        'Super Admin',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            NavigationDestination(
+              icon: Icon(Icons.apartment_outlined),
+              selectedIcon: Icon(Icons.apartment_rounded),
+              label: 'Apartments',
             ),
-          ),
-
-          // ── Nav items ─────────────────────────────────────────────────
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              children: [
-                ..._navItems.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final item = entry.value;
-                  final isSelected = _drawerIndex == i;
-                  return Container(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? theme.primary.withOpacity(0.1)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListTile(
-                      leading: Icon(
-                        item['icon'],
-                        color: isSelected
-                            ? theme.primary
-                            : AppColors.textSecondary,
-                        size: 22,
-                      ),
-                      title: Text(
-                        item['label'],
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 14,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                          color: isSelected
-                              ? theme.primary
-                              : AppColors.textPrimary,
-                        ),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      onTap: () {
-                        setState(() => _drawerIndex = i);
-                        Navigator.pop(context);
-                      },
-                    ),
-                  );
-                }),
-              ],
+            NavigationDestination(
+              icon: Icon(Icons.manage_accounts_outlined),
+              selectedIcon: Icon(Icons.manage_accounts_rounded),
+              label: 'Assign',
             ),
-          ),
-
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.developer_mode_rounded,
-                color: AppColors.textSecondary, size: 22),
-            title: const Text(
-              'FCM Debug',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: AppColors.textPrimary,
-              ),
+            NavigationDestination(
+              icon: Icon(Icons.bar_chart_outlined),
+              selectedIcon: Icon(Icons.bar_chart_rounded),
+              label: 'Reports',
             ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const FcmDebugScreen()),
-              );
-            },
-          ),
-          const Divider(height: 1),
-          SafeArea(
-            top: false,
-            child: ListTile(
-              leading:
-                  const Icon(Icons.logout_rounded, color: AppColors.overdue),
-              title: Text('Logout',
-                  style: AppTextStyles.bodyLarge(color: AppColors.overdue)),
-              onTap: () async {
-                final confirm =
-                    await showLogoutSheet(context, UserRole.superAdmin);
-                if (confirm == true && mounted) {
-                  context.read<AuthProvider>().logout();
-                  Navigator.pushReplacementNamed(context, '/login');
-                }
-              },
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -351,13 +208,12 @@ class _DashboardHome extends StatelessWidget {
             ? 'Good afternoon,'
             : 'Good evening,';
 
-    final bottomInset = MediaQuery.of(context).padding.bottom;
     return RefreshIndicator(
       color: theme.primary,
       onRefresh: () async => dashboard.refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

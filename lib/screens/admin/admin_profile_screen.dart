@@ -7,7 +7,6 @@ import '../../providers/auth_provider.dart';
 import '../../providers/apartment_provider.dart';
 import '../../widgets/change_password_sheet.dart';
 import '../../widgets/logout_sheet.dart';
-import '../shared/fcm_debug_screen.dart';
 import '../shared/notifications_screen.dart';
 import 'transfer_president_screen.dart';
 
@@ -152,6 +151,13 @@ class AdminProfileScreen extends StatelessWidget {
                         value: apt?.name ?? 'Unknown',
                         iconColor: theme.primary,
                       ),
+                      const _Divider(),
+                      _InfoTile(
+                        icon: Icons.tag_rounded,
+                        label: 'Apartment Code',
+                        value: apt?.code.isNotEmpty == true ? apt!.code : '—',
+                        iconColor: theme.primary,
+                      ),
                       if (user.unit.isNotEmpty) ...[
                         const _Divider(),
                         _InfoTile(
@@ -198,18 +204,6 @@ class AdminProfileScreen extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                               builder: (_) => const TransferPresidentScreen()),
-                        ),
-                      ),
-                      const _Divider(),
-                      _MenuTile(
-                        icon: Icons.developer_mode_rounded,
-                        label: 'FCM Debug',
-                        subtitle: 'Push notification test & token',
-                        iconColor: AppColors.blue,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const FcmDebugScreen()),
                         ),
                       ),
                       const _Divider(),

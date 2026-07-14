@@ -39,29 +39,6 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   int _currentIndex = 0;
 
-  static const _navItems = [
-    _NavItem(
-      icon: Icons.dashboard_outlined,
-      activeIcon: Icons.dashboard_rounded,
-      label: 'Home',
-    ),
-    _NavItem(
-      icon: Icons.people_outline_rounded,
-      activeIcon: Icons.people_rounded,
-      label: 'Users',
-    ),
-    _NavItem(
-      icon: Icons.receipt_long_outlined,
-      activeIcon: Icons.receipt_long_rounded,
-      label: 'Bills',
-    ),
-    _NavItem(
-      icon: Icons.chat_bubble_outline_rounded,
-      activeIcon: Icons.chat_bubble_rounded,
-      label: 'Complaints',
-    ),
-  ];
-
   static const _titles = ['Dashboard', 'Manage Users', 'Bills', 'Complaints'];
 
   late final List<Widget> _pages;
@@ -110,7 +87,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
       backgroundColor: AppColors.lightGray,
       appBar: _buildAppBar(theme),
       body: IndexedStack(index: _currentIndex, children: _pages),
-      bottomNavigationBar: _buildFloatingNav(theme),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (i) => setState(() => _currentIndex = i),
+          backgroundColor: Colors.white,
+          indicatorColor: theme.primary.withOpacity(0.12),
+          surfaceTintColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          elevation: 0,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard_rounded),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.people_outline_rounded),
+              selectedIcon: Icon(Icons.people_rounded),
+              label: 'Users',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long_rounded),
+              label: 'Bills',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.chat_bubble_outline_rounded),
+              selectedIcon: Icon(Icons.chat_bubble_rounded),
+              label: 'Complaints',
+            ),
+          ],
+        ),
+      ),
       floatingActionButton: _currentIndex == 0 ? _buildFAB(theme) : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
@@ -260,51 +273,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildFloatingNav(RoleTheme theme) {
-    // viewPadding.bottom is the system navigation bar height (3-button nav ~48 dp,
-    // gesture nav 0–15 dp).  Unlike padding.bottom, viewPadding is NOT zeroed-out
-    // by Scaffold, so we must add it here to keep the floating nav above the bar.
-    final sysNavHeight = MediaQuery.of(context).viewPadding.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 8, 20, 16 + sysNavHeight),
-      child: Container(
-        height: 64,
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.12),
-              blurRadius: 24,
-              spreadRadius: 0,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          children: _navItems.asMap().entries.map((e) {
-            final i = e.key;
-            final item = e.value;
-            final isActive = _currentIndex == i;
-
-            return Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => setState(() => _currentIndex = i),
-                child: _NavTile(
-                  item: item,
-                  isActive: isActive,
-                  activeColor: theme.primary,
-                  isFirst: i == 0,
-                  isLast: i == _navItems.length - 1,
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
 }
 
 // ── Admin Home tab ────────────────────────────────────────────────────────────
@@ -343,7 +311,7 @@ class _AdminHome extends StatelessWidget {
       onRefresh: () async => dashboard.refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1001,77 +969,6 @@ class _HeroBannerStat extends StatelessWidget {
               color: Colors.white.withOpacity(0.7),
             )),
       ],
-    );
-  }
-}
-
-// ── Shared nav components ─────────────────────────────────────────────────────
-
-class _NavItem {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  const _NavItem(
-      {required this.icon,
-      required this.activeIcon,
-      required this.label});
-}
-
-class _NavTile extends StatelessWidget {
-  final _NavItem item;
-  final bool isActive;
-  final Color activeColor;
-  final bool isFirst;
-  final bool isLast;
-
-  const _NavTile({
-    required this.item,
-    required this.isActive,
-    required this.activeColor,
-    this.isFirst = false,
-    this.isLast = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeInOut,
-      margin: EdgeInsets.fromLTRB(
-        isFirst ? 6 : 2,
-        6,
-        isLast ? 6 : 2,
-        6,
-      ),
-      decoration: BoxDecoration(
-        color: isActive ? activeColor.withOpacity(0.1) : Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: Icon(
-              isActive ? item.activeIcon : item.icon,
-              key: ValueKey(isActive),
-              color: isActive ? activeColor : const Color(0xFF94A3B8),
-              size: 22,
-            ),
-          ),
-          const SizedBox(height: 3),
-          AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 200),
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-              color: isActive ? activeColor : const Color(0xFF94A3B8),
-            ),
-            child: Text(item.label),
-          ),
-        ],
-      ),
     );
   }
 }

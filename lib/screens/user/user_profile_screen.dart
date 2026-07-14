@@ -10,8 +10,6 @@ import 'complaints_screen.dart';
 import 'i_paid_screen.dart';
 import '../../widgets/change_password_sheet.dart';
 import '../../widgets/logout_sheet.dart';
-import '../shared/fcm_debug_screen.dart';
-
 class UserProfileScreen extends StatelessWidget {
   const UserProfileScreen({super.key});
 
@@ -109,6 +107,9 @@ class UserProfileScreen extends StatelessWidget {
             children: [
               _InfoRow(label: 'Name', value: apt?.name ?? '—'),
               _InfoRow(
+                  label: 'Code',
+                  value: apt?.code.isNotEmpty == true ? apt!.code : '—'),
+              _InfoRow(
                   label: 'Total Flats',
                   value: '${apt?.totalFlats ?? 0} flats'),
               _InfoRow(
@@ -194,18 +195,6 @@ class UserProfileScreen extends StatelessWidget {
                   subtitle: user.phone.isNotEmpty ? user.phone : '—',
                   iconColor: AppColors.textSecondary,
                   onTap: null,
-                ),
-                const Divider(height: 1, indent: 56, color: Color(0xFFE0E0E0)),
-                // FCM Debug
-                _MenuTile(
-                  icon: Icons.developer_mode_rounded,
-                  label: 'FCM Debug',
-                  subtitle: 'Push notification test & token',
-                  iconColor: AppColors.blue,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const FcmDebugScreen()),
-                  ),
                 ),
                 const Divider(height: 1, indent: 56, color: Color(0xFFE0E0E0)),
                 // Logout
