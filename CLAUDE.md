@@ -42,7 +42,7 @@ Three roles drive the entire app structure: `superAdmin`, `admin` (apartment pre
 
 ### Provider Stack
 
-All 8 providers registered at root in `main.dart`:
+All 9 providers registered at root in `main.dart`. Provider files live in `lib/` root (e.g. `lib/auth_provider.dart`):
 
 | Provider | Responsibility |
 |---|---|
@@ -54,6 +54,7 @@ All 8 providers registered at root in `main.dart`:
 | `ComplaintProvider` | Complaint lifecycle + message threads |
 | `MeetingProvider` | Meeting CRUD, schedules notifications via `NotificationProvider` |
 | `NotificationProvider` | In-app notifications, Firestore-backed, `startListening(role)` |
+| `RegistrationProvider` | Self-registration flows for president and resident; admin approval/rejection of resident requests |
 
 Providers that use Firestore streams call `startListening(...)` from `DashboardRouter` after login. They cache data locally and call `notifyListeners()` on stream updates.
 
@@ -61,11 +62,12 @@ Providers that use Firestore streams call `startListening(...)` from `DashboardR
 
 All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `MockBillData`) exist **only for `DashboardProvider`**, which cannot hold Firestore streams of its own. Every provider's stream listener calls `MockFoo.replaceAll(list)` to keep statics in sync.
 
-**Models** live directly in `lib/` (e.g. `lib/user_model.dart`, `lib/bill_model.dart`) — there is no `lib/models/` subdirectory.
+**Models** live in `lib/models/` (e.g. `lib/models/user_model.dart`, `lib/models/bill_model.dart`).
 
 **Key Firestore collections:**
 - `users/` — real Firebase Auth UID as document ID
 - `pending_users/` — admin-created users before their first login (no Auth account yet)
+- `resident_requests/` — self-registered residents awaiting admin approval
 - `apartments/`, `bills/`, `payments/`, `complaints/`, `meetings/`, `notifications/`
 - `_meta/seeded` — guards `DbSeeder` from re-running
 
@@ -104,6 +106,11 @@ Login goes through `FirebaseAuthService.signIn()`:
 
 `UserProvider.createAdmin(...)` and `addMember(...)` write to `pending_users` (not `users`). They return a generated password to show in `AppUtils.showGeneratedCredentials()`. Password generation: `AppUtils.generateAdminPassword(aptName)`, `generateUserPassword(name, flatNo)`. `AppUtils.displayFirstName(fullName)` strips leading initials (e.g. "G. Srikanth" → "Srikanth").
 
+**Self-registration flows** (via `RegistrationProvider`):
+
+- **President signup** (`lib/screens/auth/president_signup_screen.dart`): Validates apartment code → checks email matches `apt.presidentEmail` → calls `FirebaseAuthService.registerPresident()` → sets apartment status to `'active'` → notifies all superAdmins.
+- **Resident signup** (`lib/screens/auth/resident_signup_screen.dart`): Validates apartment code → creates Firebase Auth account (then signs out) → writes `resident_requests/` doc with `status: 'pending'` → notifies the apartment admin. Admin approves/rejects from `admin/resident_requests_screen.dart`. On approval: `users/` doc is created and `occupiedFlats` is incremented. The Firebase Auth account is created at signup time; rejection leaves the orphaned Auth account but no `users/` doc (user cannot log in).
+
 ### President Assignment
 
 President data is **denormalized** into the apartment document for consistent reads:
@@ -127,9 +134,11 @@ apartments/{id}:
 | Service | Purpose |
 |---|---|
 | `FirestoreService` | Singleton — all collection reads/writes. Providers never import `FirebaseFirestore` directly. Includes `updateBill`, `updatePayment`, `deleteBill`, `deleteAllPaymentsForBill`. |
-| `FirebaseAuthService` | Wraps `FirebaseAuth`. Handles sign-in, pending-user promotion, password change, reset email. |
-| `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). Uses `navigatorKey` for out-of-tree navigation on notification tap. |
+| `FirebaseAuthService` | Wraps `FirebaseAuth`. Handles sign-in, pending-user promotion, password change, reset email, `registerPresident`, `registerResident`. |
+| `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). Uses `flutter_local_notifications` to display foreground messages. Uses `navigatorKey` for out-of-tree navigation on notification tap. |
 | `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded`. |
+
+**`AppUtils`** (`lib/core/utils/app_utils.dart`): Static helpers — `formatCurrency`, `formatDate`, `formatMonthYear`, `formatDateTime`, `timeAgo`, `showSnackBar`, `displayFirstName`, `showConfirmDialog`, `showGeneratedCredentials`, `generateAdminPassword`, `generateUserPassword`. `showConfirmDialog` renders a bottom-sheet style confirmation with customizable `confirmColor`.
 
 **`navigatorKey`** (`lib/core/navigation_key.dart`): App-wide `GlobalKey<NavigatorState>` registered in `main.dart`. Required for `FcmService` to navigate when no `BuildContext` is available.
 
@@ -142,8 +151,13 @@ screens/
 ├── login_screen.dart              ← AppTextField + Forgot Password bottom sheet
 ├── dashboard_router.dart          ← Role router + _FirstLoginWrapper + _StreamStarter (manages listener lifecycle) + provider startListening calls
 ├── splash_screen.dart
-├── admin/                         ← 8 screens: dashboard, create-bill, edit-bill-sheet, complaints,
-│                                    manage-users, mark-paid, monthly-bill-detail, transfer-president
+├── auth/
+│   ├── signup_screen.dart         ← Role selector (president vs resident)
+│   ├── president_signup_screen.dart ← Apartment code + email auth validation
+│   └── resident_signup_screen.dart  ← Signup creates Auth account; request pending until admin approves
+├── admin/                         ← 10 screens: dashboard, create-bill, edit-bill-sheet, complaints,
+│                                    manage-users, mark-paid, monthly-bill-detail, transfer-president,
+│                                    resident-requests, admin-profile
 ├── super_admin/                   ← 6 screens: dashboard, apartments, reports, assign-admin,
 │                                    assign-president, create-apartment
 ├── user/                          ← 7 screens: dashboard, bills, monthly-bill-detail,

@@ -29,7 +29,8 @@ import '../shared/notifications_screen.dart';
 import 'edit_bill_sheet.dart';
 
 class AdminDashboard extends StatefulWidget {
-  const AdminDashboard({super.key});
+  final String? notificationType;
+  const AdminDashboard({super.key, this.notificationType});
 
   @override
   State<AdminDashboard> createState() => _AdminDashboardState();
@@ -65,9 +66,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   late final List<Widget> _pages;
 
+  // Maps a push notification type to the correct bottom-nav tab index.
+  // bill / payment → Bills (2); complaint → Complaints (3); others → Home (0).
+  static int _tabForType(String? type) {
+    switch (type) {
+      case 'bill':
+      case 'payment':
+        return 2;
+      case 'complaint':
+        return 3;
+      default:
+        return 0;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _currentIndex = _tabForType(widget.notificationType);
     _pages = const [
       _AdminHome(),
       ManageUsersScreen(),
@@ -76,6 +92,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardProvider>().initialize();
+      // resident_request tapped → open the requests screen on top of Home tab.
+      if (widget.notificationType == 'resident_request') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ResidentRequestsScreen()),
+        );
+      }
     });
   }
 

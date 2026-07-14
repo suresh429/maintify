@@ -17,14 +17,14 @@ import 'login_screen.dart';
 class DashboardRouter extends StatelessWidget {
   const DashboardRouter({super.key});
 
-  Widget _dashboardFor(UserRole? role) {
+  Widget _dashboardFor(UserRole? role, {String? notificationType}) {
     switch (role) {
       case UserRole.superAdmin:
-        return const SuperAdminDashboard();
+        return SuperAdminDashboard(notificationType: notificationType);
       case UserRole.admin:
-        return const AdminDashboard();
+        return AdminDashboard(notificationType: notificationType);
       case UserRole.user:
-        return const UserDashboard();
+        return UserDashboard(notificationType: notificationType);
       default:
         return const LoginScreen();
     }
@@ -38,9 +38,15 @@ class DashboardRouter extends StatelessWidget {
       return const LoginScreen();
     }
 
+    // Read notification type passed by FcmService when a push notification is tapped.
+    final notificationType =
+        ModalRoute.of(context)?.settings.arguments as String?;
+
     // Wrap with _StreamStarter so all Firestore listeners are started exactly
     // once per authenticated session (it's idempotent thanks to _started flag).
-    return _StreamStarter(child: _dashboardFor(auth.role));
+    return _StreamStarter(
+      child: _dashboardFor(auth.role, notificationType: notificationType),
+    );
   }
 }
 

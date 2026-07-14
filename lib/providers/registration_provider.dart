@@ -32,10 +32,13 @@ class RegistrationProvider extends ChangeNotifier {
   /// Start listening to resident requests for an apartment (called by admin).
   void startListeningRequests(String aptId) {
     _requestsSub?.cancel();
-    _requestsSub = _fs.streamResidentRequests(aptId).listen((list) {
-      _requests = list;
-      notifyListeners();
-    });
+    _requestsSub = _fs.streamResidentRequests(aptId).listen(
+      (list) {
+        _requests = list;
+        notifyListeners();
+      },
+      onError: (e) => debugPrint('[REALTIME] Resident requests stream ERROR (apt $aptId): $e'),
+    );
   }
 
   @override

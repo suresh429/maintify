@@ -19,7 +19,8 @@ import '../shared/notifications_screen.dart';
 import '../../widgets/logout_sheet.dart';
 
 class SuperAdminDashboard extends StatefulWidget {
-  const SuperAdminDashboard({super.key});
+  final String? notificationType;
+  const SuperAdminDashboard({super.key, this.notificationType});
 
   @override
   State<SuperAdminDashboard> createState() => _SuperAdminDashboardState();
@@ -39,6 +40,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   @override
   void initState() {
     super.initState();
+    // president_registered → jump to Apartments drawer item (index 1).
+    if (widget.notificationType == 'president_registered') {
+      _drawerIndex = 1;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardProvider>().initialize();
     });

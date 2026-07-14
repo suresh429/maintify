@@ -21,7 +21,8 @@ import '../../models/meeting_model.dart';
 import '../shared/notifications_screen.dart';
 
 class UserDashboard extends StatefulWidget {
-  const UserDashboard({super.key});
+  final String? notificationType;
+  const UserDashboard({super.key, this.notificationType});
 
   @override
   State<UserDashboard> createState() => _UserDashboardState();
@@ -57,9 +58,23 @@ class _UserDashboardState extends State<UserDashboard> {
 
   late final List<Widget> _pages;
 
+  // Maps a push notification type to the correct bottom-nav tab index.
+  // bill → Bills (1); payment → Payments (2); others → Home (0).
+  static int _tabForType(String? type) {
+    switch (type) {
+      case 'bill':
+        return 1;
+      case 'payment':
+        return 2;
+      default:
+        return 0;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _currentIndex = _tabForType(widget.notificationType);
     _pages = const [
       _UserHome(),
       BillsScreen(),

@@ -1,13 +1,6 @@
 {
   "indexes": [
     {
-      "collectionGroup": "apartments",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "createdAt", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "bills",
       "queryScope": "COLLECTION",
       "fields": [

@@ -121,9 +121,13 @@ class FcmService {
       settings,
       onDidReceiveNotificationResponse: (details) {
         debugPrint('[FCM] Local notification tapped: payload=${details.payload}');
-        // Navigate to dashboard when user taps a local (foreground) notification
-        navigatorKey.currentState
-            ?.pushNamedAndRemoveUntil('/dashboard', (r) => false);
+        // Pass the notification type (stored as payload) so DashboardRouter
+        // can deep-link to the correct tab/screen.
+        navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          '/dashboard',
+          (r) => false,
+          arguments: details.payload,
+        );
       },
     );
 
@@ -265,9 +269,12 @@ class FcmService {
     final type = message.data['type'] as String?;
     debugPrint('[FCM] Notification tapped — type: $type | data: ${message.data}');
 
-    // Navigate to role-correct dashboard. The DashboardRouter will show the
-    // relevant tab/screen. Deep-link to specific tabs can be added by passing
-    // route arguments once per-role tab controllers are promoted to globals.
-    navigator.pushNamedAndRemoveUntil('/dashboard', (route) => false);
+    // Navigate to role-correct dashboard, passing the notification type as a
+    // route argument so DashboardRouter can deep-link to the correct tab/screen.
+    navigator.pushNamedAndRemoveUntil(
+      '/dashboard',
+      (route) => false,
+      arguments: type,
+    );
   }
 }
