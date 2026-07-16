@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Maintify Privacy Policy</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f5f7fb;
+            color: #333;
+            line-height: 1.7;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #3B82F6, #1E3A8A);
+            color: white;
+            text-align: center;
+            padding: 70px 20px;
+        }
+
+        .hero h1 {
+            font-size: 42px;
+            margin-bottom: 10px;
+        }
+
+        .hero p {
+            font-size: 18px;
+            opacity: .9;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: -40px auto 50px;
+            background: white;
+            border-radius: 18px;
+            padding: 40px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, .08);
+        }
+
+        h2 {
+            color: #1E3A8A;
+            margin-top: 30px;
+            margin-bottom: 12px;
+            font-size: 24px;
+        }
+
+        p {
+            margin-bottom: 18px;
+        }
+
+        ul {
+            padding-left: 25px;
+            margin-bottom: 25px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        .contact {
+            background: #EEF5FF;
+            border-left: 5px solid #3B82F6;
+            padding: 18px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .footer {
+            text-align: center;
+            color: #777;
+            padding: 25px;
+            font-size: 14px;
+        }
+
+        @media (max-width:768px) {
+
+            .hero h1 {
+                font-size: 30px;
+            }
+
+            .container {
+                margin: -25px 15px 30px;
+                padding: 25px;
+            }
+
+            h2 {
+                font-size: 22px;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="hero">
+        <h1>Privacy Policy</h1>
+        <p>Maintify – Manage. Maintain. Simplify.</p>
+    </div>
+
+    <div class="container">
+
+        <p>
+            <strong>Maintify</strong> is an apartment management application designed to manage
+            residents, bills, and maintenance tracking.
+        </p>
+
+        <h2>Information We Collect</h2>
+
+        <ul>
+            <li>Name and basic user details</li>
+            <li>Apartment and unit information</li>
+        </ul>
+
+        <h2>We Do NOT Collect</h2>
+
+        <ul>
+            <li>Payment or financial data</li>
+        </ul>
+
+        <h2>How We Use Information</h2>
+
+        <ul>
+            <li>Manage apartment records</li>
+            <li>Show maintenance and bill details</li>
+            <li>Send notifications</li>
+        </ul>
+
+        <h2>Data Storage</h2>
+
+        <p>
+            Data is stored securely using Firebase services.
+        </p>
+
+        <h2>Third-Party Services</h2>
+
+        <ul>
+            <li>Firebase Authentication</li>
+            <li>Firebase Firestore</li>
+            <li>Firebase Cloud Messaging</li>
+        </ul>
+
+        <h2>User Control</h2>
+
+        <p>
+            Users can contact the apartment administrator to request updates
+            or removal of their personal information.
+        </p>
+
+        <h2>Children's Privacy</h2>
+
+        <p>
+            Maintify is not intended for children under the age of 13.
+        </p>
+
+        <h2>Contact</h2>
+
+        <div class="contact">
+            <strong>Email</strong><br>
+            ksuresh.unique@gmail.com
+        </div>
+
+        <h2>Effective Date</h2>
+
+        <p>2026</p>
+
+    </div>
+
+    <div class="footer">
+        © 2026 Maintify. All Rights Reserved.
+    </div>
+
+</body>
+
+</html>

@@ -50,7 +50,7 @@ All 9 providers registered at root in `main.dart`. Provider files live in `lib/`
 | `ApartmentProvider` | Apartment CRUD, president assignment (batch writes), `pending_*` migration |
 | `DashboardProvider` | Aggregated stats — reads from `MockXxx` statics (kept in sync by other providers via `replaceAll()`) |
 | `BillProvider` | Bills (apartment-wide) and payments (per-flat), Firestore streams |
-| `UserProvider` | Member filtering, search, `createAdmin`, `addMember` — writes to `pending_users` collection |
+| `UserProvider` | Member filtering/search (`searchUsers`, `residentsForApartment`, `membersForApartment`), `toggleUserStatus`, `updatePresidentRoles` |
 | `ComplaintProvider` | Complaint lifecycle + message threads |
 | `MeetingProvider` | Meeting CRUD, schedules notifications via `NotificationProvider` |
 | `NotificationProvider` | In-app notifications, Firestore-backed, `startListening(role)` |
@@ -66,7 +66,6 @@ All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `
 
 **Key Firestore collections:**
 - `users/` — real Firebase Auth UID as document ID
-- `pending_users/` — admin-created users before their first login (no Auth account yet)
 - `resident_requests/` — self-registered residents awaiting admin approval
 - `apartments/`, `bills/`, `payments/`, `complaints/`, `meetings/`, `notifications/`
 - `_meta/seeded` — guards `DbSeeder` from re-running
@@ -95,16 +94,9 @@ All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `
 
 ### Authentication & User Creation Flow
 
-Login goes through `FirebaseAuthService.signIn()`:
-1. Tries normal Firebase Auth sign-in
-2. If `user-not-found` / `invalid-credential` → calls `_promotePendingUser()`:
-   - Finds user in `pending_users` by email + tempPassword
-   - Creates Firebase Auth account → gets real UID
-   - Writes `users/{realUid}` doc (drops `tempPassword`, sets `isFirstLogin: true`)
-   - **If role == admin**: patches `apartments/{aptId}` with `presidentId: realUid, presidentName: name`
-   - Deletes the `pending_users` doc
+Login goes through `FirebaseAuthService.signIn()` → standard Firebase Auth. On success, `AuthProvider` writes a unique `sessionId` (timestamp-based) to `users/{uid}.activeSessionId` in Firestore and stores it locally in Hive (`session_{uid}`). A real-time listener (`_startSessionListener`) watches for changes — if another device logs in and overwrites the Firestore sessionId, this device is force-logged out and `sessionExpired` is set to `true`. `LoginScreen` reads this flag to show a one-time "signed out from another device" banner, then calls `clearSessionExpired()`.
 
-`UserProvider.createAdmin(...)` and `addMember(...)` write to `pending_users` (not `users`). They return a generated password to show in `AppUtils.showGeneratedCredentials()`. Password generation: `AppUtils.generateAdminPassword(aptName)`, `generateUserPassword(name, flatNo)`. `AppUtils.displayFirstName(fullName)` strips leading initials (e.g. "G. Srikanth" → "Srikanth").
+`AppUtils.displayFirstName(fullName)` strips leading initials (e.g. "G. Srikanth" → "Srikanth").
 
 **Self-registration flows** (via `RegistrationProvider`):
 
@@ -125,7 +117,7 @@ apartments/{id}:
 
 `ApartmentProvider.assignPresident(aptId, newPresidentId, newPresidentName, {oldPresidentId})` uses a single `WriteBatch` via `FirestoreService.assignPresidentBatch()` to atomically: promote new president, demote old president, update apartment fields.
 
-**`createApartment()` never accepts `presidentId`** — the initial president is stored as `presidentName` only (null presidentId) because the admin doesn't have a real UID until first login.
+**`createApartment()` never accepts `presidentId`** — the initial president is stored as `presidentName` only (null presidentId) because the president doesn't have a real UID until they complete the president signup flow.
 
 **Migration:** `ApartmentProvider.startListening()` detects any apartment with a `pending_*` presidentId and auto-heals it by querying `users/` for the real admin.
 
@@ -134,15 +126,15 @@ apartments/{id}:
 | Service | Purpose |
 |---|---|
 | `FirestoreService` | Singleton — all collection reads/writes. Providers never import `FirebaseFirestore` directly. Includes `updateBill`, `updatePayment`, `deleteBill`, `deleteAllPaymentsForBill`. |
-| `FirebaseAuthService` | Wraps `FirebaseAuth`. Handles sign-in, pending-user promotion, password change, reset email, `registerPresident`, `registerResident`. |
+| `FirebaseAuthService` | Wraps `FirebaseAuth`. Handles sign-in, password change, reset email, `registerPresident`, `registerResident`. |
 | `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). Uses `flutter_local_notifications` to display foreground messages. Uses `navigatorKey` for out-of-tree navigation on notification tap. |
 | `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded`. |
 
-**`AppUtils`** (`lib/core/utils/app_utils.dart`): Static helpers — `formatCurrency`, `formatDate`, `formatMonthYear`, `formatDateTime`, `timeAgo`, `showSnackBar`, `displayFirstName`, `showConfirmDialog`, `showGeneratedCredentials`, `generateAdminPassword`, `generateUserPassword`. `showConfirmDialog` renders a bottom-sheet style confirmation with customizable `confirmColor`.
+**`AppUtils`** (`lib/core/utils/app_utils.dart`): Static helpers — `formatCurrency`, `formatDate`, `formatMonthYear`, `formatDateTime`, `timeAgo`, `showSnackBar` (accepts optional `color` override), `displayFirstName`, `showConfirmDialog`. `showConfirmDialog` renders a bottom-sheet style confirmation with customizable `confirmColor`.
 
 **`navigatorKey`** (`lib/core/navigation_key.dart`): App-wide `GlobalKey<NavigatorState>` registered in `main.dart`. Required for `FcmService` to navigate when no `BuildContext` is available.
 
-**Hive session persistence:** `AuthProvider` uses a Hive box named `'session'` (opened in `main.dart`) to persist `isLoggedIn` and `role` keys across cold starts. On login these are written; on logout/password-change they are deleted. `AuthProvider` reads this box at startup to restore session state before Firebase's async auth state resolves.
+**Hive session persistence:** `AuthProvider` uses a Hive box named `'session'` (opened in `main.dart`) to persist `isLoggedIn`, `role`, and `session_{uid}` keys across cold starts. On login these are written; on logout they are deleted. `tryRestoreSession()` (called from `SplashScreen`) re-hydrates `_currentUser` from Firestore and re-starts the session listener.
 
 ### Screen Layout
 
@@ -164,7 +156,8 @@ screens/
 │                                    payment-history, i-paid, complaints, profile
 └── shared/
     ├── chat_screen.dart           ← Complaint message threads
-    └── notifications_screen.dart
+    ├── notifications_screen.dart
+    └── fcm_debug_screen.dart      ← Dev tool: shows device FCM token + test triggers for all 9 notification types
 ```
 
 ### Design System
@@ -199,6 +192,7 @@ Always check before building a new component:
 | `ChatBubble` / `ChatInputField` | Complaint chat UI |
 | `ScheduleMeetingSheet` | Bottom sheet for scheduling meetings |
 | `LogoutSheet` | Confirmation bottom sheet for logout |
+| `EmptyState` | Empty-state placeholder with icon, title, subtitle, and optional action button |
 
 ### Bottom Sheet Rules
 
