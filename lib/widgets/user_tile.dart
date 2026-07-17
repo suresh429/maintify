@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../core/theme/app_text_styles.dart';
-import '../core/theme/app_colors.dart';
 import '../core/theme/role_theme.dart';
 
 class UserTile extends StatelessWidget {
@@ -20,18 +19,21 @@ class UserTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = RoleTheme.of(user.role);
+    final roleTheme = RoleTheme.of(user.role);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -44,7 +46,7 @@ class UserTile extends StatelessWidget {
               height: 46,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: theme.gradient,
+                  colors: roleTheme.gradient,
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
@@ -68,8 +70,7 @@ class UserTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(user.name,
-                      style: AppTextStyles.subheading(
-                          color: AppColors.textPrimary)),
+                      style: AppTextStyles.subheading(color: cs.onSurface)),
                   const SizedBox(height: 3),
                   Row(
                     children: [
@@ -77,12 +78,12 @@ class UserTile extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: theme.lightBackground,
+                          color: roleTheme.effectivePrimary(context).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           user.unit,
-                          style: AppTextStyles.caption(color: theme.primary)
+                          style: AppTextStyles.caption(color: roleTheme.effectivePrimary(context))
                               .copyWith(fontWeight: FontWeight.w600),
                         ),
                       ),
@@ -90,7 +91,8 @@ class UserTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           subtitle ?? user.email,
-                          style: AppTextStyles.caption(),
+                          style: AppTextStyles.caption(
+                              color: cs.onSurfaceVariant),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -100,10 +102,11 @@ class UserTile extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null) trailing!
+            if (trailing != null)
+              trailing!
             else
               Icon(Icons.chevron_right_rounded,
-                  color: AppColors.textSecondary, size: 20),
+                  color: cs.onSurfaceVariant, size: 20),
           ],
         ),
       ),

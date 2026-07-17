@@ -42,7 +42,7 @@ Three roles drive the entire app structure: `superAdmin`, `admin` (apartment pre
 
 ### Provider Stack
 
-All 9 providers registered at root in `main.dart`. Provider files live in `lib/` root (e.g. `lib/auth_provider.dart`):
+All 10 providers registered at root in `main.dart`. Provider files live in `lib/` root (e.g. `lib/auth_provider.dart`) except `ThemeProvider` which is at `lib/providers/theme_provider.dart`:
 
 | Provider | Responsibility |
 |---|---|
@@ -55,6 +55,7 @@ All 9 providers registered at root in `main.dart`. Provider files live in `lib/`
 | `MeetingProvider` | Meeting CRUD, schedules notifications via `NotificationProvider` |
 | `NotificationProvider` | In-app notifications, Firestore-backed, `startListening(role)` |
 | `RegistrationProvider` | Self-registration flows for president and resident; admin approval/rejection of resident requests |
+| `ThemeProvider` | Dark/light mode toggle; persists `isDarkMode` flag to Hive `'session'` box under key `isDarkMode` |
 
 Providers that use Firestore streams call `startListening(...)` from `DashboardRouter` after login. They cache data locally and call `notifyListeners()` on stream updates.
 
@@ -167,6 +168,7 @@ screens/
   - `AppColors.paid` = `#22C55E` — green, **status indicators only** (paid bills, success snackbars)
   - `AppColors.green` = `#C39A51` — golden/amber, **not for payment status**
   - Role gradients: `superAdminGradient` (violet), `adminGradient` (blue), `userGradient` (gold → dark navy)
+  - Dark mode palette: `darkBackground` (`#0F172A`), `darkSurface` (`#1E293B`), `darkSurfaceVariant` (`#263045`), `darkBorder` (`#334155`), `darkTextPrimary` (`#F1F5F9`), `darkTextSecondary` (`#94A3B8`)
 - **Role theming:** `RoleTheme.of(UserRole.x)` → `.gradient`, `.primary`, `.secondary`
 - **Text styles:** `AppTextStyles` in `lib/core/theme/app_text_styles.dart` — use `AppTextStyles.heading1/2/3()`, `.subheading()`, `.bodyLarge/Medium/Small()`, `.label()`, `.caption()`, `.amount()`, `.buttonText()`. All accept an optional `color` override.
 - **Spacing/constants:** `AppConstants` in `lib/core/constants/app_constants.dart`

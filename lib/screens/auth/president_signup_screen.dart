@@ -90,10 +90,12 @@ class _PresidentSignupScreenState extends State<PresidentSignupScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       isDismissible: false,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      builder: (ctx) {
+        final sheetCs = Theme.of(ctx).colorScheme;
+        return Container(
+        decoration: BoxDecoration(
+          color: sheetCs.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
         child: Column(
@@ -103,7 +105,7 @@ class _PresidentSignupScreenState extends State<PresidentSignupScreen>
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: sheetCs.outlineVariant,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -123,14 +125,14 @@ class _PresidentSignupScreenState extends State<PresidentSignupScreen>
             const SizedBox(height: 20),
             Text(
               'Registration Complete!',
-              style: AppTextStyles.heading3(),
+              style: AppTextStyles.heading3(color: sheetCs.onSurface),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'You have successfully registered as the apartment president. '
               'Please log in with your email and password to access your dashboard.',
-              style: AppTextStyles.bodyMedium(),
+              style: AppTextStyles.bodyMedium(color: sheetCs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 28),
@@ -148,12 +150,15 @@ class _PresidentSignupScreenState extends State<PresidentSignupScreen>
             ),
           ],
         ),
-      ),
+      );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: Stack(
         children: [
@@ -228,11 +233,11 @@ class _PresidentSignupScreenState extends State<PresidentSignupScreen>
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: AppColors.white,
+                          color: cs.surface,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withOpacity(isDark ? 0.4 : 0.1),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -263,9 +268,9 @@ class _PresidentSignupScreenState extends State<PresidentSignupScreen>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text('President Sign Up',
-                                        style: AppTextStyles.heading3()),
+                                        style: AppTextStyles.heading3(color: cs.onSurface)),
                                     Text('Register as apartment president',
-                                        style: AppTextStyles.bodySmall()),
+                                        style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant)),
                                   ],
                                 ),
                               ],

@@ -37,7 +37,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         role != null ? notifProvider.forRole(role) : <NotificationModel>[];
 
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -75,6 +74,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildEmpty() {
+    final cs = Theme.of(context).colorScheme;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -82,16 +82,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.lightGray,
+              color: cs.surfaceContainerHighest,
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.notifications_off_outlined,
                 size: 48, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
-          Text('No Notifications', style: AppTextStyles.heading3()),
+          Text('No Notifications', style: AppTextStyles.heading3(color: cs.onSurface)),
           const SizedBox(height: 6),
-          Text('You\'re all caught up!', style: AppTextStyles.caption()),
+          Text('You\'re all caught up!', style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
         ],
       ),
     );
@@ -122,39 +122,42 @@ class _NotificationTile extends StatelessWidget {
     }
   }
 
-  Color _colorForType(String type) {
+  Color _colorForType(String type, bool isDark) {
     switch (type) {
       case NotificationType.bill:
         return AppColors.pending;
       case NotificationType.payment:
         return AppColors.paid;
       case NotificationType.complaint:
-        return AppColors.blue;
+        return isDark ? const Color(0xFF60A5FA) : AppColors.blue;
       case NotificationType.meeting:
-        return AppColors.purple;
+        return isDark ? const Color(0xFFA78BFA) : AppColors.purple;
       default:
-        return AppColors.purple;
+        return isDark ? const Color(0xFFA78BFA) : AppColors.purple;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final typeColor = _colorForType(notification.type);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = theme.effectivePrimary(context);
+    final typeColor = _colorForType(notification.type, isDark);
     final isUnread = !notification.isRead;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isUnread
-            ? theme.primary.withOpacity(0.04)
-            : AppColors.white,
+            ? accent.withOpacity(0.04)
+            : cs.surface,
         borderRadius: BorderRadius.circular(14),
         border: isUnread
-            ? Border.all(color: theme.primary.withOpacity(0.15))
+            ? Border.all(color: accent.withOpacity(0.15))
             : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -182,7 +185,7 @@ class _NotificationTile extends StatelessWidget {
                     Expanded(
                       child: Text(
                         notification.title,
-                        style: AppTextStyles.subheading().copyWith(
+                        style: AppTextStyles.subheading(color: cs.onSurface).copyWith(
                           fontWeight: isUnread
                               ? FontWeight.w700
                               : FontWeight.w600,
@@ -197,7 +200,7 @@ class _NotificationTile extends StatelessWidget {
                         height: 8,
                         margin: const EdgeInsets.only(left: 6),
                         decoration: BoxDecoration(
-                          color: theme.primary,
+                          color: accent,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -206,7 +209,7 @@ class _NotificationTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   notification.body,
-                  style: AppTextStyles.bodySmall(),
+                  style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),

@@ -88,9 +88,9 @@ class _LoginScreenState extends State<LoginScreen>
         padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom),
         child: Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
           child: Column(
@@ -102,7 +102,7 @@ class _LoginScreenState extends State<LoginScreen>
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: Theme.of(ctx).colorScheme.outlineVariant,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -113,20 +113,20 @@ class _LoginScreenState extends State<LoginScreen>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.blue.withOpacity(0.1),
+                      color: Theme.of(ctx).colorScheme.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.lock_reset_rounded,
-                        color: AppColors.blue, size: 20),
+                    child: Icon(Icons.lock_reset_rounded,
+                        color: Theme.of(ctx).colorScheme.primary, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Reset Password',
-                          style: AppTextStyles.subheading()),
+                          style: AppTextStyles.subheading(color: Theme.of(ctx).colorScheme.onSurface)),
                       Text('Enter your email to receive a new password',
-                          style: AppTextStyles.caption()),
+                          style: AppTextStyles.caption(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
                     ],
                   ),
                 ],
@@ -177,6 +177,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       body: Stack(
         children: [
@@ -248,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen>
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: AppColors.white,
+                          color: cs.surface,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
@@ -262,10 +263,10 @@ class _LoginScreenState extends State<LoginScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('Welcome Back',
-                                style: AppTextStyles.heading2()),
+                                style: AppTextStyles.heading2(color: cs.onSurface)),
                             const SizedBox(height: 4),
                             Text('Sign in to continue',
-                                style: AppTextStyles.bodyMedium()),
+                                style: AppTextStyles.bodyMedium(color: cs.onSurfaceVariant)),
                             const SizedBox(height: 24),
 
                             Form(
@@ -326,7 +327,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       child: Text(
                                         'Forgot Password?',
                                         style: AppTextStyles.caption(
-                                                color: AppColors.blue)
+                                                color: cs.primary)
                                             .copyWith(
                                                 fontWeight: FontWeight.w600),
                                       ),
@@ -448,7 +449,7 @@ class _LoginScreenState extends State<LoginScreen>
                             child: Text(
                               'Sign Up',
                               style: AppTextStyles.caption(
-                                      color: AppColors.blue)
+                                      color: cs.primary)
                                   .copyWith(fontWeight: FontWeight.w700),
                             ),
                           ),
@@ -459,7 +460,7 @@ class _LoginScreenState extends State<LoginScreen>
                         child: Text(
                           '© 2026 Maintify · All rights reserved',
                           style: AppTextStyles.caption(
-                              color: AppColors.textSecondary),
+                              color: cs.onSurfaceVariant),
                         ),
                       ),
                     ],

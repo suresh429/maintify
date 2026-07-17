@@ -50,7 +50,6 @@ class MonthlyBillDetailScreen extends StatelessWidget {
         context.read<UserProvider>().membersForApartment(aptId);
 
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -95,7 +94,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                   const SizedBox(height: 14),
 
                   // ── Section 2: Category Breakdown ────────────────────────
-                  _buildCategoryBreakdown(theme, fresh),
+                  _buildCategoryBreakdown(theme, fresh, context),
                   const SizedBox(height: 14),
 
                   // ── Section 3: Collection Progress ───────────────────────
@@ -106,6 +105,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                     pendingAmount,
                     collectionRate,
                     totalBilledAmount,
+                    context,
                   ),
                   const SizedBox(height: 16),
 
@@ -311,14 +311,15 @@ class MonthlyBillDetailScreen extends StatelessWidget {
 
   // ── Category Breakdown Card ─────────────────────────────────────────────────
 
-  Widget _buildCategoryBreakdown(RoleTheme theme, MonthlyBillSummary fresh) {
+  Widget _buildCategoryBreakdown(RoleTheme theme, MonthlyBillSummary fresh, BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: _cardDecor(),
+      decoration: _cardDecor(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionHeader(Icons.bar_chart_rounded, 'Category Breakdown'),
+          _sectionHeader(Icons.bar_chart_rounded, 'Category Breakdown', cs),
           const SizedBox(height: 12),
 
           // Column headers
@@ -327,9 +328,9 @@ class MonthlyBillDetailScreen extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(child: const SizedBox()),
-                _colLabel('Total'),
+                _colLabel('Total', ctx: context),
                 const SizedBox(width: 8),
-                _colLabel('/Flat', color: theme.primary),
+                _colLabel('/Flat', color: theme.effectivePrimary(context), ctx: context),
               ],
             ),
           ),
@@ -356,19 +357,19 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                         children: [
                           Text(bill.title,
                               style: AppTextStyles.bodyMedium(
-                                      color: AppColors.textPrimary)
+                                      color: cs.onSurface)
                                   .copyWith(fontWeight: FontWeight.w500),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis),
                           Text(bill.category,
-                              style: AppTextStyles.caption()),
+                              style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                         ],
                       ),
                     ),
                     Text(
                       AppUtils.formatCurrency(bill.totalAmount),
                       style: AppTextStyles.bodyMedium(
-                              color: AppColors.textPrimary)
+                              color: cs.onSurface)
                           .copyWith(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(width: 8),
@@ -376,7 +377,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                       width: 52,
                       child: Text(
                         AppUtils.formatCurrency(bill.perFlatShare),
-                        style: AppTextStyles.caption(color: theme.primary)
+                        style: AppTextStyles.caption(color: theme.effectivePrimary(context))
                             .copyWith(fontWeight: FontWeight.w600),
                         textAlign: TextAlign.right,
                       ),
@@ -390,9 +391,9 @@ class MonthlyBillDetailScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Apartment Total', style: AppTextStyles.subheading()),
+              Text('Apartment Total', style: AppTextStyles.subheading(color: cs.onSurface)),
               Text(AppUtils.formatCurrency(fresh.totalAmount),
-                  style: AppTextStyles.subheading(color: theme.primary)
+                  style: AppTextStyles.subheading(color: theme.effectivePrimary(context))
                       .copyWith(fontSize: 16)),
             ],
           ),
@@ -400,9 +401,9 @@ class MonthlyBillDetailScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Per Flat Share', style: AppTextStyles.caption()),
+              Text('Per Flat Share', style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
               Text(AppUtils.formatCurrency(fresh.perFlatShare),
-                  style: AppTextStyles.caption(color: AppColors.textPrimary)
+                  style: AppTextStyles.caption(color: cs.onSurface)
                       .copyWith(fontWeight: FontWeight.w600)),
             ],
           ),
@@ -411,10 +412,10 @@ class MonthlyBillDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _colLabel(String text, {Color? color}) => Text(
+  Widget _colLabel(String text, {Color? color, required BuildContext ctx}) => Text(
         text,
         style: AppTextStyles.caption(
-            color: color ?? AppColors.textSecondary),
+            color: color ?? Theme.of(ctx).colorScheme.onSurfaceVariant),
       );
 
   // ── Collection Progress Card ────────────────────────────────────────────────
@@ -426,18 +427,20 @@ class MonthlyBillDetailScreen extends StatelessWidget {
     double pendingAmount,
     double collectionRate,
     double totalBilledAmount,
+    BuildContext context,
   ) {
+    final cs = Theme.of(context).colorScheme;
     final isComplete = collectionRate >= 1.0;
     final barColor = isComplete ? AppColors.paid : theme.primary;
     final pendingFlats = fresh.pendingFlats;
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: _cardDecor(),
+      decoration: _cardDecor(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionHeader(Icons.trending_up_rounded, 'Collection Progress'),
+          _sectionHeader(Icons.trending_up_rounded, 'Collection Progress', cs),
           const SizedBox(height: 14),
 
           // Collected / Pending blocks
@@ -466,7 +469,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
                     value: collectionRate,
-                    backgroundColor: AppColors.lightGray,
+                    backgroundColor: cs.outlineVariant,
                     valueColor: AlwaysStoppedAnimation<Color>(barColor),
                     minHeight: 10,
                   ),
@@ -483,7 +486,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             '${AppUtils.formatCurrency(collectedAmount)} of ${AppUtils.formatCurrency(totalBilledAmount)}',
-            style: AppTextStyles.caption(color: AppColors.textSecondary),
+            style: AppTextStyles.caption(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 14),
 
@@ -500,7 +503,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                   child: _statPill(AppUtils.formatDate(fresh.dueDate),
-                      'Due Date', AppColors.blue, Icons.calendar_today_outlined,
+                      'Due Date', cs.primary, Icons.calendar_today_outlined,
                       compact: true)),
             ],
           ),
@@ -567,15 +570,15 @@ class MonthlyBillDetailScreen extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          Text(
+          Builder(builder: (context) => Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Poppins',
               fontSize: 9,
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
-          ),
+          )),
         ],
       ),
     );
@@ -583,23 +586,27 @@ class MonthlyBillDetailScreen extends StatelessWidget {
 
   // ── Shared helpers ──────────────────────────────────────────────────────────
 
-  BoxDecoration _cardDecor() => BoxDecoration(
-        color: AppColors.white,
+  BoxDecoration _cardDecor(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return BoxDecoration(
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
         ],
       );
+  }
 
-  Widget _sectionHeader(IconData icon, String title) => Row(
+  Widget _sectionHeader(IconData icon, String title, ColorScheme cs) => Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.textSecondary),
+          Icon(icon, size: 18, color: cs.onSurfaceVariant),
           const SizedBox(width: 8),
-          Text(title, style: AppTextStyles.subheading()),
+          Text(title, style: AppTextStyles.subheading(color: cs.onSurface)),
         ],
       );
 
@@ -629,12 +636,14 @@ void _showDetailBillActions(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (_) => SafeArea(
+    builder: (sheetCtx) {
+      final sheetCs = Theme.of(sheetCtx).colorScheme;
+      return SafeArea(
       top: false,
       child: Container(
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: sheetCs.surface,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Column(
@@ -646,7 +655,7 @@ void _showDetailBillActions(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: sheetCs.outlineVariant,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -660,7 +669,9 @@ void _showDetailBillActions(
                     icon: Icons.edit_outlined,
                     title: 'Edit Bill',
                     subtitle: 'Update categories, amounts or due date',
-                    color: AppColors.blue,
+                    color: Theme.of(sheetCtx).brightness == Brightness.dark
+                        ? const Color(0xFF60A5FA)
+                        : AppColors.blue,
                     onTap: () {
                       Navigator.pop(context);
                       showEditBillSheet(context,
@@ -691,7 +702,8 @@ void _showDetailBillActions(
           ],
         ),
       ),
-    ),
+      );
+    },
   );
 }
 
@@ -738,14 +750,14 @@ Widget _billActionTile({
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
+                Builder(builder: (context) => Text(
                   subtitle,
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 12,
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                ),
+                )),
               ],
             ),
           ),
@@ -798,7 +810,7 @@ void _showDeleteBillDialog(
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 13,
-                color: Colors.grey.shade600,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 24),
@@ -872,17 +884,20 @@ class _FlatPaymentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final adminAccent = theme.effectivePrimary(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(14),
         border: isPaid
             ? Border.all(color: AppColors.paid.withOpacity(0.25))
             : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -895,12 +910,12 @@ class _FlatPaymentCard extends StatelessWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.blue.withOpacity(0.1),
+              color: adminAccent.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               unitNumber,
-              style: AppTextStyles.label(color: AppColors.blue)
+              style: AppTextStyles.label(color: adminAccent)
                   .copyWith(fontWeight: FontWeight.w700),
             ),
           ),
@@ -915,7 +930,7 @@ class _FlatPaymentCard extends StatelessWidget {
                   Text(
                     userName!,
                     style: AppTextStyles.bodyMedium(
-                            color: AppColors.textPrimary)
+                            color: cs.onSurface)
                         .copyWith(fontWeight: FontWeight.w500),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -927,12 +942,12 @@ class _FlatPaymentCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: theme.primary.withOpacity(0.08),
+                        color: adminAccent.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         AppUtils.formatCurrency(amount),
-                        style: AppTextStyles.caption(color: theme.primary)
+                        style: AppTextStyles.caption(color: adminAccent)
                             .copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -949,7 +964,7 @@ class _FlatPaymentCard extends StatelessWidget {
                           : Text(
                               'Pending',
                               style: AppTextStyles.caption(
-                                  color: AppColors.textSecondary),
+                                  color: cs.onSurfaceVariant),
                             ),
                     ),
                   ],

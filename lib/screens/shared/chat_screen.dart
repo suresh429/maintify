@@ -65,12 +65,17 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final complaint = widget.complaint;
     final auth = context.read<AuthProvider>();
     final user = auth.currentUser!;
 
+    return Consumer<ComplaintProvider>(
+      builder: (context, complaintProv, _) {
+        // Always use the live complaint from the provider so status updates
+        // in the AppBar chip reflect immediately without needing setState().
+        final complaint = complaintProv.findComplaint(widget.complaint.id)
+            ?? widget.complaint;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -131,10 +136,10 @@ class _ChatScreenState extends State<ChatScreen> {
                         const SizedBox(height: 12),
                         Text('No messages yet',
                             style: AppTextStyles.bodyMedium(
-                                color: AppColors.textSecondary)),
+                                color: Theme.of(context).colorScheme.onSurfaceVariant)),
                         const SizedBox(height: 4),
                         Text('Start the conversation below',
-                            style: AppTextStyles.caption()),
+                            style: AppTextStyles.caption(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                       ],
                     ),
                   );
@@ -190,25 +195,29 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             )
           else
-            Container(
-              padding: const EdgeInsets.all(14),
-              color: AppColors.white,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.check_circle_rounded,
-                      color: AppColors.paid, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    'This complaint has been resolved',
-                    style:
-                        AppTextStyles.caption(color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
+            Builder(builder: (ctx) {
+              final cs = Theme.of(ctx).colorScheme;
+              return Container(
+                padding: const EdgeInsets.all(14),
+                color: cs.surface,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.check_circle_rounded,
+                        color: AppColors.paid, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      'This complaint has been resolved',
+                      style: AppTextStyles.caption(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
+    );
+      }, // Consumer builder
     );
   }
 
@@ -216,42 +225,62 @@ class _ChatScreenState extends State<ChatScreen> {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   void _showStatusSheet() {
-    final statuses = [
+    const statusOrder = [
       ComplaintStatus.open,
       ComplaintStatus.inProgress,
       ComplaintStatus.resolved,
     ];
+
+    // Use live complaint status from provider, not the stale widget field
+    final liveComplaint = context.read<ComplaintProvider>().findComplaint(widget.complaint.id)
+        ?? widget.complaint;
+    final currentIndex = statusOrder.indexOf(liveComplaint.status);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => BottomSheetContainer(
+      builder: (ctx) => BottomSheetContainer(
         title: 'Update Status',
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: statuses.map((s) {
-            final isCurrent = widget.complaint.status == s;
+          children: statusOrder.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final s = entry.value;
+            final isCurrent = idx == currentIndex;
+            // Only allow moving forward (higher index), not backward
+            final isAllowed = idx > currentIndex;
+            final cs = Theme.of(context).colorScheme;
+
             return ListTile(
               contentPadding: EdgeInsets.zero,
+              enabled: isAllowed,
               leading: Icon(
                 _statusIcon(s),
-                color: _statusColor(s),
+                color: isAllowed || isCurrent
+                    ? _statusColor(s)
+                    : cs.onSurface.withOpacity(0.3),
               ),
-              title: Text(s,
-                  style: AppTextStyles.bodyMedium(color: AppColors.textPrimary)
-                      .copyWith(
-                          fontWeight: isCurrent
-                              ? FontWeight.w700
-                              : FontWeight.w400)),
+              title: Text(
+                s,
+                style: AppTextStyles.bodyMedium(
+                  color: isAllowed
+                      ? cs.onSurface
+                      : cs.onSurface.withOpacity(isCurrent ? 1.0 : 0.35),
+                ).copyWith(
+                  fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
+                ),
+              ),
               trailing: isCurrent
                   ? const Icon(Icons.check_rounded, color: AppColors.green)
                   : null,
-              onTap: () async {
-                Navigator.pop(context);
-                await context
-                    .read<ComplaintProvider>()
-                    .updateStatus(widget.complaint.id, s);
-                setState(() {});
-              },
+              onTap: isAllowed
+                  ? () async {
+                      Navigator.pop(ctx);
+                      await context
+                          .read<ComplaintProvider>()
+                          .updateStatus(widget.complaint.id, s);
+                    }
+                  : null,
             );
           }).toList(),
         ),
@@ -277,11 +306,11 @@ class _ChatScreenState extends State<ChatScreen> {
       case ComplaintStatus.open:
         return AppColors.pending;
       case ComplaintStatus.inProgress:
-        return AppColors.blue;
+        return AppColors.teal;
       case ComplaintStatus.resolved:
         return AppColors.paid;
       default:
-        return AppColors.textSecondary;
+        return AppColors.pending;
     }
   }
 }

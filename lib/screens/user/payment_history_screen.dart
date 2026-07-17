@@ -49,24 +49,27 @@ class PaymentHistoryScreen extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Transactions', style: AppTextStyles.heading3()),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: theme.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${paidViews.length} total',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: theme.primary,
+              Text('Transactions', style: AppTextStyles.heading3(color: Theme.of(context).colorScheme.onSurface)),
+              Builder(builder: (ctx) {
+                final accent = theme.effectivePrimary(ctx);
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: accent.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                ),
-              ),
+                  child: Text(
+                    '${paidViews.length} total',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: accent,
+                    ),
+                  ),
+                );
+              }),
             ],
           ),
         ),
@@ -218,16 +221,16 @@ class _MonthDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 4, bottom: 10),
-      child: Text(
+      child: Builder(builder: (ctx) => Text(
         month.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Poppins',
           fontSize: 10,
           fontWeight: FontWeight.w700,
-          color: AppColors.textSecondary,
+          color: Theme.of(ctx).colorScheme.onSurfaceVariant,
           letterSpacing: 1.2,
         ),
-      ),
+      )),
     );
   }
 }
@@ -259,15 +262,17 @@ class _PaymentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bill = view.bill;
     final payment = view.payment;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -297,16 +302,14 @@ class _PaymentCard extends StatelessWidget {
                     children: [
                       Text(
                         bill.title,
-                        style: AppTextStyles.subheading(
-                            color: AppColors.textPrimary),
+                        style: AppTextStyles.subheading(color: cs.onSurface),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 3),
                       Text(
                         bill.category,
-                        style: AppTextStyles.caption(
-                            color: AppColors.textSecondary),
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -317,11 +320,11 @@ class _PaymentCard extends StatelessWidget {
                   children: [
                     Text(
                       AppUtils.formatCurrency(bill.perFlatShare),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w700,
                         fontSize: 17,
-                        color: AppColors.textPrimary,
+                        color: cs.onSurface,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -349,7 +352,7 @@ class _PaymentCard extends StatelessWidget {
           ),
 
           // ── Divider ───────────────────────────────────────────────────
-          const Divider(height: 1, indent: 16, endIndent: 16),
+          Divider(height: 1, indent: 16, endIndent: 16, color: cs.outlineVariant),
 
           // ── Bottom row: meta info ─────────────────────────────────────
           Padding(
@@ -398,7 +401,7 @@ class _MetaChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppColors.textSecondary;
+    final c = color ?? Theme.of(context).colorScheme.onSurfaceVariant;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

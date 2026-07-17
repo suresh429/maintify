@@ -6,10 +6,12 @@ import '../../core/theme/role_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/bill_provider.dart';
 import '../../providers/apartment_provider.dart';
+import '../../providers/theme_provider.dart';
 import 'complaints_screen.dart';
 import 'i_paid_screen.dart';
 import '../../widgets/change_password_sheet.dart';
 import '../../widgets/logout_sheet.dart';
+
 class UserProfileScreen extends StatelessWidget {
   const UserProfileScreen({super.key});
 
@@ -20,6 +22,8 @@ class UserProfileScreen extends StatelessWidget {
     final billProvider = context.watch<BillProvider>();
     final aptProvider = context.watch<ApartmentProvider>();
     final theme = RoleTheme.of(UserRole.user);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final apt = aptProvider.findById(user.apartmentId ?? '');
     final allViews = billProvider.userBillViews(user.id);
@@ -129,7 +133,7 @@ class UserProfileScreen extends StatelessWidget {
             label: 'Report a Payment',
             subtitle:
                 '$pendingCount pending bill${pendingCount != 1 ? 's' : ''} · notify admin',
-            color: theme.primary,
+            color: isDark ? theme.darkPrimary : theme.primary,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const IPaidScreen()),
@@ -144,11 +148,11 @@ class UserProfileScreen extends StatelessWidget {
 
           Container(
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: cs.surface,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -161,42 +165,77 @@ class UserProfileScreen extends StatelessWidget {
                   icon: Icons.chat_bubble_outline_rounded,
                   label: 'Complaints',
                   subtitle: 'Raise or track issues',
-                  iconColor: AppColors.blue,
+                  iconColor: isDark ? const Color(0xFF60A5FA) : AppColors.blue,
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (_) => const ComplaintsScreen()),
                   ),
                 ),
-                const Divider(height: 1, indent: 56, color: Color(0xFFE0E0E0)),
+                Divider(
+                    height: 1,
+                    indent: 56,
+                    color: cs.outline.withOpacity(0.5)),
                 // Change Password
                 _MenuTile(
                   icon: Icons.lock_reset_rounded,
                   label: 'Change Password',
                   subtitle: 'Update your login password',
-                  iconColor: theme.primary,
+                  iconColor: isDark ? theme.darkPrimary : theme.primary,
                   onTap: () => showChangePasswordSheet(context),
                 ),
-                const Divider(height: 1, indent: 56,color: Color(0xFFE0E0E0),),
+                Divider(
+                    height: 1,
+                    indent: 56,
+                    color: cs.outline.withOpacity(0.5)),
+                // Dark Mode toggle
+                Consumer<ThemeProvider>(
+                  builder: (context, tp, _) => _MenuTile(
+                    icon: tp.isDarkMode
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined,
+                    label: 'Dark Mode',
+                    subtitle: tp.isDarkMode
+                        ? 'Switch to light theme'
+                        : 'Switch to dark theme',
+                    iconColor: const Color(0xFF8B6CE8),
+                    trailing: Switch.adaptive(
+                      value: tp.isDarkMode,
+                      onChanged: (_) => tp.toggle(),
+                      activeColor: theme.primary,
+                    ),
+                    onTap: () => tp.toggle(),
+                  ),
+                ),
+                Divider(
+                    height: 1,
+                    indent: 56,
+                    color: cs.outline.withOpacity(0.5)),
                 // Role badge
                 _MenuTile(
                   icon: Icons.verified_outlined,
                   label: 'Role',
                   subtitle: user.roleLabel,
-                  iconColor: theme.primary,
+                  iconColor: isDark ? theme.darkPrimary : theme.primary,
                   trailing: null,
                   onTap: null,
                 ),
-                const Divider(height: 1, indent: 56,color: Color(0xFFE0E0E0),),
+                Divider(
+                    height: 1,
+                    indent: 56,
+                    color: cs.outline.withOpacity(0.5)),
                 // Phone
                 _MenuTile(
                   icon: Icons.phone_outlined,
                   label: 'Mobile',
                   subtitle: user.phone.isNotEmpty ? user.phone : '—',
-                  iconColor: AppColors.textSecondary,
+                  iconColor: cs.onSurfaceVariant,
                   onTap: null,
                 ),
-                const Divider(height: 1, indent: 56, color: Color(0xFFE0E0E0)),
+                Divider(
+                    height: 1,
+                    indent: 56,
+                    color: cs.outline.withOpacity(0.5)),
                 // Logout
                 _MenuTile(
                   icon: Icons.logout_rounded,
@@ -270,13 +309,14 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Text(
       text.toUpperCase(),
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: 'Poppins',
         fontSize: 11,
         fontWeight: FontWeight.w700,
-        color: AppColors.textSecondary,
+        color: cs.onSurfaceVariant,
         letterSpacing: 1.0,
       ),
     );
@@ -297,14 +337,16 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -317,11 +359,12 @@ class _SectionCard extends StatelessWidget {
             children: [
               Icon(icon, size: 18, color: iconColor),
               const SizedBox(width: 8),
-              Text(title, style: AppTextStyles.subheading()),
+              Text(title,
+                  style: AppTextStyles.subheading(color: cs.onSurface)),
             ],
           ),
           const SizedBox(height: 10),
-          const Divider(height: 1),
+          Divider(height: 1, color: cs.outline.withOpacity(0.5)),
           const SizedBox(height: 6),
           ...children,
         ],
@@ -337,15 +380,17 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTextStyles.caption()),
+          Text(label,
+              style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
           Text(
             value,
-            style: AppTextStyles.bodySmall(color: AppColors.textPrimary)
+            style: AppTextStyles.bodySmall(color: cs.onSurface)
                 .copyWith(fontWeight: FontWeight.w600),
           ),
         ],
@@ -370,16 +415,18 @@ class _ActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -390,7 +437,7 @@ class _ActionTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withOpacity(isDark ? 0.1 : 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color, size: 22),
@@ -401,17 +448,16 @@ class _ActionTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(label,
-                      style: AppTextStyles.subheading(
-                          color: AppColors.textPrimary)),
+                      style: AppTextStyles.subheading(color: cs.onSurface)),
                   const SizedBox(height: 3),
                   Text(subtitle,
                       style: AppTextStyles.caption(
-                          color: AppColors.textSecondary)),
+                          color: cs.onSurfaceVariant)),
                 ],
               ),
             ),
             Icon(Icons.arrow_forward_ios_rounded,
-                color: AppColors.textSecondary, size: 15),
+                color: cs.onSurfaceVariant, size: 15),
           ],
         ),
       ),
@@ -440,6 +486,7 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -464,21 +511,21 @@ class _MenuTile extends StatelessWidget {
                   Text(
                     label,
                     style: AppTextStyles.bodyMedium(
-                        color: labelColor ?? AppColors.textPrimary),
+                        color: labelColor ?? cs.onSurface),
                   ),
                   const SizedBox(height: 1),
                   Text(
                     subtitle,
                     style: AppTextStyles.caption(
-                        color: AppColors.textSecondary),
+                        color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
             ),
             trailing ??
                 (onTap != null
-                    ? const Icon(Icons.arrow_forward_ios_rounded,
-                        color: AppColors.textSecondary, size: 14)
+                    ? Icon(Icons.arrow_forward_ios_rounded,
+                        color: cs.onSurfaceVariant, size: 14)
                     : const SizedBox.shrink()),
           ],
         ),

@@ -7,6 +7,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'firebase_options.dart';
 import 'core/navigation_key.dart';
 import 'core/theme/app_theme.dart';
+import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/apartment_provider.dart';
 import 'providers/dashboard_provider.dart';
@@ -58,10 +59,7 @@ Future<void> main() async {
   ]);
 
   SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ),
+    const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
   );
 
   runApp(const MaintifyApp());
@@ -74,6 +72,7 @@ class MaintifyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ApartmentProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
@@ -84,17 +83,23 @@ class MaintifyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MeetingProvider()),
         ChangeNotifierProvider(create: (_) => RegistrationProvider()),
       ],
-      child: MaterialApp(
-        title: 'Maintify',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        navigatorKey: navigatorKey,
-        initialRoute: '/',
-        routes: {
-          '/': (_) => const SplashScreen(),
-          '/login': (_) => const LoginScreen(),
-          '/signup': (_) => const SignupScreen(),
-          '/dashboard': (_) => const DashboardRouter(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            title: 'Maintify',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.themeMode,
+            navigatorKey: navigatorKey,
+            initialRoute: '/',
+            routes: {
+              '/': (_) => const SplashScreen(),
+              '/login': (_) => const LoginScreen(),
+              '/signup': (_) => const SignupScreen(),
+              '/dashboard': (_) => const DashboardRouter(),
+            },
+          );
         },
       ),
     );

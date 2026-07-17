@@ -133,7 +133,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           child: PillFilterBar(
             options: const ['All', 'Paid', 'Pending', 'Overdue'],
             selected: _filter,
-            activeColor: theme.primary,
+            activeColor: theme.effectivePrimary(context),
             onChanged: (f) => setState(() => _filter = f),
           ),
         ),
@@ -173,6 +173,9 @@ class _MemberCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final adminAccent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
     final views = billProvider.userBillViews(user.id);
     final paid = views.where((v) => v.payment.isPaid).length;
     final pending = views.where((v) => v.payment.isPending).length;
@@ -183,16 +186,16 @@ class _MemberCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(14),
         border: isPresident
             ? Border.all(
-                color: RoleTheme.of(UserRole.admin).primary.withOpacity(0.3),
+                color: adminAccent.withOpacity(0.35),
                 width: 1.5)
             : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -235,22 +238,19 @@ class _MemberCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Text(user.name, style: AppTextStyles.subheading()),
+                          Text(user.name, style: AppTextStyles.subheading(color: cs.onSurface)),
                           if (isPresident) ...[
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(
-                                color: RoleTheme.of(UserRole.admin)
-                                    .primary
-                                    .withOpacity(0.1),
+                                color: adminAccent.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text('President',
                                   style: AppTextStyles.caption(
-                                          color: RoleTheme.of(UserRole.admin)
-                                              .primary)
+                                          color: adminAccent)
                                       .copyWith(fontWeight: FontWeight.w700)),
                             ),
                           ],
@@ -264,19 +264,19 @@ class _MemberCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.blue.withOpacity(0.1),
+                              color: adminAccent.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text('Flat ${user.unit}',
                                 style: AppTextStyles.caption(
-                                        color: AppColors.blue)
+                                        color: adminAccent)
                                     .copyWith(fontWeight: FontWeight.w600)),
                           ),
                           if (user.phone.isNotEmpty) ...[
                             const SizedBox(width: 8),
                             Flexible(
                               child: Text(user.phone,
-                                  style: AppTextStyles.caption(),
+                                  style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis),
                             ),
@@ -317,7 +317,7 @@ class _MemberCard extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: AppColors.lightGray.withOpacity(0.5),
+                color: cs.surfaceContainerHighest,
                 borderRadius:
                     const BorderRadius.vertical(bottom: Radius.circular(14)),
               ),
@@ -330,7 +330,10 @@ class _MemberCard extends StatelessWidget {
                   _divider(),
                   _BillStat('$overdue', 'Overdue', AppColors.overdue),
                   _divider(),
-                  _BillStat('${views.length}', 'Total', AppColors.blue),
+                  _BillStat('${views.length}', 'Total',
+                      Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF60A5FA)
+                          : AppColors.blue),
                 ],
               ),
             )
@@ -339,7 +342,7 @@ class _MemberCard extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: AppColors.lightGray.withOpacity(0.5),
+                color: cs.surfaceContainerHighest,
                 borderRadius:
                     const BorderRadius.vertical(bottom: Radius.circular(14)),
               ),
@@ -350,7 +353,7 @@ class _MemberCard extends StatelessWidget {
                       size: 14, color: AppColors.textSecondary),
                   const SizedBox(width: 6),
                   Text('No billing records yet',
-                      style: AppTextStyles.caption()),
+                      style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                 ],
               ),
             ),
@@ -362,7 +365,7 @@ class _MemberCard extends StatelessWidget {
   Widget _divider() => Container(
         width: 1,
         height: 24,
-        color: AppColors.lightGray,
+        color: AppColors.lightGray.withOpacity(0.5),
       );
 }
 
@@ -383,7 +386,7 @@ class _BillStat extends StatelessWidget {
               fontSize: 15,
               color: color,
             )),
-        Text(label, style: AppTextStyles.caption()),
+        Text(label, style: AppTextStyles.caption(color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ],
     );
   }

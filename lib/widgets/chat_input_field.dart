@@ -49,11 +49,19 @@ class _ChatInputFieldState extends State<ChatInputField> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final containerBg = isDark ? AppColors.darkSurface : AppColors.white;
+    final fieldBg = isDark ? AppColors.darkSurfaceVariant : AppColors.lightGray;
+    final textColor = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final hintColor = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final inactiveSendBg = isDark ? AppColors.darkBorder : Colors.grey.shade200;
+    final inactiveSendIcon = isDark ? AppColors.darkTextSecondary : Colors.grey.shade400;
+
     return Container(
       padding: EdgeInsets.fromLTRB(
-          16, 10, 16, MediaQuery.of(context).viewInsets.bottom + 12),
+          16, 10, 16, MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 12),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: containerBg,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.06),
@@ -69,7 +77,7 @@ class _ChatInputFieldState extends State<ChatInputField> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: AppColors.lightGray,
+                color: fieldBg,
                 borderRadius: BorderRadius.circular(24),
               ),
               child: TextField(
@@ -77,17 +85,17 @@ class _ChatInputFieldState extends State<ChatInputField> {
                 minLines: 1,
                 maxLines: 5,
                 textCapitalization: TextCapitalization.sentences,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 14,
-                  color: AppColors.textPrimary,
+                  color: textColor,
                 ),
                 decoration: InputDecoration(
                   hintText: widget.hint,
-                  hintStyle: const TextStyle(
+                  hintStyle: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 14,
-                    color: AppColors.textSecondary,
+                    color: hintColor,
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                       horizontal: 18, vertical: 12),
@@ -114,7 +122,7 @@ class _ChatInputFieldState extends State<ChatInputField> {
                         end: Alignment.centerRight,
                       )
                     : null,
-                color: _hasText ? null : Colors.grey.shade200,
+                color: _hasText ? null : inactiveSendBg,
                 shape: BoxShape.circle,
                 boxShadow: _hasText
                     ? [
@@ -128,7 +136,7 @@ class _ChatInputFieldState extends State<ChatInputField> {
               ),
               child: Icon(
                 Icons.send_rounded,
-                color: _hasText ? Colors.white : Colors.grey.shade400,
+                color: _hasText ? Colors.white : inactiveSendIcon,
                 size: 20,
               ),
             ),

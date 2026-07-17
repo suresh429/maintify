@@ -56,42 +56,51 @@ class ChatBubble extends StatelessWidget {
                         ).copyWith(fontWeight: FontWeight.w600),
                       ),
                     ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isLeft
-                          ? AppColors.blue.withOpacity(0.08)
-                          : AppColors.green.withOpacity(0.12),
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(18),
-                        topRight: const Radius.circular(18),
-                        bottomLeft: Radius.circular(isLeft ? 4 : 18),
-                        bottomRight: Radius.circular(isLeft ? 18 : 4),
+                  Builder(builder: (context) {
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    final bubbleBg = isLeft
+                        ? AppColors.blue.withOpacity(isDark ? 0.30 : 0.08)
+                        : AppColors.green.withOpacity(isDark ? 0.30 : 0.12);
+                    final bubbleBorder = isLeft
+                        ? AppColors.blue.withOpacity(isDark ? 0.50 : 0.15)
+                        : AppColors.green.withOpacity(isDark ? 0.60 : 0.25);
+                    final msgColor = isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: bubbleBg,
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(18),
+                          topRight: const Radius.circular(18),
+                          bottomLeft: Radius.circular(isLeft ? 4 : 18),
+                          bottomRight: Radius.circular(isLeft ? 18 : 4),
+                        ),
+                        border: Border.all(color: bubbleBorder, width: 1),
                       ),
-                      border: Border.all(
-                        color: isLeft
-                            ? AppColors.blue.withOpacity(0.15)
-                            : AppColors.green.withOpacity(0.25),
-                        width: 1,
+                      child: Text(
+                        content,
+                        style: AppTextStyles.bodyMedium(color: msgColor)
+                            .copyWith(height: 1.4),
                       ),
-                    ),
-                    child: Text(
-                      content,
-                      style: AppTextStyles.bodyMedium(
-                              color: AppColors.textPrimary)
-                          .copyWith(height: 1.4),
-                    ),
-                  ),
+                    );
+                  }),
                   const SizedBox(height: 3),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      _formatTime(timestamp),
-                      style: AppTextStyles.caption(
-                              color: AppColors.textSecondary)
-                          .copyWith(fontSize: 10),
-                    ),
+                    child: Builder(builder: (context) {
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      return Text(
+                        _formatTime(timestamp),
+                        style: AppTextStyles.caption(
+                                color: isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textSecondary)
+                            .copyWith(fontSize: 10),
+                      );
+                    }),
                   ),
                 ],
               ),
@@ -133,27 +142,32 @@ class _Avatar extends StatelessWidget {
         .map((s) => s[0].toUpperCase())
         .join();
 
-    return Container(
-      width: 30,
-      height: 30,
-      decoration: BoxDecoration(
-        color: isAdmin
-            ? AppColors.blue.withOpacity(0.15)
-            : AppColors.green.withOpacity(0.15),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          initials,
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: isAdmin ? AppColors.blue : AppColors.green,
+    return Builder(builder: (context) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: isAdmin
+              ? AppColors.blue.withOpacity(isDark ? 0.40 : 0.15)
+              : AppColors.green.withOpacity(isDark ? 0.40 : 0.15),
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Text(
+            initials,
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: isAdmin
+                  ? (isDark ? const Color(0xFF93C5FD) : AppColors.blue)
+                  : AppColors.green,
+            ),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 }
 
@@ -179,21 +193,26 @@ class ChatDateSeparator extends StatelessWidget {
       label = AppUtils.formatDate(date);
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          const Expanded(child: Divider()),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              label,
-              style: AppTextStyles.caption(color: AppColors.textSecondary),
+    return Builder(builder: (context) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final labelColor =
+          isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            const Expanded(child: Divider()),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                label,
+                style: AppTextStyles.caption(color: labelColor),
+              ),
             ),
-          ),
-          const Expanded(child: Divider()),
-        ],
-      ),
-    );
+            const Expanded(child: Divider()),
+          ],
+        ),
+      );
+    });
   }
 }

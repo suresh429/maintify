@@ -51,14 +51,19 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeBorder = focusColor ?? AppColors.blue;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeBorderColor = isDark ? Colors.white : (focusColor ?? AppColors.blue);
+    // Floating label is always white in dark mode for maximum readability
+    final floatingLabelColor = isDark ? Colors.white : (focusColor ?? AppColors.blue);
+    final borderColor = isDark ? Colors.white.withOpacity(0.35) : cs.outline;
+    final fillColor = cs.surface;
 
     return TextFormField(
       controller: controller,
       validator: validator,
       onChanged: onChanged,
-      keyboardType:
-          maxLines > 1 ? TextInputType.multiline : keyboardType,
+      keyboardType: maxLines > 1 ? TextInputType.multiline : keyboardType,
       textCapitalization: textCapitalization,
       inputFormatters: inputFormatters,
       obscureText: obscureText,
@@ -67,50 +72,49 @@ class AppTextField extends StatelessWidget {
       onTap: onTap,
       focusNode: focusNode,
       textInputAction: textInputAction,
-      style: AppTextStyles.bodyLarge(),
+      style: AppTextStyles.bodyLarge(color: cs.onSurface),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         hintStyle: AppTextStyles.bodyMedium(
-            color: AppColors.textSecondary.withOpacity(0.5)),
+            color: cs.onSurfaceVariant.withOpacity(0.6)),
         labelStyle: TextStyle(
           fontFamily: 'Poppins',
           fontSize: 14,
-          color: AppColors.textSecondary,
+          color: cs.onSurfaceVariant,
         ),
         floatingLabelStyle: TextStyle(
           fontFamily: 'Poppins',
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: activeBorder,
+          color: floatingLabelColor,
         ),
         prefixIcon: prefixIcon != null
             ? IconTheme(
-                data: const IconThemeData(
-                    color: AppColors.textSecondary, size: 20),
+                data: IconThemeData(color: cs.onSurfaceVariant, size: 20),
                 child: prefixIcon!)
             : null,
         suffixIcon: suffixIcon,
         helperText: helperText,
-        helperStyle: AppTextStyles.caption(),
+        helperStyle: AppTextStyles.caption(color: cs.onSurfaceVariant),
         helperMaxLines: 2,
         errorStyle: AppTextStyles.caption(color: AppColors.overdue),
         errorMaxLines: 2,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: fillColor,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFDDE1E7)),
+          borderSide: BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFDDE1E7)),
+          borderSide: BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: activeBorder, width: 1.5),
+          borderSide: BorderSide(color: activeBorderColor, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -122,7 +126,7 @@ class AppTextField extends StatelessWidget {
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
+          borderSide: BorderSide(color: cs.outlineVariant),
         ),
       ),
     );

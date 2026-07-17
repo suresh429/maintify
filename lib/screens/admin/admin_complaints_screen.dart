@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../models/complaint_model.dart';
 import '../../providers/auth_provider.dart';
@@ -41,32 +42,31 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
             ? all
             : all.where((c) => c.status == _filter).toList();
 
+        final cs = Theme.of(context).colorScheme;
         return Scaffold(
-          backgroundColor: AppColors.lightGray,
           body: Column(
             children: [
               // Apartment info banner
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                color: AppColors.white,
+                color: cs.surface,
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppColors.blue.withOpacity(0.1),
+                        color: RoleTheme.of(UserRole.admin).effectivePrimary(context).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.apartment_rounded,
-                          color: AppColors.blue, size: 18),
+                      child: Icon(Icons.apartment_rounded,
+                          color: RoleTheme.of(UserRole.admin).effectivePrimary(context), size: 18),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         apt?.name ?? 'Apartment',
-                        style: AppTextStyles.subheading(
-                            color: AppColors.textPrimary),
+                        style: AppTextStyles.subheading(color: cs.onSurface),
                       ),
                     ),
                     _CountBadge(
@@ -80,12 +80,12 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
 
               // Modern pill filter bar
               Container(
-                color: AppColors.white,
+                color: cs.surface,
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: PillFilterBar(
                   options: _filters,
                   selected: _filter,
-                  activeColor: AppColors.blue,
+                  activeColor: RoleTheme.of(UserRole.admin).effectivePrimary(context),
                   onChanged: (f) => setState(() => _filter = f),
                 ),
               ),
@@ -101,10 +101,13 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
                           children: [
                             Icon(Icons.check_circle_outline,
                                 size: 52,
-                                color: AppColors.blue.withOpacity(0.3)),
+                                color: (Theme.of(context).brightness == Brightness.dark
+                                        ? const Color(0xFF60A5FA)
+                                        : AppColors.blue)
+                                    .withOpacity(0.4)),
                             const SizedBox(height: 12),
                             Text('No complaints',
-                                style: AppTextStyles.subheading()),
+                                style: AppTextStyles.subheading(color: cs.onSurface)),
                             const SizedBox(height: 4),
                             Text(
                               _filter == 'All'
@@ -185,6 +188,9 @@ class _AdminComplaintTile extends StatelessWidget {
     final lastMsg = complaint.lastMessage;
     final unread = complaint.status == ComplaintStatus.open &&
         (lastMsg?.isFromAdmin == false);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
 
     return GestureDetector(
       onTap: onTap,
@@ -192,14 +198,14 @@ class _AdminComplaintTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(16),
           border: unread
-              ? Border.all(color: AppColors.blue.withOpacity(0.25))
+              ? Border.all(color: accent.withOpacity(0.3))
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -212,11 +218,11 @@ class _AdminComplaintTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.blue.withOpacity(0.08),
+                color: accent.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child:
-                  Icon(_categoryIcon, color: AppColors.blue, size: 20),
+                  Icon(_categoryIcon, color: accent, size: 20),
             ),
             const SizedBox(width: 14),
 
@@ -231,7 +237,7 @@ class _AdminComplaintTile extends StatelessWidget {
                         child: Text(
                           complaint.title,
                           style: AppTextStyles.subheading(
-                                  color: AppColors.textPrimary)
+                                  color: cs.onSurface)
                               .copyWith(
                                   fontWeight: unread
                                       ? FontWeight.w700
@@ -242,20 +248,20 @@ class _AdminComplaintTile extends StatelessWidget {
                       ),
                       Text(
                         AppUtils.timeAgo(complaint.lastActivityAt),
-                        style: AppTextStyles.caption(),
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                       ),
                     ],
                   ),
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      const Icon(Icons.person_outline,
-                          size: 13, color: AppColors.textSecondary),
+                      Icon(Icons.person_outline,
+                          size: 13, color: cs.onSurfaceVariant),
                       const SizedBox(width: 4),
                       Text(
                         '${complaint.userName} · ${complaint.unit}',
                         style: AppTextStyles.caption(
-                            color: AppColors.textSecondary),
+                            color: cs.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -266,7 +272,7 @@ class _AdminComplaintTile extends StatelessWidget {
                           ? 'You: ${lastMsg.content}'
                           : lastMsg.content,
                       style: AppTextStyles.bodySmall(
-                          color: AppColors.textSecondary),
+                          color: cs.onSurfaceVariant),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -280,7 +286,7 @@ class _AdminComplaintTile extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(complaint.category,
                           style: AppTextStyles.caption(
-                              color: AppColors.textSecondary)),
+                              color: cs.onSurfaceVariant)),
                     ],
                   ),
                 ],
@@ -289,15 +295,15 @@ class _AdminComplaintTile extends StatelessWidget {
             const SizedBox(width: 8),
             Column(
               children: [
-                const Icon(Icons.chevron_right_rounded,
-                    color: AppColors.textSecondary, size: 20),
+                Icon(Icons.chevron_right_rounded,
+                    color: cs.onSurfaceVariant, size: 20),
                 if (unread)
                   Container(
                     margin: const EdgeInsets.only(top: 6),
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppColors.blue,
+                    decoration: BoxDecoration(
+                      color: accent,
                       shape: BoxShape.circle,
                     ),
                   ),

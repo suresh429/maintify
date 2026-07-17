@@ -5,6 +5,7 @@ import '../../models/user_model.dart';
 import '../../providers/bill_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../widgets/common_button.dart';
 
@@ -29,10 +30,10 @@ class _EditBillPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = RoleTheme.of(UserRole.admin);
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
       appBar: AppBar(
-        backgroundColor: AppColors.blue,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
@@ -49,6 +50,15 @@ class _EditBillPage extends StatelessWidget {
                   color: Colors.white.withOpacity(0.8)),
             ),
           ],
+        ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: theme.gradient,
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+          ),
         ),
       ),
       body: SafeArea(child: _EditBillContent(bill: bill, residents: residents)),
@@ -111,7 +121,6 @@ class _EditBillContentState extends State<_EditBillContent> {
   late List<_EditLineItem> _lineItems;
   late Set<String> _excludedUserIds;
 
-  static const _primaryColor = AppColors.blue;
   static const _categories = [
     'Maintenance', 'Water', 'Lift', 'Security',
     'Parking', 'Amenities', 'Garbage', 'Other',
@@ -191,16 +200,15 @@ class _EditBillContentState extends State<_EditBillContent> {
 
   // ── Date picker ─────────────────────────────────────────────────────────
 
-  Future<void> _pickDate() async {
+  Future<void> _pickDate(Color accent) async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _dueDate,
       firstDate: DateTime.now().subtract(const Duration(days: 30)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (ctx, child) => Theme(
-        data: ThemeData.light().copyWith(
-          colorScheme:
-              const ColorScheme.light(primary: _primaryColor),
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(primary: accent),
         ),
         child: child!,
       ),
@@ -271,106 +279,106 @@ class _EditBillContentState extends State<_EditBillContent> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
     final s = _summary;
 
-    return ColoredBox(
-      color: AppColors.lightGray,
-      child: Form(
-        key: _formKey,
-        child: CustomScrollView(
-          slivers: [
-            // ── Bill items ────────────────────────────────────────────────
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              sliver: SliverToBoxAdapter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _sectionRow(
-                      'Bill Items',
-                      trailing: TextButton.icon(
-                        onPressed: () => setState(() =>
-                            _lineItems.add(_EditLineItem(
-                              title: '',
-                              amount: 0,
-                              category: 'Maintenance',
-                              type: 'common',
-                            ))),
-                        icon: const Icon(Icons.add_rounded,
-                            size: 16, color: _primaryColor),
-                        label: Text('Add Item',
-                            style: AppTextStyles.label(
-                                color: _primaryColor)),
-                        style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap),
-                      ),
+    return Form(
+      key: _formKey,
+      child: CustomScrollView(
+        slivers: [
+          // ── Bill items ────────────────────────────────────────────────
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionRow(
+                    'Bill Items',
+                    cs,
+                    trailing: TextButton.icon(
+                      onPressed: () => setState(() =>
+                          _lineItems.add(_EditLineItem(
+                            title: '',
+                            amount: 0,
+                            category: 'Maintenance',
+                            type: 'common',
+                          ))),
+                      icon: Icon(Icons.add_rounded,
+                          size: 16, color: accent),
+                      label: Text('Add Item',
+                          style: AppTextStyles.label(color: accent)),
+                      style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap),
                     ),
-                    const SizedBox(height: 8),
-                    ..._lineItems.asMap().entries.map(
-                          (e) => _buildItemCard(e.key, e.value),
-                        ),
-                  ],
-                ),
-              ),
-            ),
-
-            // ── Excluded users ────────────────────────────────────────────
-            if (widget.residents.isNotEmpty)
-              SliverPadding(
-                padding:
-                    const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                sliver: SliverToBoxAdapter(
-                  child: _buildExcludedSection(),
-                ),
-              ),
-
-            // ── Live summary ──────────────────────────────────────────────
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              sliver: SliverToBoxAdapter(
-                child: _buildSummaryCard(s),
-              ),
-            ),
-
-            // ── Due date ──────────────────────────────────────────────────
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              sliver: SliverToBoxAdapter(child: _buildDueDateRow()),
-            ),
-
-            // ── Save button ───────────────────────────────────────────────
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-              sliver: SliverToBoxAdapter(
-                child: Consumer<BillProvider>(
-                  builder: (_, bp, __) => CommonButton(
-                    text: 'Save Changes',
-                    gradient: const [_primaryColor, Color(0xFF0EA5E9)],
-                    icon: Icons.check_circle_outline,
-                    isLoading: bp.isLoading,
-                    onPressed: _submit,
                   ),
+                  const SizedBox(height: 8),
+                  ..._lineItems.asMap().entries.map(
+                        (e) => _buildItemCard(e.key, e.value, cs, isDark, accent),
+                      ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Excluded users ────────────────────────────────────────────
+          if (widget.residents.isNotEmpty)
+            SliverPadding(
+              padding:
+                  const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: _buildExcludedSection(cs, isDark, accent),
+              ),
+            ),
+
+          // ── Live summary ──────────────────────────────────────────────
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: _buildSummaryCard(s, accent),
+            ),
+          ),
+
+          // ── Due date ──────────────────────────────────────────────────
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            sliver: SliverToBoxAdapter(child: _buildDueDateRow(cs, isDark, accent)),
+          ),
+
+          // ── Save button ───────────────────────────────────────────────
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+            sliver: SliverToBoxAdapter(
+              child: Consumer<BillProvider>(
+                builder: (_, bp, __) => CommonButton(
+                  text: 'Save Changes',
+                  gradient: RoleTheme.of(UserRole.admin).gradient,
+                  icon: Icons.check_circle_outline,
+                  isLoading: bp.isLoading,
+                  onPressed: _submit,
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   // ── Section header row ──────────────────────────────────────────────────
 
-  Widget _sectionRow(String title, {Widget? trailing}) {
+  Widget _sectionRow(String title, ColorScheme cs, {Widget? trailing}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           title,
-          style: AppTextStyles.subheading(),
+          style: AppTextStyles.subheading(color: cs.onSurface),
         ),
         if (trailing != null) trailing,
       ],
@@ -379,16 +387,16 @@ class _EditBillContentState extends State<_EditBillContent> {
 
   // ── Bill item card ──────────────────────────────────────────────────────
 
-  Widget _buildItemCard(int idx, _EditLineItem item) {
+  Widget _buildItemCard(int idx, _EditLineItem item, ColorScheme cs, bool isDark, Color accent) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -404,16 +412,16 @@ class _EditBillContentState extends State<_EditBillContent> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _primaryColor.withOpacity(0.1),
+                  color: accent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   'Item ${idx + 1}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: _primaryColor,
+                    color: accent,
                   ),
                 ),
               ),
@@ -441,26 +449,27 @@ class _EditBillContentState extends State<_EditBillContent> {
           const SizedBox(height: 14),
 
           // ── Category dropdown ─────────────────────────────────────────
-          _fieldLabel('Category'),
+          _fieldLabel('Category', cs),
           const SizedBox(height: 6),
           Container(
             padding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.lightGray,
+              color: cs.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: cs.outlineVariant),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: item.category,
                 isExpanded: true,
                 isDense: true,
-                style: AppTextStyles.bodyMedium(
-                    color: AppColors.textPrimary),
-                icon: const Icon(
+                dropdownColor: cs.surface,
+                style: AppTextStyles.bodyMedium(color: cs.onSurface),
+                icon: Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    size: 20),
+                    size: 20,
+                    color: cs.onSurfaceVariant),
                 items: _categories
                     .map((c) =>
                         DropdownMenuItem(value: c, child: Text(c)))
@@ -472,7 +481,7 @@ class _EditBillContentState extends State<_EditBillContent> {
           const SizedBox(height: 12),
 
           // ── Type toggle ───────────────────────────────────────────────
-          _fieldLabel('Split Type'),
+          _fieldLabel('Split Type', cs),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -482,6 +491,8 @@ class _EditBillContentState extends State<_EditBillContent> {
                 sublabel: 'Split equally',
                 isActive: item.type == 'common',
                 onTap: () => setState(() => item.type = 'common'),
+                cs: cs,
+                accent: accent,
               ),
               const SizedBox(width: 8),
               _typeToggle(
@@ -490,20 +501,24 @@ class _EditBillContentState extends State<_EditBillContent> {
                 sublabel: 'Default + overrides',
                 isActive: item.type == 'hybrid',
                 onTap: () => setState(() => item.type = 'hybrid'),
+                cs: cs,
+                accent: accent,
               ),
             ],
           ),
           const SizedBox(height: 12),
 
           // ── Description ───────────────────────────────────────────────
-          _fieldLabel('Description'),
+          _fieldLabel('Description', cs),
           const SizedBox(height: 6),
           TextFormField(
             controller: item.titleCtrl,
-            style: AppTextStyles.bodyLarge(),
+            style: AppTextStyles.bodyLarge(color: cs.onSurface),
             decoration: _inputDecor(
               hint: 'e.g. Water Charges, Lift Maintenance',
               icon: Icons.receipt_long_outlined,
+              cs: cs,
+              accent: accent,
             ),
             validator: (v) =>
                 (v == null || v.isEmpty) ? 'Enter description' : null,
@@ -513,19 +528,21 @@ class _EditBillContentState extends State<_EditBillContent> {
           // ── Amount ────────────────────────────────────────────────────
           _fieldLabel(item.type == 'common'
               ? 'Total Amount (₹)'
-              : 'Default Per Flat (₹)'),
+              : 'Default Per Flat (₹)', cs),
           const SizedBox(height: 6),
           TextFormField(
             controller: item.amountCtrl,
             keyboardType:
                 const TextInputType.numberWithOptions(decimal: true),
-            style: AppTextStyles.bodyLarge(),
+            style: AppTextStyles.bodyLarge(color: cs.onSurface),
             onChanged: (_) => setState(() {}),
             decoration: _inputDecor(
               hint: item.type == 'common'
                   ? 'Total for all flats'
                   : 'Amount per flat (default)',
               icon: Icons.currency_rupee_outlined,
+              cs: cs,
+              accent: accent,
             ),
             validator: (v) {
               if (v == null || v.isEmpty) return 'Enter amount';
@@ -538,7 +555,7 @@ class _EditBillContentState extends State<_EditBillContent> {
           // ── Hybrid overrides ──────────────────────────────────────────
           if (item.type == 'hybrid') ...[
             const SizedBox(height: 12),
-            _buildHybridSection(item),
+            _buildHybridSection(item, cs, accent),
           ],
         ],
       ),
@@ -547,7 +564,7 @@ class _EditBillContentState extends State<_EditBillContent> {
 
   // ── Hybrid override section ─────────────────────────────────────────────
 
-  Widget _buildHybridSection(_EditLineItem item) {
+  Widget _buildHybridSection(_EditLineItem item, ColorScheme cs, Color accent) {
     final defaultAmt = double.tryParse(item.amountCtrl.text) ?? 0;
     final eligible = widget.residents
         .where((r) => !_excludedUserIds.contains(r.id))
@@ -555,7 +572,7 @@ class _EditBillContentState extends State<_EditBillContent> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.lightGray,
+        color: cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -570,20 +587,19 @@ class _EditBillContentState extends State<_EditBillContent> {
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  const Icon(Icons.tune_outlined,
-                      size: 16, color: _primaryColor),
+                  Icon(Icons.tune_outlined,
+                      size: 16, color: accent),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Custom Amounts',
-                            style: AppTextStyles.label(
-                                    color: AppColors.textPrimary)
+                            style: AppTextStyles.label(color: cs.onSurface)
                                 .copyWith(fontWeight: FontWeight.w600)),
                         Text(
                           'Default: ${AppUtils.formatCurrency(defaultAmt)} · Tap to override per resident',
-                          style: AppTextStyles.caption(),
+                          style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                         ),
                       ],
                     ),
@@ -592,7 +608,7 @@ class _EditBillContentState extends State<_EditBillContent> {
                     item.showOverrides
                         ? Icons.expand_less_rounded
                         : Icons.expand_more_rounded,
-                    color: _primaryColor,
+                    color: accent,
                     size: 20,
                   ),
                 ],
@@ -601,7 +617,7 @@ class _EditBillContentState extends State<_EditBillContent> {
           ),
 
           if (item.showOverrides) ...[
-            const Divider(height: 1, indent: 12, endIndent: 12),
+            Divider(height: 1, indent: 12, endIndent: 12, color: cs.outlineVariant),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
               child: Column(
@@ -609,22 +625,22 @@ class _EditBillContentState extends State<_EditBillContent> {
                   // Column headers
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                           child: Text('Resident',
                               style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 10,
-                                color: AppColors.textSecondary,
+                                color: cs.onSurfaceVariant,
                                 fontWeight: FontWeight.w500,
                               ))),
-                      const SizedBox(
+                      SizedBox(
                           width: 90,
                           child: Text('Amount (₹)',
                               textAlign: TextAlign.right,
                               style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 10,
-                                color: AppColors.textSecondary,
+                                color: cs.onSurfaceVariant,
                                 fontWeight: FontWeight.w500,
                               ))),
                     ],
@@ -643,17 +659,17 @@ class _EditBillContentState extends State<_EditBillContent> {
                             width: 28,
                             height: 28,
                             decoration: BoxDecoration(
-                              color: _primaryColor.withOpacity(0.1),
+                              color: accent.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(7),
                             ),
                             child: Center(
                               child: Text(
                                 r.avatarInitials,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Poppins',
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
-                                  color: _primaryColor,
+                                  color: accent,
                                 ),
                               ),
                             ),
@@ -666,13 +682,13 @@ class _EditBillContentState extends State<_EditBillContent> {
                               children: [
                                 Text(r.name,
                                     style: AppTextStyles.bodySmall(
-                                            color: AppColors.textPrimary)
+                                            color: cs.onSurface)
                                         .copyWith(
                                             fontWeight: FontWeight.w500),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis),
                                 Text('Unit ${r.unit}',
-                                    style: AppTextStyles.caption()),
+                                    style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                               ],
                             ),
                           ),
@@ -685,7 +701,7 @@ class _EditBillContentState extends State<_EditBillContent> {
                                       decimal: true),
                               textAlign: TextAlign.right,
                               style: AppTextStyles.bodyMedium(
-                                      color: AppColors.textPrimary)
+                                      color: cs.onSurface)
                                   .copyWith(fontWeight: FontWeight.w600),
                               onChanged: (_) => setState(() {}),
                               decoration: InputDecoration(
@@ -693,30 +709,30 @@ class _EditBillContentState extends State<_EditBillContent> {
                                     ? '₹0'
                                     : defaultAmt.toStringAsFixed(0),
                                 hintStyle: AppTextStyles.bodyMedium(
-                                    color: AppColors.textSecondary),
+                                    color: cs.onSurfaceVariant),
                                 contentPadding:
                                     const EdgeInsets.symmetric(
                                         horizontal: 8, vertical: 8),
                                 isDense: true,
                                 filled: true,
-                                fillColor: AppColors.white,
+                                fillColor: cs.surface,
                                 border: OutlineInputBorder(
                                   borderRadius:
                                       BorderRadius.circular(8),
                                   borderSide: BorderSide(
-                                      color: Colors.grey.shade300),
+                                      color: cs.outlineVariant),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius:
                                       BorderRadius.circular(8),
                                   borderSide: BorderSide(
-                                      color: Colors.grey.shade300),
+                                      color: cs.outlineVariant),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius:
                                       BorderRadius.circular(8),
-                                  borderSide: const BorderSide(
-                                      color: _primaryColor),
+                                  borderSide: BorderSide(
+                                      color: accent),
                                 ),
                               ),
                               validator: (v) {
@@ -742,15 +758,15 @@ class _EditBillContentState extends State<_EditBillContent> {
 
   // ── Excluded users section ──────────────────────────────────────────────
 
-  Widget _buildExcludedSection() {
+  Widget _buildExcludedSection(ColorScheme cs, bool isDark, Color accent) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -761,10 +777,10 @@ class _EditBillContentState extends State<_EditBillContent> {
         children: [
           Row(
             children: [
-              const Icon(Icons.person_remove_outlined,
-                  size: 18, color: AppColors.textSecondary),
+              Icon(Icons.person_remove_outlined,
+                  size: 18, color: cs.onSurfaceVariant),
               const SizedBox(width: 8),
-              Text('Exclude Residents', style: AppTextStyles.subheading()),
+              Text('Exclude Residents', style: AppTextStyles.subheading(color: cs.onSurface)),
               const Spacer(),
               if (_excludedUserIds.isNotEmpty)
                 Container(
@@ -788,7 +804,7 @@ class _EditBillContentState extends State<_EditBillContent> {
           ),
           const SizedBox(height: 4),
           Text('Excluded residents pay ₹0 and are not counted in the split.',
-              style: AppTextStyles.caption()),
+              style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -810,12 +826,12 @@ class _EditBillContentState extends State<_EditBillContent> {
                   decoration: BoxDecoration(
                     color: isExcluded
                         ? AppColors.overdue.withOpacity(0.08)
-                        : AppColors.lightGray,
+                        : cs.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isExcluded
                           ? AppColors.overdue.withOpacity(0.3)
-                          : Colors.grey.shade200,
+                          : cs.outlineVariant,
                     ),
                   ),
                   child: Row(
@@ -834,7 +850,7 @@ class _EditBillContentState extends State<_EditBillContent> {
                           fontWeight: FontWeight.w500,
                           color: isExcluded
                               ? AppColors.overdue
-                              : AppColors.textPrimary,
+                              : cs.onSurface,
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -845,7 +861,7 @@ class _EditBillContentState extends State<_EditBillContent> {
                           fontSize: 10,
                           color: isExcluded
                               ? AppColors.overdue.withOpacity(0.6)
-                              : AppColors.textSecondary,
+                              : cs.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -862,15 +878,12 @@ class _EditBillContentState extends State<_EditBillContent> {
   // ── Live summary card ───────────────────────────────────────────────────
 
   Widget _buildSummaryCard(
-      ({double total, double perFlat, int eligible, int excluded}) s) {
+      ({double total, double perFlat, int eligible, int excluded}) s, Color accent) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            _primaryColor.withOpacity(0.85),
-            const Color(0xFF0EA5E9).withOpacity(0.85),
-          ],
+          colors: RoleTheme.of(UserRole.admin).gradient,
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
@@ -950,17 +963,17 @@ class _EditBillContentState extends State<_EditBillContent> {
 
   // ── Due date row ────────────────────────────────────────────────────────
 
-  Widget _buildDueDateRow() {
+  Widget _buildDueDateRow(ColorScheme cs, bool isDark, Color accent) {
     return GestureDetector(
-      onTap: _pickDate,
+      onTap: () => _pickDate(accent),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -971,25 +984,25 @@ class _EditBillContentState extends State<_EditBillContent> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: _primaryColor.withOpacity(0.1),
+                color: accent.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.calendar_today_outlined,
-                  size: 18, color: _primaryColor),
+              child: Icon(Icons.calendar_today_outlined,
+                  size: 18, color: accent),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Due Date', style: AppTextStyles.label()),
+                  Text('Due Date', style: AppTextStyles.label(color: cs.onSurfaceVariant)),
                   Text(AppUtils.formatDate(_dueDate),
-                      style: AppTextStyles.bodyLarge()),
+                      style: AppTextStyles.bodyLarge(color: cs.onSurface)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.textSecondary),
+            Icon(Icons.chevron_right_rounded,
+                color: cs.onSurfaceVariant),
           ],
         ),
       ),
@@ -998,25 +1011,30 @@ class _EditBillContentState extends State<_EditBillContent> {
 
   // ── Helpers ─────────────────────────────────────────────────────────────
 
-  Widget _fieldLabel(String text) => Text(
+  Widget _fieldLabel(String text, ColorScheme cs) => Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Poppins',
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          color: AppColors.textSecondary,
+          color: cs.onSurfaceVariant,
         ),
       );
 
-  InputDecoration _inputDecor({required String hint, required IconData icon}) =>
+  InputDecoration _inputDecor({
+    required String hint,
+    required IconData icon,
+    required ColorScheme cs,
+    required Color accent,
+  }) =>
       InputDecoration(
         hintText: hint,
-        hintStyle: AppTextStyles.bodyMedium(),
-        prefixIcon: Icon(icon, size: 18),
+        hintStyle: AppTextStyles.bodyMedium(color: cs.onSurfaceVariant),
+        prefixIcon: Icon(icon, size: 18, color: cs.onSurfaceVariant),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         filled: true,
-        fillColor: AppColors.lightGray,
+        fillColor: cs.surfaceContainerHighest,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide.none,
@@ -1027,7 +1045,7 @@ class _EditBillContentState extends State<_EditBillContent> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: _primaryColor, width: 1.5),
+          borderSide: BorderSide(color: accent, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -1045,6 +1063,8 @@ class _EditBillContentState extends State<_EditBillContent> {
     required String sublabel,
     required bool isActive,
     required VoidCallback onTap,
+    required ColorScheme cs,
+    required Color accent,
   }) {
     return Expanded(
       child: GestureDetector(
@@ -1054,12 +1074,12 @@ class _EditBillContentState extends State<_EditBillContent> {
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           decoration: BoxDecoration(
             color:
-                isActive ? _primaryColor : AppColors.lightGray,
+                isActive ? accent : cs.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(10),
             boxShadow: isActive
                 ? [
                     BoxShadow(
-                      color: _primaryColor.withOpacity(0.25),
+                      color: accent.withOpacity(0.25),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     )
@@ -1072,7 +1092,7 @@ class _EditBillContentState extends State<_EditBillContent> {
               Icon(icon,
                   size: 14,
                   color:
-                      isActive ? Colors.white : AppColors.textSecondary),
+                      isActive ? Colors.white : cs.onSurfaceVariant),
               const SizedBox(width: 6),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1085,7 +1105,7 @@ class _EditBillContentState extends State<_EditBillContent> {
                       fontWeight: FontWeight.w600,
                       color: isActive
                           ? Colors.white
-                          : AppColors.textPrimary,
+                          : cs.onSurface,
                     ),
                   ),
                   Text(
@@ -1095,7 +1115,7 @@ class _EditBillContentState extends State<_EditBillContent> {
                       fontSize: 9,
                       color: isActive
                           ? Colors.white.withOpacity(0.8)
-                          : AppColors.textSecondary,
+                          : cs.onSurfaceVariant,
                     ),
                   ),
                 ],

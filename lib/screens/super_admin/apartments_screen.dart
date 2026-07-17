@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../models/apartment_model.dart';
 import '../../providers/apartment_provider.dart';
@@ -21,6 +22,8 @@ class _ApartmentsScreenState extends State<ApartmentsScreen> {
   @override
   Widget build(BuildContext context) {
     final aptProvider = context.watch<ApartmentProvider>();
+    final superAccent = RoleTheme.of(UserRole.superAdmin).effectivePrimary(context);
+    final adminAccent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
     final filtered = aptProvider.apartments
         .where((a) =>
             a.name.toLowerCase().contains(_search.toLowerCase()) ||
@@ -54,14 +57,14 @@ class _ApartmentsScreenState extends State<ApartmentsScreen> {
             children: [
               _SummaryChip(
                 label: '${aptProvider.apartments.length} Properties',
-                color: AppColors.purple,
+                color: superAccent,
                 icon: Icons.apartment_outlined,
               ),
               const SizedBox(width: 10),
               _SummaryChip(
                 label:
                     '${aptProvider.apartments.fold(0, (s, a) => s + a.totalFlats)} Total Flats',
-                color: AppColors.blue,
+                color: adminAccent,
                 icon: Icons.door_front_door_outlined,
               ),
               const Spacer(),
@@ -156,6 +159,10 @@ class _ApartmentDetailCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = RoleTheme.of(UserRole.superAdmin).effectivePrimary(context);
+    final adminAccent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
     final billProvider = context.watch<BillProvider>();
     final presidentName = apt.presidentName ?? 'Unassigned';
     final collected = billProvider.collectedForApartment(apt.id);
@@ -164,11 +171,11 @@ class _ApartmentDetailCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.06),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -182,7 +189,7 @@ class _ApartmentDetailCard extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.purple.withOpacity(0.08),
+                  accent.withOpacity(0.08),
                   AppColors.blue.withOpacity(0.04),
                 ],
               ),
@@ -194,20 +201,20 @@ class _ApartmentDetailCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.purple.withOpacity(0.12),
+                    color: accent.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.apartment_rounded,
-                      color: AppColors.purple, size: 22),
+                  child: Icon(Icons.apartment_rounded,
+                      color: accent, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(apt.name, style: AppTextStyles.subheading()),
+                      Text(apt.name, style: AppTextStyles.subheading(color: cs.onSurface)),
                       Text(apt.code,
-                          style: AppTextStyles.caption(),
+                          style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
                     ],
@@ -249,18 +256,18 @@ class _ApartmentDetailCard extends StatelessWidget {
                         icon: Icons.door_front_door_outlined,
                         label: 'Total Flats',
                         value: '${apt.totalFlats}',
-                        color: AppColors.blue,
+                        color: adminAccent,
                       ),
                     ),
                     Container(
-                        width: 1, height: 36, color: AppColors.lightGray),
+                        width: 1, height: 36, color: cs.outlineVariant),
                     Expanded(
                       child: _InfoTile(
                         icon: Icons.person_outline,
                         label: 'President',
                         value: presidentName,
                         color: apt.hasPresident
-                            ? AppColors.textPrimary
+                            ? cs.onSurface
                             : AppColors.overdue,
                       ),
                     ),
@@ -278,7 +285,7 @@ class _ApartmentDetailCard extends StatelessWidget {
                       ),
                     ),
                     Container(
-                        width: 1, height: 36, color: AppColors.lightGray),
+                        width: 1, height: 36, color: cs.outlineVariant),
                     Expanded(
                       child: _FinanceTile(
                         label: 'Pending',
@@ -319,7 +326,7 @@ class _InfoTile extends StatelessWidget {
             children: [
               Icon(icon, size: 12, color: AppColors.textSecondary),
               const SizedBox(width: 4),
-              Text(label, style: AppTextStyles.caption()),
+              Text(label, style: AppTextStyles.caption(color: AppColors.textSecondary)),
             ],
           ),
           const SizedBox(height: 3),
@@ -359,7 +366,7 @@ class _FinanceTile extends StatelessWidget {
                 color: color,
               )),
           const SizedBox(height: 2),
-          Text(label, style: AppTextStyles.caption()),
+          Text(label, style: AppTextStyles.caption(color: AppColors.textSecondary)),
         ],
       ),
     );

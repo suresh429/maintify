@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 /// Renders options as fully-rounded pills with smooth animated state transitions.
 ///
 /// Selected  → solid [activeColor] background, white bold text, subtle shadow
-/// Unselected → #E2E8F0 background, #475569 medium text, no shadow
+/// Unselected → theme-aware surface variant background, onSurfaceVariant text
 class PillFilterBar extends StatelessWidget {
   final List<String> options;
   final String selected;
@@ -67,6 +67,7 @@ class _PillItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -74,7 +75,7 @@ class _PillItem extends StatelessWidget {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 18),
         decoration: BoxDecoration(
-          color: isActive ? activeColor : const Color(0xFFE2E8F0),
+          color: isActive ? activeColor : cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(24),
           boxShadow: isActive
               ? [
@@ -93,7 +94,7 @@ class _PillItem extends StatelessWidget {
               fontFamily: 'Poppins',
               fontSize: 13,
               fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-              color: isActive ? const Color(0xFFFFFFFF) : const Color(0xFF475569),
+              color: isActive ? Colors.white : cs.onSurfaceVariant,
             ),
             child: Text(label),
           ),

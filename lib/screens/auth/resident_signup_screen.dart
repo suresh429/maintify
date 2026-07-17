@@ -94,10 +94,12 @@ class _ResidentSignupScreenState extends State<ResidentSignupScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       isDismissible: false,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      builder: (ctx) {
+        final sheetCs = Theme.of(ctx).colorScheme;
+        return Container(
+        decoration: BoxDecoration(
+          color: sheetCs.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
         child: Column(
@@ -107,7 +109,7 @@ class _ResidentSignupScreenState extends State<ResidentSignupScreen>
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: sheetCs.outlineVariant,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -115,26 +117,26 @@ class _ResidentSignupScreenState extends State<ResidentSignupScreen>
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: AppColors.blue.withOpacity(0.1),
+                color: sheetCs.primary.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.hourglass_top_rounded,
-                color: AppColors.blue,
+                color: sheetCs.primary,
                 size: 44,
               ),
             ),
             const SizedBox(height: 20),
             Text(
               'Request Submitted!',
-              style: AppTextStyles.heading3(),
+              style: AppTextStyles.heading3(color: sheetCs.onSurface),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'Your registration request has been sent to the apartment president for approval. '
               'You will be notified once approved — then you can log in.',
-              style: AppTextStyles.bodyMedium(),
+              style: AppTextStyles.bodyMedium(color: sheetCs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 28),
@@ -152,12 +154,15 @@ class _ResidentSignupScreenState extends State<ResidentSignupScreen>
             ),
           ],
         ),
-      ),
+      );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: Stack(
         children: [
@@ -232,11 +237,11 @@ class _ResidentSignupScreenState extends State<ResidentSignupScreen>
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: AppColors.white,
+                          color: cs.surface,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withOpacity(isDark ? 0.4 : 0.1),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -270,9 +275,9 @@ class _ResidentSignupScreenState extends State<ResidentSignupScreen>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text('Resident Sign Up',
-                                        style: AppTextStyles.heading3()),
+                                        style: AppTextStyles.heading3(color: cs.onSurface)),
                                     Text('Join your apartment community',
-                                        style: AppTextStyles.bodySmall()),
+                                        style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant)),
                                   ],
                                 ),
                               ],
@@ -440,26 +445,24 @@ class _ResidentSignupScreenState extends State<ResidentSignupScreen>
                                   Container(
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color:
-                                          AppColors.blue.withOpacity(0.06),
+                                      color: cs.primary.withOpacity(isDark ? 0.12 : 0.06),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
-                                          color: AppColors.blue
-                                              .withOpacity(0.15)),
+                                          color: cs.primary.withOpacity(isDark ? 0.3 : 0.15)),
                                     ),
                                     child: Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        const Icon(Icons.info_outline,
-                                            size: 16, color: AppColors.blue),
+                                        Icon(Icons.info_outline,
+                                            size: 16, color: cs.primary),
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
                                             'Your request will be reviewed by the apartment president. '
                                             'You can log in only after approval.',
                                             style: AppTextStyles.caption(
-                                                color: AppColors.blue),
+                                                color: cs.primary),
                                           ),
                                         ),
                                       ],

@@ -38,8 +38,10 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
     final statusColor = _statusColor(fresh.status);
     final statusLabel = _statusLabel(fresh.status);
 
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -69,11 +71,11 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
             const SizedBox(height: 14),
 
             // ── Section 2: Category Breakdown ─────────────────────────────
-            _buildCategoryBreakdown(theme, fresh, aptTotal, statusColor),
+            _buildCategoryBreakdown(theme, fresh, aptTotal, statusColor, cs, isDark),
             const SizedBox(height: 14),
 
             // ── Section 3: Payment Info ────────────────────────────────────
-            _buildPaymentInfo(context, theme, fresh, userId, billProvider),
+            _buildPaymentInfo(context, theme, fresh, userId, billProvider, cs, isDark),
           ],
         ),
       ),
@@ -256,14 +258,16 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
     UserMonthlySummary fresh,
     double aptTotal,
     Color statusColor,
+    ColorScheme cs,
+    bool isDark,
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -282,7 +286,7 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                     child:
-                        Text('Category Breakdown', style: AppTextStyles.subheading())),
+                        Text('Category Breakdown', style: AppTextStyles.subheading(color: cs.onSurface))),
                 // Column labels
                 Text('Apt. Total',
                     style: AppTextStyles.caption(
@@ -328,12 +332,12 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
                           children: [
                             Text(v.bill.title,
                                 style: AppTextStyles.bodyMedium(
-                                        color: AppColors.textPrimary)
+                                        color: cs.onSurface)
                                     .copyWith(fontWeight: FontWeight.w500),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),
                             Text(v.bill.category,
-                                style: AppTextStyles.caption()),
+                                style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                           ],
                         ),
                       ),
@@ -341,7 +345,7 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
                       Text(
                         AppUtils.formatCurrency(v.bill.totalAmount),
                         style: AppTextStyles.caption(
-                                color: AppColors.textSecondary)
+                                color: cs.onSurfaceVariant)
                             .copyWith(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(width: 12),
@@ -354,7 +358,7 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
                             Text(
                               AppUtils.formatCurrency(v.userAmount),
                               style: AppTextStyles.bodySmall(
-                                      color: AppColors.textPrimary)
+                                      color: cs.onSurface)
                                   .copyWith(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(width: 4),
@@ -390,11 +394,11 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
                   children: [
                     Text('Apartment Total',
                         style: AppTextStyles.bodyMedium(
-                            color: AppColors.textPrimary)),
+                            color: cs.onSurface)),
                     Text(
                       AppUtils.formatCurrency(aptTotal),
                       style: AppTextStyles.bodyMedium(
-                              color: AppColors.textSecondary)
+                              color: cs.onSurface)
                           .copyWith(fontWeight: FontWeight.w600),
                     ),
                   ],
@@ -404,10 +408,11 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Your Total Share',
-                        style: AppTextStyles.subheading()),
+                        style: AppTextStyles.subheading(color: cs.onSurface)),
                     Text(
                       AppUtils.formatCurrency(fresh.totalAmount),
-                      style: AppTextStyles.subheading(color: theme.primary),
+                      style: AppTextStyles.subheading(
+                          color: isDark ? theme.darkPrimary : theme.primary),
                     ),
                   ],
                 ),
@@ -415,9 +420,9 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Due Date', style: AppTextStyles.caption()),
+                    Text('Due Date', style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                     Text(AppUtils.formatDate(fresh.dueDate),
-                        style: AppTextStyles.caption()),
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                   ],
                 ),
               ],
@@ -436,15 +441,17 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
     UserMonthlySummary fresh,
     String userId,
     BillProvider billProvider,
+    ColorScheme cs,
+    bool isDark,
   ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -458,7 +465,7 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
               const Icon(Icons.payments_outlined,
                   size: 18, color: AppColors.textSecondary),
               const SizedBox(width: 8),
-              Text('Payment Info', style: AppTextStyles.subheading()),
+              Text('Payment Info', style: AppTextStyles.subheading(color: cs.onSurface)),
             ],
           ),
           const SizedBox(height: 14),
@@ -523,7 +530,7 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
                       children: [
                         Text('Payment Pending',
                             style: AppTextStyles.bodyMedium(
-                                    color: AppColors.textPrimary)
+                                    color: cs.onSurface)
                                 .copyWith(fontWeight: FontWeight.w600)),
                         Text(
                           'Due: ${AppUtils.formatDate(fresh.dueDate)}',

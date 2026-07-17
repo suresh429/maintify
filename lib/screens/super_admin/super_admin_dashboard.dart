@@ -8,6 +8,7 @@ import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../models/apartment_model.dart';
 import '../../providers/apartment_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../widgets/dashboard_card.dart';
 import '../../widgets/shimmer_loading.dart';
 import 'apartments_screen.dart';
@@ -64,8 +65,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     final theme = RoleTheme.of(UserRole.superAdmin);
     final auth = context.read<AuthProvider>();
 
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -74,6 +76,16 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
           style: AppTextStyles.heading3(color: Colors.white),
         ),
         actions: [
+          Consumer<ThemeProvider>(
+            builder: (_, tp, __) => IconButton(
+              icon: Icon(
+                tp.isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                color: Colors.white,
+              ),
+              tooltip: tp.isDarkMode ? 'Light mode' : 'Dark mode',
+              onPressed: tp.toggle,
+            ),
+          ),
           Consumer<NotificationProvider>(
             builder: (context, notifProvider, _) {
               final unread = notifProvider.unreadCount(UserRole.superAdmin);
@@ -147,15 +159,15 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
       ),
       body: _buildBody(),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          border: Border(top: BorderSide(color: cs.outline.withOpacity(0.2), width: 1)),
         ),
         child: NavigationBar(
           selectedIndex: _currentIndex,
           onDestinationSelected: (i) => setState(() => _currentIndex = i),
-          backgroundColor: Colors.white,
-          indicatorColor: theme.primary.withOpacity(0.12),
+          backgroundColor: Colors.transparent,
+          indicatorColor: theme.effectivePrimary(context).withOpacity(0.15),
           surfaceTintColor: Colors.transparent,
           shadowColor: Colors.transparent,
           elevation: 0,
@@ -201,6 +213,8 @@ class _DashboardHome extends StatelessWidget {
 
     if (aptProvider.isInitialLoading) return const ShimmerDashboard();
 
+    final accent = theme.effectivePrimary(context);
+
     final hour = DateTime.now().hour;
     final greeting = hour < 12
         ? 'Good morning,'
@@ -209,7 +223,7 @@ class _DashboardHome extends StatelessWidget {
             : 'Good evening,';
 
     return RefreshIndicator(
-      color: theme.primary,
+      color: theme.effectivePrimary(context),
       onRefresh: () async => dashboard.refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -229,7 +243,7 @@ class _DashboardHome extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: theme.primary.withOpacity(0.25),
+                    color: accent.withOpacity(0.25),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),
@@ -298,7 +312,7 @@ class _DashboardHome extends StatelessWidget {
             ),
 
             const SizedBox(height: 24),
-            Text('Financial Summary', style: AppTextStyles.heading3()),
+            Text('Financial Summary', style: AppTextStyles.heading3(color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 14),
 
             Row(
@@ -324,7 +338,7 @@ class _DashboardHome extends StatelessWidget {
             ),
 
             const SizedBox(height: 24),
-            Text('Bills Overview', style: AppTextStyles.heading3()),
+            Text('Bills Overview', style: AppTextStyles.heading3(color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 14),
 
             GridView.count(
@@ -339,7 +353,7 @@ class _DashboardHome extends StatelessWidget {
                   title: 'Total Bills',
                   value: '${dashboard.totalBills}',
                   icon: Icons.receipt_long_outlined,
-                  color: theme.primary,
+                  color: theme.effectivePrimary(context),
                 ),
                 StatCard(
                   title: 'Fully Paid',
@@ -363,7 +377,7 @@ class _DashboardHome extends StatelessWidget {
             ),
 
             const SizedBox(height: 24),
-            Text('Properties', style: AppTextStyles.heading3()),
+            Text('Properties', style: AppTextStyles.heading3(color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 14),
 
             ...aptProvider.apartments.map((apt) => _ApartmentCard(apt: apt)),
@@ -403,16 +417,20 @@ class _ApartmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = RoleTheme.of(UserRole.superAdmin).effectivePrimary(context);
+    final adminAccent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
     final presidentDisplayName = apt.presidentName ?? 'Unassigned';
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -426,20 +444,20 @@ class _ApartmentCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.purple.withOpacity(0.1),
+                  color: accent.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.apartment_outlined,
-                    color: AppColors.purple, size: 20),
+                child: Icon(Icons.apartment_outlined,
+                    color: accent, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(apt.name, style: AppTextStyles.subheading()),
+                    Text(apt.name, style: AppTextStyles.subheading(color: cs.onSurface)),
                     Text(apt.code,
-                        style: AppTextStyles.caption(),
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                   ],
@@ -472,14 +490,13 @@ class _ApartmentCard extends StatelessWidget {
           Row(
             children: [
               _stat(Icons.door_front_door_outlined,
-                  '${apt.totalFlats} Flats', AppColors.blue),
+                  '${apt.totalFlats} Flats', adminAccent, cs),
               const SizedBox(width: 16),
               _stat(
                 Icons.person_outline,
                 presidentDisplayName,
-                apt.hasPresident
-                    ? AppColors.textPrimary
-                    : AppColors.overdue,
+                apt.hasPresident ? cs.onSurface : AppColors.overdue,
+                cs,
               ),
             ],
           ),
@@ -488,7 +505,7 @@ class _ApartmentCard extends StatelessWidget {
     );
   }
 
-  Widget _stat(IconData icon, String label, Color color) {
+  Widget _stat(IconData icon, String label, Color color, ColorScheme cs) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

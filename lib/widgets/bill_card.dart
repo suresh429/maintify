@@ -55,6 +55,8 @@ class BillCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bill = view.bill;
     final payment = view.payment;
 
@@ -64,14 +66,14 @@ class BillCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(14),
           border: payment.isOverdue
               ? Border.all(color: AppColors.overdue.withOpacity(0.25))
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -102,24 +104,23 @@ class BillCard extends StatelessWidget {
                     children: [
                       Text(
                         bill.title,
-                        style: AppTextStyles.subheading(
-                            color: AppColors.textPrimary),
+                        style: AppTextStyles.subheading(color: cs.onSurface),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 3),
                       Text(
                         bill.month,
-                        style: AppTextStyles.caption(),
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       _DateRow(
                         icon: Icons.calendar_today_outlined,
-                        iconColor: AppColors.textSecondary,
+                        iconColor: cs.onSurfaceVariant,
                         label: 'Due: ${AppUtils.formatDate(bill.dueDate)}',
-                        labelColor: null,
+                        labelColor: cs.onSurfaceVariant,
                       ),
                       if (payment.paidDate != null) ...[
                         const SizedBox(height: 3),
@@ -143,8 +144,7 @@ class BillCard extends StatelessWidget {
                   children: [
                     Text(
                       AppUtils.formatCurrency(bill.perFlatShare),
-                      style: AppTextStyles.subheading(
-                          color: AppColors.textPrimary),
+                      style: AppTextStyles.subheading(color: cs.onSurface),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -161,19 +161,19 @@ class BillCard extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.lightGray.withOpacity(0.6),
+                color: cs.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.people_outline,
-                      size: 12, color: AppColors.textSecondary),
+                      size: 12, color: cs.onSurfaceVariant),
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(
                       '${AppUtils.formatCurrency(bill.totalAmount)} ÷ ${bill.totalFlats} flats = ${AppUtils.formatCurrency(bill.perFlatShare)} your share',
-                      style: AppTextStyles.caption(),
+                      style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),

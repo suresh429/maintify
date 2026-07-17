@@ -54,6 +54,9 @@ class _MonthlyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = theme.effectivePrimary(context);
     final paidCount = summary.fullyPaidFlats;
     final total = summary.totalFlats;
     final progress = total == 0 ? 0.0 : paidCount / total;
@@ -87,11 +90,11 @@ class _MonthlyCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -105,8 +108,8 @@ class _MonthlyCard extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    theme.primary.withOpacity(0.07),
-                    theme.primary.withOpacity(0.01),
+                    accent.withOpacity(0.07),
+                    accent.withOpacity(0.01),
                   ],
                 ),
                 borderRadius:
@@ -117,11 +120,11 @@ class _MonthlyCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: theme.primary.withOpacity(0.1),
+                      color: accent.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(Icons.calendar_month_rounded,
-                        color: theme.primary, size: 22),
+                        color: accent, size: 22),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -129,11 +132,11 @@ class _MonthlyCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(summary.month,
-                            style: AppTextStyles.subheading()),
+                            style: AppTextStyles.subheading(color: cs.onSurface)),
                         const SizedBox(height: 2),
                         Text(
                           '${summary.bills.length} categor${summary.bills.length == 1 ? 'y' : 'ies'} · ${AppUtils.formatCurrency(summary.totalAmount)} total',
-                          style: AppTextStyles.caption(),
+                          style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                         ),
                       ],
                     ),
@@ -161,7 +164,7 @@ class _MonthlyCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         '${AppUtils.formatCurrency(summary.perFlatShare)}/flat',
-                        style: AppTextStyles.caption(),
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -179,11 +182,11 @@ class _MonthlyCard extends StatelessWidget {
                     children: [
                       Text(
                         '$paidCount of $total flats paid',
-                        style: AppTextStyles.caption(),
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                       ),
                       Text(
                         '${(progress * 100).toInt()}%',
-                        style: AppTextStyles.caption(color: theme.primary)
+                        style: AppTextStyles.caption(color: accent)
                             .copyWith(fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -193,11 +196,11 @@ class _MonthlyCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: progress,
-                      backgroundColor: AppColors.lightGray,
+                      backgroundColor: cs.outlineVariant,
                       valueColor: AlwaysStoppedAnimation<Color>(
                           paidCount == total && total > 0
                               ? AppColors.green
-                              : theme.primary),
+                              : accent),
                       minHeight: 8,
                     ),
                   ),
@@ -221,10 +224,10 @@ class _MonthlyCard extends StatelessWidget {
                         children: [
                           Text('View Details',
                               style: AppTextStyles.caption(
-                                  color: theme.primary)),
+                                  color: accent)),
                           const SizedBox(width: 2),
                           Icon(Icons.chevron_right_rounded,
-                              color: theme.primary, size: 16),
+                              color: accent, size: 16),
                         ],
                       ),
                     ],
@@ -248,10 +251,11 @@ class _StatPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTextStyles.caption()),
+        Text(label, style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
         Text(value,
             style: AppTextStyles.caption(color: color)
                 .copyWith(fontWeight: FontWeight.w600)),

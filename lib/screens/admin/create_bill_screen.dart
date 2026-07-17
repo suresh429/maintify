@@ -99,12 +99,17 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
       initialDate: _dueDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (ctx, child) => Theme(
-        data: ThemeData.light().copyWith(
-          colorScheme: const ColorScheme.light(primary: AppColors.blue),
-        ),
-        child: child!,
-      ),
+      builder: (ctx, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Theme(
+          data: (isDark ? ThemeData.dark() : ThemeData.light()).copyWith(
+            colorScheme: isDark
+                ? const ColorScheme.dark(primary: Color(0xFF60A5FA))
+                : const ColorScheme.light(primary: AppColors.blue),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) setState(() => _dueDate = picked);
   }
@@ -124,15 +129,17 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) {
+        final sheetCs = Theme.of(ctx).colorScheme;
+        final sheetAccent = RoleTheme.of(UserRole.admin).effectivePrimary(ctx);
         return DraggableScrollableSheet(
           initialChildSize: 0.55,
           minChildSize: 0.35,
           maxChildSize: 0.85,
           expand: false,
           builder: (_, scrollCtrl) => Container(
-            decoration: const BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            decoration: BoxDecoration(
+              color: sheetCs.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Column(
               children: [
@@ -144,16 +151,16 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
+                          color: sheetCs.outlineVariant,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                       const SizedBox(height: 16),
                       Text('Select Billing Month',
-                          style: AppTextStyles.heading3()),
+                          style: AppTextStyles.heading3(color: sheetCs.onSurface)),
                       const SizedBox(height: 4),
                       Text('Current month and past months only',
-                          style: AppTextStyles.caption()),
+                          style: AppTextStyles.caption(color: sheetCs.onSurfaceVariant)),
                     ],
                   ),
                 ),
@@ -174,34 +181,34 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? AppColors.blue.withOpacity(0.1)
-                                : AppColors.lightGray,
+                                ? sheetAccent.withOpacity(0.1)
+                                : sheetCs.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
                             Icons.calendar_month_outlined,
                             size: 18,
                             color: isSelected
-                                ? AppColors.blue
-                                : AppColors.textSecondary,
+                                ? sheetAccent
+                                : sheetCs.onSurfaceVariant,
                           ),
                         ),
                         title: Text(
                           label,
                           style: AppTextStyles.bodyLarge().copyWith(
                             color: isFuture
-                                ? AppColors.textSecondary
-                                : AppColors.textPrimary,
+                                ? sheetCs.onSurfaceVariant
+                                : sheetCs.onSurface,
                           ),
                         ),
                         subtitle: i == 0
                             ? Text('Current month',
                                 style: AppTextStyles.caption(
-                                    color: AppColors.blue))
+                                    color: sheetAccent))
                             : null,
                         trailing: isSelected
-                            ? const Icon(Icons.check_circle_rounded,
-                                color: AppColors.blue)
+                            ? Icon(Icons.check_circle_rounded,
+                                color: sheetAccent)
                             : null,
                         enabled: !isFuture,
                         onTap: () {
@@ -326,12 +333,14 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     final apt = context.read<ApartmentProvider>().findById(aptId);
     final residents = context.read<UserProvider>().membersForApartment(aptId);
     final theme = RoleTheme.of(UserRole.admin);
+    final accent = theme.effectivePrimary(context);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final totalFlats = apt?.totalFlats ?? residents.length;
     final totalAmount = _computedTotal(residents, totalFlats);
     final perFlatAvg = totalFlats > 0 ? totalAmount / totalFlats : 0.0;
 
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -403,19 +412,19 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppColors.white,
-                    border: Border.all(color: Colors.grey.shade200),
+                    color: cs.surface,
+                    border: Border.all(color: cs.outlineVariant),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.calendar_month_outlined,
-                          size: 20, color: AppColors.textSecondary),
+                      Icon(Icons.calendar_month_outlined,
+                          size: 20, color: cs.onSurfaceVariant),
                       const SizedBox(width: 12),
-                      Text(_selectedMonth, style: AppTextStyles.bodyLarge()),
+                      Text(_selectedMonth, style: AppTextStyles.bodyLarge(color: cs.onSurface)),
                       const Spacer(),
-                      const Icon(Icons.chevron_right_rounded,
-                          color: AppColors.textSecondary),
+                      Icon(Icons.chevron_right_rounded,
+                          color: cs.onSurfaceVariant),
                     ],
                   ),
                 ),
@@ -432,10 +441,10 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                     onPressed: () {
                       setState(() => _lineItems.add(_LineItem()));
                     },
-                    icon: const Icon(Icons.add_rounded,
-                        size: 18, color: AppColors.blue),
+                    icon: Icon(Icons.add_rounded,
+                        size: 18, color: accent),
                     label: Text('Add',
-                        style: AppTextStyles.label(color: AppColors.blue)),
+                        style: AppTextStyles.label(color: accent)),
                   ),
                 ],
               ),
@@ -445,7 +454,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                 final idx = entry.key;
                 final item = entry.value;
                 return _buildLineItemCard(
-                    idx, item, residents, totalFlats, theme.primary);
+                    idx, item, residents, totalFlats, accent, cs, isDark);
               }),
 
               // Total summary
@@ -454,22 +463,22 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: theme.primary.withOpacity(0.06),
+                    color: accent.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: theme.primary.withOpacity(0.2)),
+                    border: Border.all(color: accent.withOpacity(0.2)),
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.calculate_outlined,
-                          color: theme.primary, size: 20),
+                          color: accent, size: 20),
                       const SizedBox(width: 10),
                       Expanded(
                         child: RichText(
                           text: TextSpan(
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 13,
-                              color: AppColors.textPrimary,
+                              color: cs.onSurface,
                             ),
                             children: [
                               TextSpan(
@@ -480,7 +489,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                                 text: AppUtils.formatCurrency(perFlatAvg),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: theme.primary,
+                                  color: accent,
                                   fontSize: 15,
                                 ),
                               ),
@@ -504,20 +513,20 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppColors.white,
-                    border: Border.all(color: Colors.grey.shade200),
+                    color: cs.surface,
+                    border: Border.all(color: cs.outlineVariant),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.calendar_today_outlined,
-                          size: 20, color: AppColors.textSecondary),
+                      Icon(Icons.calendar_today_outlined,
+                          size: 20, color: cs.onSurfaceVariant),
                       const SizedBox(width: 12),
                       Text(AppUtils.formatDate(_dueDate),
-                          style: AppTextStyles.bodyLarge()),
+                          style: AppTextStyles.bodyLarge(color: cs.onSurface)),
                       const Spacer(),
-                      const Icon(Icons.chevron_right_rounded,
-                          color: AppColors.textSecondary),
+                      Icon(Icons.chevron_right_rounded,
+                          color: cs.onSurfaceVariant),
                     ],
                   ),
                 ),
@@ -529,20 +538,20 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: cs.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade200),
+                  border: Border.all(color: cs.outlineVariant),
                 ),
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: theme.primary.withOpacity(0.1),
+                        color: accent.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(Icons.group_outlined,
-                          color: theme.primary, size: 22),
+                          color: accent, size: 22),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -550,10 +559,10 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Will be sent to all residents',
-                              style: AppTextStyles.label()),
+                              style: AppTextStyles.label(color: cs.onSurface)),
                           Text(
                             '${residents.length} residents · ${apt?.name ?? 'Apartment'}',
-                            style: AppTextStyles.caption(),
+                            style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                           ),
                         ],
                       ),
@@ -583,13 +592,13 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
   }
 
   Widget _buildLineItemCard(
-      int idx, _LineItem item, List<UserModel> residents, int totalFlats, Color primary) {
+      int idx, _LineItem item, List<UserModel> residents, int totalFlats, Color primary, ColorScheme cs, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: cs.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -626,7 +635,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.lightGray,
+                    color: cs.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: DropdownButtonHideUnderline(
@@ -635,7 +644,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                       isExpanded: true,
                       isDense: true,
                       style: AppTextStyles.bodyMedium(
-                          color: AppColors.textPrimary),
+                          color: cs.onSurface),
                       icon: const Icon(
                           Icons.keyboard_arrow_down_rounded, size: 20),
                       items: _categories
@@ -652,7 +661,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                 // Type toggle: Common / Hybrid
                 Container(
                   decoration: BoxDecoration(
-                    color: AppColors.lightGray,
+                    color: cs.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   padding: const EdgeInsets.all(3),
@@ -680,12 +689,12 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                 // Description
                 TextFormField(
                   controller: item.titleCtrl,
-                  style: AppTextStyles.bodyLarge(),
+                  style: AppTextStyles.bodyLarge(color: cs.onSurface),
                   decoration: InputDecoration(
                     hintText: 'Description (e.g., Water Charges)',
-                    hintStyle: AppTextStyles.bodyMedium(),
-                    prefixIcon:
-                        const Icon(Icons.receipt_outlined, size: 18),
+                    hintStyle: AppTextStyles.bodyMedium(color: cs.onSurfaceVariant),
+                    prefixIcon: Icon(Icons.receipt_outlined, size: 18,
+                        color: cs.onSurfaceVariant),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 10),
                   ),
@@ -699,15 +708,15 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                   controller: item.amountCtrl,
                   keyboardType: const TextInputType.numberWithOptions(
                       decimal: true),
-                  style: AppTextStyles.bodyLarge(),
+                  style: AppTextStyles.bodyLarge(color: cs.onSurface),
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     hintText: item.type == 'common'
                         ? 'Total amount (₹)'
                         : 'Default per flat (₹)',
-                    hintStyle: AppTextStyles.bodyMedium(),
-                    prefixIcon: const Icon(
-                        Icons.currency_rupee_outlined, size: 18),
+                    hintStyle: AppTextStyles.bodyMedium(color: cs.onSurfaceVariant),
+                    prefixIcon: Icon(Icons.currency_rupee_outlined, size: 18,
+                        color: cs.onSurfaceVariant),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 10),
                   ),
@@ -749,7 +758,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                     Text(
                       'Leave blank to use the default amount above',
                       style: AppTextStyles.caption(
-                          color: AppColors.textSecondary),
+                          color: cs.onSurfaceVariant),
                     ),
                     const SizedBox(height: 8),
                     ...residents.map((r) {
@@ -787,7 +796,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                                 children: [
                                   Text(r.name,
                                       style: AppTextStyles.bodyMedium(
-                                              color: AppColors.textPrimary)
+                                              color: cs.onSurface)
                                           .copyWith(
                                               fontWeight: FontWeight.w500),
                                       maxLines: 1,
@@ -805,7 +814,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                                     const TextInputType.numberWithOptions(
                                         decimal: true),
                                 textAlign: TextAlign.right,
-                                style: AppTextStyles.bodyLarge().copyWith(
+                                style: AppTextStyles.bodyLarge(color: cs.onSurface).copyWith(
                                     fontWeight: FontWeight.w600),
                                 onChanged: (_) => setState(() {}),
                                 decoration: InputDecoration(
@@ -813,10 +822,10 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                                       ? '₹0'
                                       : '₹${item.amountCtrl.text}',
                                   hintStyle: AppTextStyles.bodyMedium(
-                                      color: AppColors.textSecondary),
+                                      color: cs.onSurfaceVariant),
                                   prefixText: ctrl.text.isEmpty ? '' : '₹',
                                   prefixStyle: AppTextStyles.bodyMedium(
-                                      color: AppColors.textSecondary),
+                                      color: cs.onSurfaceVariant),
                                   contentPadding:
                                       const EdgeInsets.symmetric(
                                           horizontal: 8, vertical: 8),
@@ -824,12 +833,12 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
                                     borderSide: BorderSide(
-                                        color: Colors.grey.shade300),
+                                        color: cs.outlineVariant),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
                                     borderSide: BorderSide(
-                                        color: Colors.grey.shade300),
+                                        color: cs.outlineVariant),
                                   ),
                                 ),
                                 validator: (v) {
@@ -863,7 +872,7 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: AppTextStyles.label(color: AppColors.textPrimary)
+      style: AppTextStyles.label(color: Theme.of(context).colorScheme.onSurface)
           .copyWith(fontWeight: FontWeight.w600),
     );
   }
@@ -894,7 +903,7 @@ class _TypeChip extends StatelessWidget {
           margin: const EdgeInsets.all(2),
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
           decoration: BoxDecoration(
-            color: isActive ? AppColors.white : Colors.transparent,
+            color: isActive ? Theme.of(context).colorScheme.surface : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             boxShadow: isActive
                 ? [
@@ -915,7 +924,7 @@ class _TypeChip extends StatelessWidget {
                   fontFamily: 'Poppins',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: isActive ? color : AppColors.textSecondary,
+                  color: isActive ? color : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               Text(
@@ -925,7 +934,7 @@ class _TypeChip extends StatelessWidget {
                   fontSize: 9,
                   color: isActive
                       ? color.withOpacity(0.7)
-                      : AppColors.textSecondary.withOpacity(0.6),
+                      : Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7),
                 ),
               ),
             ],

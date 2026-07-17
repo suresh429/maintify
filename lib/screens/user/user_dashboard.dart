@@ -67,19 +67,20 @@ class _UserDashboardState extends State<UserDashboard> {
   Widget build(BuildContext context) {
     final theme = RoleTheme.of(UserRole.user);
 
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
       appBar: _buildAppBar(theme),
       body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          border: Border(top: BorderSide(color: cs.outline.withOpacity(0.2), width: 1)),
         ),
         child: NavigationBar(
           selectedIndex: _currentIndex,
           onDestinationSelected: (i) => setState(() => _currentIndex = i),
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.transparent,
           indicatorColor: theme.secondary.withOpacity(0.12),
           surfaceTintColor: Colors.transparent,
           shadowColor: Colors.transparent,
@@ -200,6 +201,9 @@ class _UserHome extends StatelessWidget {
       return const ShimmerDashboard();
     }
 
+    final cs = Theme.of(context).colorScheme;
+    final accent = theme.effectivePrimary(context);
+
     final hour = DateTime.now().hour;
     final greeting = hour < 12
         ? 'Good morning,'
@@ -220,7 +224,7 @@ class _UserHome extends StatelessWidget {
         context.watch<MeetingProvider>().upcomingMeetings(aptId);
 
     return RefreshIndicator(
-      color: theme.primary,
+      color: accent,
       onRefresh: () async => dashboard.refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -437,7 +441,7 @@ class _UserHome extends StatelessWidget {
             const SizedBox(height: 24),
 
             if (pendingMonths.isNotEmpty) ...[
-              Text('Pending Months', style: AppTextStyles.heading3()),
+              Text('Pending Months', style: AppTextStyles.heading3(color: cs.onSurface)),
               const SizedBox(height: 14),
               ...pendingMonths.take(3).map((s) => _PendingMonthCard(
                     summary: s,
@@ -465,7 +469,7 @@ class _UserHome extends StatelessWidget {
                             style: AppTextStyles.subheading(
                                 color: AppColors.paid)),
                         Text('No pending bills. Great job!',
-                            style: AppTextStyles.bodySmall()),
+                            style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant)),
                       ],
                     ),
                   ],
@@ -493,14 +497,16 @@ class _QuickStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -518,7 +524,7 @@ class _QuickStat extends StatelessWidget {
                 color: color,
               )),
           const SizedBox(height: 2),
-          Text(label, style: AppTextStyles.caption()),
+          Text(label, style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
         ],
       ),
     );
@@ -538,6 +544,8 @@ class _PendingMonthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isOverdue = summary.status == BillStatus.overdue;
     final statusColor = isOverdue ? AppColors.overdue : AppColors.pending;
 
@@ -555,12 +563,12 @@ class _PendingMonthCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: statusColor.withOpacity(0.2)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -582,12 +590,11 @@ class _PendingMonthCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(summary.month, style: AppTextStyles.subheading()),
+                  Text(summary.month, style: AppTextStyles.subheading(color: cs.onSurface)),
                   Text(
                     AppUtils.formatCurrency(summary.totalAmount),
-                    style:
-                        AppTextStyles.caption(color: AppColors.textPrimary)
-                            .copyWith(fontWeight: FontWeight.w600),
+                    style: AppTextStyles.caption(color: cs.onSurface)
+                        .copyWith(fontWeight: FontWeight.w600),
                   ),
                   Text(
                     'Due: ${AppUtils.formatDate(summary.dueDate)}',
@@ -600,8 +607,7 @@ class _PendingMonthCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -618,7 +624,7 @@ class _PendingMonthCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text('Mark as Paid',
-                    style: AppTextStyles.caption(color: theme.primary)),
+                    style: AppTextStyles.caption(color: RoleTheme.of(UserRole.user).effectivePrimary(context))),
               ],
             ),
           ],
@@ -711,13 +717,13 @@ class _UpcomingMeetingsBanner extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(next.title,
-              style: AppTextStyles.bodyMedium(color: AppColors.textPrimary)
+              style: AppTextStyles.bodyMedium(color: Theme.of(context).colorScheme.onSurface)
                   .copyWith(fontWeight: FontWeight.w600),
               maxLines: 1,
               overflow: TextOverflow.ellipsis),
           const SizedBox(height: 3),
           Text(next.description,
-              style: AppTextStyles.caption(),
+              style: AppTextStyles.caption(color: Theme.of(context).colorScheme.onSurfaceVariant),
               maxLines: 2,
               overflow: TextOverflow.ellipsis),
           const SizedBox(height: 8),

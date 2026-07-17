@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../providers/bill_provider.dart';
 import '../../providers/apartment_provider.dart';
@@ -15,6 +16,10 @@ class ReportsScreen extends StatelessWidget {
     final billProvider = context.watch<BillProvider>();
     final aptProvider = context.watch<ApartmentProvider>();
     final userProvider = context.watch<UserProvider>();
+
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = RoleTheme.of(UserRole.superAdmin).effectivePrimary(context);
 
     // Global totals from all apartments
     double totalCollected = 0;
@@ -44,7 +49,7 @@ class ReportsScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.purple.withOpacity(0.25),
+                  color: accent.withOpacity(0.25),
                   blurRadius: 14,
                   offset: const Offset(0, 6),
                 ),
@@ -116,7 +121,7 @@ class ReportsScreen extends StatelessWidget {
           ),
 
           const SizedBox(height: 24),
-          Text('Per Apartment', style: AppTextStyles.heading3()),
+          Text('Per Apartment', style: AppTextStyles.heading3(color: cs.onSurface)),
           const SizedBox(height: 14),
 
           ...aptProvider.apartments.map((apt) {
@@ -138,11 +143,11 @@ class ReportsScreen extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 14),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: cs.surface,
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -156,16 +161,16 @@ class ReportsScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppColors.purple.withOpacity(0.1),
+                          color: accent.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.apartment_outlined,
-                            color: AppColors.purple, size: 18),
+                        child: Icon(Icons.apartment_outlined,
+                            color: accent, size: 18),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(apt.name,
-                            style: AppTextStyles.subheading()),
+                            style: AppTextStyles.subheading(color: cs.onSurface)),
                       ),
                       Text(
                         '${(rate * 100).toInt()}%',
@@ -201,7 +206,7 @@ class ReportsScreen extends StatelessWidget {
                         child: _ReportStat(
                           label: 'Bills',
                           value: '${bills.length}',
-                          color: AppColors.purple,
+                          color: accent,
                         ),
                       ),
                     ],
@@ -211,7 +216,7 @@ class ReportsScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: rate,
-                      backgroundColor: AppColors.lightGray,
+                      backgroundColor: cs.outlineVariant,
                       valueColor: AlwaysStoppedAnimation<Color>(
                           rate > 0.7 ? AppColors.green : AppColors.pending),
                       minHeight: 5,
@@ -223,7 +228,7 @@ class ReportsScreen extends StatelessWidget {
           }),
 
           const SizedBox(height: 24),
-          Text('Resident Activity', style: AppTextStyles.heading3()),
+          Text('Resident Activity', style: AppTextStyles.heading3(color: cs.onSurface)),
           const SizedBox(height: 14),
 
           ...userProvider.residents.map((user) {
@@ -244,11 +249,11 @@ class ReportsScreen extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: cs.surface,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -278,8 +283,8 @@ class ReportsScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(user.name, style: AppTextStyles.label()),
-                        Text(user.unit, style: AppTextStyles.caption()),
+                        Text(user.name, style: AppTextStyles.label(color: cs.onSurface)),
+                        Text(user.unit, style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                       ],
                     ),
                   ),

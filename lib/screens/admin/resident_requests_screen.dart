@@ -99,7 +99,6 @@ class _ResidentRequestsScreenState extends State<ResidentRequestsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -132,7 +131,7 @@ class _ResidentRequestsScreenState extends State<ResidentRequestsScreen> {
           }
 
           return RefreshIndicator(
-            color: AppColors.blue,
+            color: Theme.of(context).colorScheme.primary,
             onRefresh: () async {
               final auth = context.read<AuthProvider>();
               final aptId = auth.currentUser?.apartmentId;
@@ -209,14 +208,16 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.06),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -267,13 +268,13 @@ class _RequestCard extends StatelessWidget {
                             child: Text(
                               request.name,
                               style: AppTextStyles.subheading(
-                                      color: AppColors.textPrimary)
+                                      color: cs.onSurface)
                                   .copyWith(fontSize: 15),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          Text(timeAgo, style: AppTextStyles.caption()),
+                          Text(timeAgo, style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -298,7 +299,7 @@ class _RequestCard extends StatelessWidget {
           ),
 
           // Divider
-          Divider(height: 1, color: Colors.grey.shade100),
+          Divider(height: 1, color: cs.outlineVariant),
 
           // Action buttons
           Padding(
@@ -366,14 +367,15 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Icon(icon, size: 13, color: AppColors.textSecondary),
+        Icon(icon, size: 13, color: cs.onSurfaceVariant),
         const SizedBox(width: 4),
         Flexible(
           child: Text(
             label,
-            style: AppTextStyles.caption(),
+            style: AppTextStyles.caption(color: cs.onSurfaceVariant),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -390,19 +392,20 @@ class _FlatBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.blue.withOpacity(0.1),
+        color: cs.primary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         'Flat $unit',
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Poppins',
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: AppColors.blue,
+          color: cs.primary,
         ),
       ),
     );
@@ -412,6 +415,7 @@ class _FlatBadge extends StatelessWidget {
 class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -421,23 +425,22 @@ class _EmptyState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppColors.blue.withOpacity(0.08),
+                color: cs.primary.withOpacity(0.08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.inbox_outlined,
                 size: 52,
-                color: AppColors.blue,
+                color: cs.primary,
               ),
             ),
             const SizedBox(height: 20),
             Text('No Pending Requests',
-                style: AppTextStyles.heading3(
-                    color: AppColors.textPrimary)),
+                style: AppTextStyles.heading3(color: cs.onSurface)),
             const SizedBox(height: 8),
             Text(
               'All resident registration requests have been reviewed. New requests will appear here.',
-              style: AppTextStyles.bodyMedium(),
+              style: AppTextStyles.bodyMedium(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
           ],

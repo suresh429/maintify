@@ -93,6 +93,9 @@ class ComplaintProvider extends ChangeNotifier {
     return [];
   }
 
+  /// Returns the live complaint from the provider cache (updated by Firestore stream).
+  ComplaintModel? findComplaint(String complaintId) => _findComplaint(complaintId);
+
   // ── Internal helpers ──────────────────────────────────────────────────────
 
   ComplaintModel? _findComplaint(String complaintId) {

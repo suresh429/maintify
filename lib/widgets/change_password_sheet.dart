@@ -88,14 +88,15 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
     final auth = context.watch<AuthProvider>();
     final theme =
         auth.role != null ? RoleTheme.of(auth.role!) : RoleTheme.of(UserRole.user);
+    final cs = Theme.of(context).colorScheme;
 
     return Padding(
       padding:
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SingleChildScrollView(
           child: Form(
@@ -111,7 +112,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: cs.outlineVariant,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -141,9 +142,9 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('Change Password',
-                                style: AppTextStyles.subheading()),
+                                style: AppTextStyles.subheading(color: cs.onSurface)),
                             Text('Keep your account secure',
-                                style: AppTextStyles.caption()),
+                                style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                           ],
                         ),
                       ),
@@ -168,7 +169,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
                         size: 20,
-                        color: AppColors.textSecondary,
+                        color: cs.onSurfaceVariant,
                       ),
                       onPressed: () =>
                           setState(() => _hideCurrent = !_hideCurrent),
@@ -201,7 +202,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
                         size: 20,
-                        color: AppColors.textSecondary,
+                        color: cs.onSurfaceVariant,
                       ),
                       onPressed: () => setState(() => _hideNew = !_hideNew),
                     ),
@@ -226,7 +227,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
                         size: 20,
-                        color: AppColors.textSecondary,
+                        color: cs.onSurfaceVariant,
                       ),
                       onPressed: () =>
                           setState(() => _hideConfirm = !_hideConfirm),
@@ -255,8 +256,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                               : () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                                color:
-                                    AppColors.textSecondary.withOpacity(0.4)),
+                                color: cs.onSurfaceVariant.withOpacity(0.4)),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
                             padding:
@@ -264,7 +264,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                           ),
                           child: Text('Cancel',
                               style: AppTextStyles.buttonText(
-                                  color: AppColors.textSecondary)),
+                                  color: cs.onSurfaceVariant)),
                         ),
                       ),
                       const SizedBox(width: 12),

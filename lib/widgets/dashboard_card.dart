@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_text_styles.dart';
-import '../core/theme/app_colors.dart';
 
 class DashboardCard extends StatelessWidget {
   final String title;
@@ -44,10 +43,6 @@ class DashboardCard extends StatelessWidget {
             ),
           ],
         ),
-        // FIX: mainAxisSize.min — the Column wraps its children instead of
-        // expanding to fill whatever height the parent offers.  Previously
-        // MainAxisSize.max caused unbounded-height assertions when the card
-        // sat inside a scrollable column with no fixed height.
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,9 +67,6 @@ class DashboardCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 14),
-            // FIX: Text widgets that carry dynamic content (currency amounts,
-            // long labels) now clamp to a single line with ellipsis so they
-            // never push the Column taller than the card's painted area.
             Text(
               value,
               style: AppTextStyles.heading2(color: Colors.white),
@@ -124,35 +116,29 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        // Vertical padding reduced (12→9) to reclaim 6 px of inner height.
-        // Horizontal padding kept at 14 to preserve the visual breathing room.
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Column(
-          // GridView cells carry a TIGHT height constraint (both min and max
-          // equal the cell height).  mainAxisSize.max fills that space;
-          // mainAxisAlignment.center then vertically centres the content
-          // within it, giving natural padding above and below regardless of
-          // device size.  This is the correct pattern for fixed-height parents.
           mainAxisSize: MainAxisSize.max,
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Icon pill: padding reduced 7→6, icon size 18→16.
-            // Saves 2 px in height (14→12 for top+bottom padding).
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
@@ -161,24 +147,20 @@ class StatCard extends StatelessWidget {
               ),
               child: Icon(icon, color: color, size: 16),
             ),
-            const SizedBox(height: 8), // was 10 — saves 2 px
-            // FittedBox scales the value text DOWN when the cell is too
-            // narrow/shallow (e.g. accessibility large-text mode, iPad split
-            // view, iPhone SE).  It never scales UP, so the design stays sharp
-            // on large screens.
+            const SizedBox(height: 8),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: Text(
                 value,
-                style: AppTextStyles.heading3(color: AppColors.textPrimary),
+                style: AppTextStyles.heading3(color: cs.onSurface),
                 maxLines: 1,
               ),
             ),
             const SizedBox(height: 2),
             Text(
               title,
-              style: AppTextStyles.bodySmall(),
+              style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

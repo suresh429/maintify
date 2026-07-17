@@ -5,6 +5,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/apartment_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../widgets/change_password_sheet.dart';
 import '../../widgets/logout_sheet.dart';
 import '../shared/notifications_screen.dart';
@@ -24,7 +25,7 @@ class AdminProfileScreen extends StatelessWidget {
     final theme = RoleTheme.of(UserRole.admin);
 
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // ── Gradient hero header ──────────────────────────────────────────
@@ -133,7 +134,7 @@ class AdminProfileScreen extends StatelessWidget {
                         icon: Icons.email_outlined,
                         label: 'Email',
                         value: user.email,
-                        iconColor: theme.primary,
+                        iconColor: theme.effectivePrimary(context),
                       ),
                       const _Divider(),
                       _InfoTile(
@@ -142,21 +143,21 @@ class AdminProfileScreen extends StatelessWidget {
                         value: user.phone.isNotEmpty
                             ? user.phone
                             : 'Not provided',
-                        iconColor: theme.primary,
+                        iconColor: theme.effectivePrimary(context),
                       ),
                       const _Divider(),
                       _InfoTile(
                         icon: Icons.apartment_outlined,
                         label: 'Apartment',
                         value: apt?.name ?? 'Unknown',
-                        iconColor: theme.primary,
+                        iconColor: theme.effectivePrimary(context),
                       ),
                       const _Divider(),
                       _InfoTile(
                         icon: Icons.tag_rounded,
                         label: 'Apartment Code',
                         value: apt?.code.isNotEmpty == true ? apt!.code : '—',
-                        iconColor: theme.primary,
+                        iconColor: theme.effectivePrimary(context),
                       ),
                       if (user.unit.isNotEmpty) ...[
                         const _Divider(),
@@ -164,14 +165,16 @@ class AdminProfileScreen extends StatelessWidget {
                           icon: Icons.door_front_door_outlined,
                           label: 'Flat',
                           value: 'Flat ${user.unit}',
-                          iconColor: theme.primary,
+                          iconColor: theme.effectivePrimary(context),
                         ),
                       ],
                     ],
                   ),
 
                   const SizedBox(height: 24),
-                  Text('Settings', style: AppTextStyles.heading3()),
+                  Text('Settings',
+                      style: AppTextStyles.heading3(
+                          color: Theme.of(context).colorScheme.onSurface)),
                   const SizedBox(height: 12),
 
                   // Settings menu
@@ -180,7 +183,9 @@ class AdminProfileScreen extends StatelessWidget {
                       _MenuTile(
                         icon: Icons.notifications_outlined,
                         label: 'Notifications',
-                        iconColor: AppColors.blue,
+                        iconColor: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF60A5FA)
+                            : AppColors.blue,
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -195,11 +200,28 @@ class AdminProfileScreen extends StatelessWidget {
                         onTap: () => showChangePasswordSheet(context),
                       ),
                       const _Divider(),
+                      Consumer<ThemeProvider>(
+                        builder: (context, tp, _) => _MenuTile(
+                          icon: tp.isDarkMode
+                              ? Icons.light_mode_outlined
+                              : Icons.dark_mode_outlined,
+                          label: 'Dark Mode',
+                          iconColor: const Color(0xFF8B6CE8),
+                          trailing: Switch.adaptive(
+                            value: tp.isDarkMode,
+                            onChanged: (_) => tp.toggle(),
+                            activeColor: theme.primary,
+                          ),
+                          showChevron: false,
+                          onTap: () => tp.toggle(),
+                        ),
+                      ),
+                      const _Divider(),
                       _MenuTile(
                         icon: Icons.swap_horiz_rounded,
                         label: 'Transfer Presidency',
                         subtitle: 'Hand over to another resident',
-                        iconColor: theme.primary,
+                        iconColor: theme.effectivePrimary(context),
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -289,13 +311,15 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -311,10 +335,11 @@ class _Divider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Divider(
+    final cs = Theme.of(context).colorScheme;
+    return Divider(
       height: 1,
       thickness: 1,
-      color: Color(0xA5E5E7EB), // Light grey
+      color: cs.outline.withOpacity(0.5),
       indent: 16,
       endIndent: 16,
     );
@@ -338,6 +363,7 @@ class _InfoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
@@ -355,11 +381,12 @@ class _InfoTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: AppTextStyles.caption()),
+                Text(label,
+                    style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                 const SizedBox(height: 1),
                 Text(
                   value,
-                  style: AppTextStyles.subheading(),
+                  style: AppTextStyles.subheading(color: cs.onSurface),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -381,6 +408,7 @@ class _MenuTile extends StatelessWidget {
   final Color iconColor;
   final Color? textColor;
   final bool showChevron;
+  final Widget? trailing;
   final VoidCallback onTap;
 
   const _MenuTile({
@@ -390,11 +418,13 @@ class _MenuTile extends StatelessWidget {
     required this.iconColor,
     this.textColor,
     this.showChevron = true,
+    this.trailing,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return ListTile(
       onTap: onTap,
       contentPadding:
@@ -409,19 +439,21 @@ class _MenuTile extends StatelessWidget {
       ),
       title: Text(
         label,
-        style: AppTextStyles.subheading(color: textColor)
+        style: AppTextStyles.subheading(color: textColor ?? cs.onSurface)
             .copyWith(fontSize: 14),
       ),
       subtitle: subtitle != null
           ? Padding(
               padding: const EdgeInsets.only(top: 1),
-              child: Text(subtitle!, style: AppTextStyles.caption()),
+              child: Text(subtitle!,
+                  style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
             )
           : null,
-      trailing: showChevron
-          ? const Icon(Icons.chevron_right_rounded,
-              color: AppColors.textSecondary, size: 20)
-          : null,
+      trailing: trailing ??
+          (showChevron
+              ? Icon(Icons.chevron_right_rounded,
+                  color: cs.onSurfaceVariant, size: 20)
+              : null),
     );
   }
 }

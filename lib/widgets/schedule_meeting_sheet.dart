@@ -148,10 +148,12 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
     final theme = RoleTheme.of(UserRole.admin);
     final bottomPad = MediaQuery.of(context).viewPadding.bottom;
 
+    final cs = Theme.of(context).colorScheme;
+
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: EdgeInsets.fromLTRB(24, 14, 24, 24 + bottomPad),
       child: SingleChildScrollView(
@@ -167,7 +169,7 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE2E8F0),
+                    color: cs.outlineVariant,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -195,9 +197,9 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Schedule Meeting',
-                          style: AppTextStyles.heading3()),
+                          style: AppTextStyles.heading3(color: cs.onSurface)),
                       Text('Notify all flat members',
-                          style: AppTextStyles.caption()),
+                          style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                     ],
                   ),
                 ],
@@ -278,12 +280,13 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
                 child: Row(
                   children: [
                     Icon(Icons.notifications_active_outlined,
-                        color: theme.primary, size: 16),
+                        color: theme.effectivePrimary(context), size: 16),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'All flat members will receive a notification.',
-                        style: AppTextStyles.caption(color: theme.primary),
+                        style: AppTextStyles.caption(
+                            color: Theme.of(context).colorScheme.onSurface),
                       ),
                     ),
                   ],
@@ -355,7 +358,7 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
                   child: Text(
                     'Cancel',
                     style: AppTextStyles.buttonText(
-                        color: AppColors.textSecondary),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ),
               ),
@@ -384,19 +387,21 @@ class _PickerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveColor = isDark ? Colors.white : color;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.06),
+          color: effectiveColor.withOpacity(isDark ? 0.08 : 0.06),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: effectiveColor.withOpacity(isDark ? 0.35 : 0.2)),
         ),
         child: Row(
           children: [
-            Icon(icon, color: color, size: 18),
+            Icon(icon, color: effectiveColor, size: 18),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -404,18 +409,18 @@ class _PickerTile extends StatelessWidget {
                 children: [
                   Text(label,
                       style: AppTextStyles.caption(
-                          color: AppColors.textSecondary)),
+                          color: Theme.of(context).colorScheme.onSurface)),
                   const SizedBox(height: 2),
                   Text(value,
                       style: AppTextStyles.bodySmall(
-                              color: AppColors.textPrimary)
+                              color: Theme.of(context).colorScheme.onSurface)
                           .copyWith(fontWeight: FontWeight.w600),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
-            Icon(Icons.edit_outlined, color: color, size: 14),
+            Icon(Icons.edit_outlined, color: effectiveColor, size: 14),
           ],
         ),
       ),

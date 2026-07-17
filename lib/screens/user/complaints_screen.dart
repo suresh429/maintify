@@ -27,7 +27,6 @@ class ComplaintsScreen extends StatelessWidget {
         final complaints = prov.complaintsForUser(user.id);
 
         return Scaffold(
-          backgroundColor: AppColors.lightGray,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -139,7 +138,9 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Category', style: AppTextStyles.label()),
+              Text('Category',
+                  style: AppTextStyles.label(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
@@ -155,12 +156,12 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
                       decoration: BoxDecoration(
                         color: selected
                             ? AppColors.paid.withOpacity(0.12)
-                            : AppColors.lightGray,
+                            : Theme.of(context).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: selected
                               ? AppColors.paid
-                              : Colors.grey.shade300,
+                              : Theme.of(context).colorScheme.outlineVariant,
                           width: 1.5,
                         ),
                       ),
@@ -174,7 +175,7 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
                               : FontWeight.w400,
                           color: selected
                               ? AppColors.paid
-                              : AppColors.textSecondary,
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -182,15 +183,19 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
                 }).toList(),
               ),
               const SizedBox(height: 18),
-              Text('Complaint Title', style: AppTextStyles.label()),
+              Text('Complaint Title',
+                  style: AppTextStyles.label(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _titleCtrl,
                 maxLines: 3,
-                style: AppTextStyles.bodyMedium(),
-                decoration: const InputDecoration(
-                  hintText:
-                      'Describe your issue briefly...',
+                style: AppTextStyles.bodyMedium(
+                    color: Theme.of(context).colorScheme.onSurface),
+                decoration: InputDecoration(
+                  hintText: 'Describe your issue briefly...',
+                  hintStyle: AppTextStyles.bodyMedium(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'Please describe the issue'
@@ -261,17 +266,20 @@ class _ComplaintTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lastMsg = complaint.lastMessage;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = theme.effectivePrimary(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -284,10 +292,10 @@ class _ComplaintTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: theme.primary.withOpacity(0.08),
+                color: accent.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(_categoryIcon, color: theme.primary, size: 20),
+              child: Icon(_categoryIcon, color: accent, size: 20),
             ),
             const SizedBox(width: 14),
 
@@ -301,15 +309,14 @@ class _ComplaintTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           complaint.title,
-                          style: AppTextStyles.subheading(
-                              color: AppColors.textPrimary),
+                          style: AppTextStyles.subheading(color: cs.onSurface),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
                         AppUtils.timeAgo(complaint.lastActivityAt),
-                        style: AppTextStyles.caption(),
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -319,8 +326,7 @@ class _ComplaintTile extends StatelessWidget {
                       lastMsg.isFromAdmin
                           ? 'Admin: ${lastMsg.content}'
                           : lastMsg.content,
-                      style: AppTextStyles.bodySmall(
-                          color: AppColors.textSecondary),
+                      style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -332,8 +338,7 @@ class _ComplaintTile extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         complaint.category,
-                        style: AppTextStyles.caption(
-                            color: AppColors.textSecondary),
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -341,8 +346,8 @@ class _ComplaintTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.textSecondary, size: 20),
+            Icon(Icons.chevron_right_rounded,
+                color: cs.onSurfaceVariant, size: 20),
           ],
         ),
       ),
@@ -393,12 +398,12 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 16),
             Text('No Complaints',
                 style:
-                    AppTextStyles.heading3(color: AppColors.textPrimary)),
+                    AppTextStyles.heading3(color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 8),
             Text(
               'You have not raised any complaints yet.\nTap below to report an issue.',
               textAlign: TextAlign.center,
-              style: AppTextStyles.bodySmall(color: AppColors.textSecondary),
+              style: AppTextStyles.bodySmall(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 24),
             CommonButton(

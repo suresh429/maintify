@@ -46,6 +46,8 @@ class _SignupScreenState extends State<SignupScreen>
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: Stack(
         children: [
@@ -133,11 +135,11 @@ class _SignupScreenState extends State<SignupScreen>
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: AppColors.white,
+                          color: cs.surface,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withOpacity(isDark ? 0.4 : 0.1),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -146,11 +148,11 @@ class _SignupScreenState extends State<SignupScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Create Account', style: AppTextStyles.heading2()),
+                            Text('Create Account', style: AppTextStyles.heading2(color: cs.onSurface)),
                             const SizedBox(height: 4),
                             Text(
                               'Choose your role to get started',
-                              style: AppTextStyles.bodyMedium(),
+                              style: AppTextStyles.bodyMedium(color: cs.onSurfaceVariant),
                             ),
                             const SizedBox(height: 28),
 
@@ -187,23 +189,23 @@ class _SignupScreenState extends State<SignupScreen>
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: AppColors.blue.withOpacity(0.06),
+                                color: cs.primary.withOpacity(isDark ? 0.12 : 0.06),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                    color: AppColors.blue.withOpacity(0.15)),
+                                    color: cs.primary.withOpacity(isDark ? 0.3 : 0.15)),
                               ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(Icons.info_outline,
-                                      size: 16, color: AppColors.blue),
+                                  Icon(Icons.info_outline,
+                                      size: 16, color: cs.primary),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       'Presidents register using the Apartment Code provided by the Super Admin. '
                                       'Residents submit a request that the president approves.',
                                       style:
-                                          AppTextStyles.caption(color: AppColors.blue),
+                                          AppTextStyles.caption(color: cs.primary),
                                     ),
                                   ),
                                 ],

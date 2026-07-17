@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import '../core/theme/app_colors.dart';
 
 class ShimmerBox extends StatelessWidget {
   final double width;
@@ -16,14 +15,15 @@ class ShimmerBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Shimmer.fromColors(
-      baseColor: Colors.grey.shade200,
-      highlightColor: Colors.grey.shade100,
+      baseColor: isDark ? const Color(0xFF263045) : Colors.grey.shade200,
+      highlightColor: isDark ? const Color(0xFF334155) : Colors.grey.shade100,
       child: Container(
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(borderRadius),
         ),
       ),
@@ -47,7 +47,7 @@ class ShimmerDashboard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min, // never expand beyond content
         children: [
           // Hero banner shimmer
-          _shimmerContainer(height: 140, radius: 20),
+          _shimmerContainer(context, height: 140, radius: 20),
           const SizedBox(height: 20),
 
           // 2×2 stat-card grid shimmer
@@ -60,7 +60,7 @@ class ShimmerDashboard extends StatelessWidget {
             childAspectRatio: 1.35,
             children: List.generate(
               4,
-              (_) => _shimmerContainer(radius: 16),
+              (_) => _shimmerContainer(context, radius: 16),
             ),
           ),
           const SizedBox(height: 20),
@@ -70,7 +70,7 @@ class ShimmerDashboard extends StatelessWidget {
             3,
             (_) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: _shimmerContainer(height: 76, radius: 14),
+              child: _shimmerContainer(context, height: 76, radius: 14),
             ),
           ),
         ],
@@ -78,15 +78,16 @@ class ShimmerDashboard extends StatelessWidget {
     );
   }
 
-  // Extracted helper — keeps Shimmer.fromColors DRY and prevents repetition.
-  Widget _shimmerContainer({double? height, required double radius}) {
+  Widget _shimmerContainer(BuildContext context,
+      {double? height, required double radius}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Shimmer.fromColors(
-      baseColor: Colors.grey.shade200,
-      highlightColor: Colors.grey.shade100,
+      baseColor: isDark ? const Color(0xFF263045) : Colors.grey.shade200,
+      highlightColor: isDark ? const Color(0xFF334155) : Colors.grey.shade100,
       child: Container(
         height: height,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(radius),
         ),
       ),
@@ -112,6 +113,7 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     // FIX: Use mainAxisSize.min so the Column never requests more height than
     // its content.  The outer Center already centres it in the available space.
     // Adding overflow handling on both Text widgets prevents rare wrapping issues
@@ -125,24 +127,24 @@ class EmptyState extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: AppColors.lightGray,
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 size: 48,
-                color: AppColors.textSecondary.withOpacity(0.5),
+                color: cs.onSurfaceVariant.withOpacity(0.5),
               ),
             ),
             const SizedBox(height: 20),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: cs.onSurface,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,
@@ -151,10 +153,10 @@ class EmptyState extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               subtitle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 14,
-                color: AppColors.textSecondary,
+                color: cs.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
               maxLines: 3,

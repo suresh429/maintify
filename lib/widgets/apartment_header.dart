@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../core/theme/app_colors.dart';
 import '../core/theme/app_text_styles.dart';
 import '../core/theme/role_theme.dart';
 
@@ -20,17 +19,20 @@ class ApartmentHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = RoleTheme.of(role);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = theme.effectivePrimary(context);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: theme.primary.withOpacity(0.15)),
+        border: Border.all(color: accent.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -41,10 +43,10 @@ class ApartmentHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: theme.primary.withOpacity(0.1),
+              color: accent.withOpacity(isDark ? 0.15 : 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(Icons.apartment_outlined, color: theme.primary, size: 22),
+            child: Icon(Icons.apartment_outlined, color: accent, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -53,20 +55,20 @@ class ApartmentHeader extends StatelessWidget {
               children: [
                 Text(
                   apartmentName,
-                  style: AppTextStyles.subheading(color: AppColors.textPrimary),
+                  style: AppTextStyles.subheading(color: cs.onSurface),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    const Icon(Icons.person_outline,
-                        size: 12, color: AppColors.textSecondary),
+                    Icon(Icons.person_outline,
+                        size: 12, color: cs.onSurfaceVariant),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
                         'President: $presidentName',
-                        style: AppTextStyles.caption(),
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -91,10 +93,12 @@ class _RoleChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = theme.effectivePrimary(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: theme.primary.withOpacity(0.12),
+        color: accent.withOpacity(isDark ? 0.18 : 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -103,7 +107,7 @@ class _RoleChip extends StatelessWidget {
           fontFamily: 'Poppins',
           fontSize: 10,
           fontWeight: FontWeight.w700,
-          color: theme.primary,
+          color: accent,
         ),
       ),
     );

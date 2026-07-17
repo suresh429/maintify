@@ -94,6 +94,10 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
     final isTransfer = _selectedAptId != null &&
         aptProvider.currentPresidentId(_selectedAptId!) != null;
 
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = RoleTheme.of(UserRole.superAdmin).effectivePrimary(context);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -135,7 +139,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
           ),
 
           const SizedBox(height: 24),
-          Text('Select Apartment', style: AppTextStyles.heading3()),
+          Text('Select Apartment', style: AppTextStyles.heading3(color: cs.onSurface)),
           const SizedBox(height: 12),
 
           ...aptProvider.apartments.map((apt) {
@@ -156,17 +160,17 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? AppColors.purple.withOpacity(0.08)
-                      : AppColors.white,
+                      ? accent.withOpacity(0.08)
+                      : cs.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color:
-                        isSelected ? AppColors.purple : Colors.transparent,
+                        isSelected ? accent : Colors.transparent,
                     width: 1.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -178,13 +182,13 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? AppColors.purple.withOpacity(0.12)
-                            : AppColors.lightGray,
+                            ? accent.withOpacity(0.12)
+                            : cs.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(Icons.apartment_outlined,
                           color: isSelected
-                              ? AppColors.purple
+                              ? accent
                               : AppColors.textSecondary,
                           size: 20),
                     ),
@@ -193,7 +197,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(apt.name, style: AppTextStyles.subheading()),
+                          Text(apt.name, style: AppTextStyles.subheading(color: cs.onSurface)),
                           const SizedBox(height: 2),
                           Row(
                             children: [
@@ -225,14 +229,14 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                           ),
                           Text(
                             '${apt.totalFlats} flats',
-                            style: AppTextStyles.caption(),
+                            style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                           ),
                         ],
                       ),
                     ),
                     if (isSelected)
-                      const Icon(Icons.check_circle_rounded,
-                          color: AppColors.purple, size: 22),
+                      Icon(Icons.check_circle_rounded,
+                          color: accent, size: 22),
                   ],
                 ),
               ),
@@ -243,12 +247,12 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
             const SizedBox(height: 24),
             Text(
               isTransfer ? 'Select New President' : 'Select President',
-              style: AppTextStyles.heading3(),
+              style: AppTextStyles.heading3(color: cs.onSurface),
             ),
             const SizedBox(height: 4),
             Text(
               'Only residents of this apartment who are not already a president elsewhere',
-              style: AppTextStyles.caption(),
+              style: AppTextStyles.caption(color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: 12),
 
@@ -256,7 +260,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: cs.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(
@@ -265,11 +269,11 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                         size: 36, color: AppColors.textSecondary),
                     const SizedBox(height: 8),
                     Text('No eligible residents',
-                        style: AppTextStyles.subheading()),
+                        style: AppTextStyles.subheading(color: cs.onSurface)),
                     const SizedBox(height: 4),
                     Text(
                         'All residents of this apartment are already serving as presidents elsewhere, or there are no residents yet.',
-                        style: AppTextStyles.caption(),
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                         textAlign: TextAlign.center),
                   ],
                 ),
@@ -285,18 +289,18 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppColors.purple.withOpacity(0.08)
-                          : AppColors.white,
+                          ? accent.withOpacity(0.08)
+                          : cs.surface,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: isSelected
-                            ? AppColors.purple
+                            ? accent
                             : Colors.transparent,
                         width: 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
@@ -333,10 +337,10 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(user.name,
-                                  style: AppTextStyles.subheading()),
+                                  style: AppTextStyles.subheading(color: cs.onSurface)),
                               Text(
                                 'Unit ${user.unit} · ${user.email}',
-                                style: AppTextStyles.caption(),
+                                style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -344,8 +348,8 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                           ),
                         ),
                         if (isSelected)
-                          const Icon(Icons.check_circle_rounded,
-                              color: AppColors.purple, size: 22),
+                          Icon(Icons.check_circle_rounded,
+                              color: accent, size: 22),
                       ],
                     ),
                   ),

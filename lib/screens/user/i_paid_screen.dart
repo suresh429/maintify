@@ -85,8 +85,7 @@ class _IPaidScreenState extends State<IPaidScreen> {
               ),
               const SizedBox(height: 18),
               Text('Payment Reported!',
-                  style: AppTextStyles.heading3(
-                      color: AppColors.textPrimary)),
+                  style: AppTextStyles.heading3()),
               const SizedBox(height: 8),
               Text(
                 'Your payment has been reported. The admin will verify and update your status.',
@@ -116,8 +115,11 @@ class _IPaidScreenState extends State<IPaidScreen> {
     final pendingViews =
         billProvider.userBillViews(userId).where((v) => !v.payment.isPaid).toList();
 
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = theme.effectivePrimary(context);
+
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -186,7 +188,7 @@ class _IPaidScreenState extends State<IPaidScreen> {
               icon: Icons.check_circle_outline,
             )
           else ...[
-            Text('Select Bill to Report', style: AppTextStyles.heading3()),
+            Text('Select Bill to Report', style: AppTextStyles.heading3(color: cs.onSurface)),
             const SizedBox(height: 14),
 
             ...pendingViews.map((view) {
@@ -202,18 +204,18 @@ class _IPaidScreenState extends State<IPaidScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? theme.primary.withOpacity(0.08)
-                        : AppColors.white,
+                        ? accent.withOpacity(0.08)
+                        : cs.surface,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: isSelected
-                          ? theme.primary
+                          ? accent
                           : Colors.transparent,
                       width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
@@ -233,7 +235,7 @@ class _IPaidScreenState extends State<IPaidScreen> {
                         child: Icon(Icons.receipt_outlined,
                             color: payment.isOverdue
                                 ? AppColors.overdue
-                                : theme.primary,
+                                : accent,
                             size: 20),
                       ),
                       const SizedBox(width: 12),
@@ -242,7 +244,7 @@ class _IPaidScreenState extends State<IPaidScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(bill.title,
-                                style: AppTextStyles.subheading()),
+                                style: AppTextStyles.subheading(color: cs.onSurface)),
                             const SizedBox(height: 3),
                             Row(
                               children: [
@@ -285,7 +287,7 @@ class _IPaidScreenState extends State<IPaidScreen> {
                         children: [
                           Text(
                             AppUtils.formatCurrency(bill.perFlatShare),
-                            style: AppTextStyles.subheading(),
+                            style: AppTextStyles.subheading(color: cs.onSurface),
                           ),
                           const SizedBox(height: 4),
                           AnimatedContainer(
@@ -294,13 +296,13 @@ class _IPaidScreenState extends State<IPaidScreen> {
                             height: 22,
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? theme.primary
-                                  : AppColors.white,
+                                  ? accent
+                                  : cs.surface,
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: isSelected
-                                    ? theme.primary
-                                    : Colors.grey.shade300,
+                                    ? accent
+                                    : cs.outlineVariant,
                                 width: 2,
                               ),
                             ),
@@ -320,7 +322,7 @@ class _IPaidScreenState extends State<IPaidScreen> {
             const SizedBox(height: 16),
 
             Text('Transaction ID (Optional)',
-                style: AppTextStyles.label(color: AppColors.textPrimary)
+                style: AppTextStyles.label(color: cs.onSurface)
                     .copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             TextField(

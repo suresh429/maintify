@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../core/theme/app_colors.dart';
 import '../core/theme/app_text_styles.dart';
 
 /// Reusable bottom sheet wrapper.
@@ -25,10 +24,11 @@ class BottomSheetContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -41,7 +41,7 @@ class BottomSheetContainer extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: cs.outlineVariant,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -60,21 +60,21 @@ class BottomSheetContainer extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    style: AppTextStyles.heading3(),
+                    style: AppTextStyles.heading3(color: cs.onSurface),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 headerTrailing ??
                     IconButton(
-                      icon: const Icon(Icons.close_rounded,
-                          color: AppColors.textSecondary),
+                      icon: Icon(Icons.close_rounded,
+                          color: cs.onSurfaceVariant),
                       onPressed: () => Navigator.pop(context),
                     ),
               ],
             ),
           ),
 
-          const Divider(height: 16),
+          Divider(height: 16, color: cs.outline.withOpacity(0.3)),
 
           // Content
           Padding(
@@ -102,6 +102,7 @@ class ScrollableBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       minChildSize: 0.4,
@@ -109,9 +110,9 @@ class ScrollableBottomSheet extends StatelessWidget {
       expand: false,
       builder: (_, controller) {
         return Container(
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             children: [
@@ -122,7 +123,7 @@ class ScrollableBottomSheet extends StatelessWidget {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: cs.outlineVariant,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -134,18 +135,18 @@ class ScrollableBottomSheet extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(title,
-                          style: AppTextStyles.heading3(),
+                          style: AppTextStyles.heading3(color: cs.onSurface),
                           overflow: TextOverflow.ellipsis),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded,
-                          color: AppColors.textSecondary),
+                      icon: Icon(Icons.close_rounded,
+                          color: cs.onSurfaceVariant),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
                 ),
               ),
-              const Divider(height: 16),
+              Divider(height: 16, color: cs.outline.withOpacity(0.3)),
               Expanded(
                 child: SingleChildScrollView(
                   controller: controller,

@@ -52,7 +52,9 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
       message:
           'Transfer presidency to ${selectedUser.name}?\n\nYou will be demoted to resident.',
       confirmText: 'Transfer',
-      confirmColor: AppColors.blue,
+      confirmColor: Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF60A5FA)
+          : AppColors.blue,
     );
     if (confirmed != true || !mounted) return;
 
@@ -87,11 +89,13 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
     final auth = context.read<AuthProvider>();
     final userProvider = context.watch<UserProvider>();
     final aptId = auth.currentUser?.apartmentId ?? '';
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
 
     final eligible = userProvider.eligibleForPresident(aptId);
 
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -135,7 +139,7 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
                     child: Text(
                       'Transferring presidency will demote you to a regular resident. You will be logged out immediately after the transfer.',
                       style:
-                          AppTextStyles.caption(color: AppColors.textPrimary),
+                          AppTextStyles.caption(color: cs.onSurface),
                     ),
                   ),
                 ],
@@ -143,29 +147,29 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
             ),
 
             const SizedBox(height: 24),
-            Text('Select New President', style: AppTextStyles.heading3()),
+            Text('Select New President', style: AppTextStyles.heading3(color: cs.onSurface)),
             const SizedBox(height: 4),
             Text('Choose a resident from your apartment to take over',
-                style: AppTextStyles.caption()),
+                style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
             const SizedBox(height: 12),
 
             if (eligible.isEmpty)
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 32),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: cs.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.people_outline,
-                        size: 40, color: AppColors.textSecondary),
+                    Icon(Icons.people_outline,
+                        size: 40, color: cs.onSurfaceVariant.withOpacity(0.4)),
                     const SizedBox(height: 10),
                     Text('No eligible residents',
-                        style: AppTextStyles.subheading()),
+                        style: AppTextStyles.subheading(color: cs.onSurface)),
                     const SizedBox(height: 4),
                     Text('There are no other residents to transfer to.',
-                        style: AppTextStyles.caption()),
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                   ],
                 ),
               )
@@ -180,17 +184,17 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppColors.blue.withOpacity(0.07)
-                          : AppColors.white,
+                          ? accent.withOpacity(0.07)
+                          : cs.surface,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color:
-                            isSelected ? AppColors.blue : Colors.transparent,
+                            isSelected ? accent : Colors.transparent,
                         width: 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
@@ -227,17 +231,17 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(user.name,
-                                  style: AppTextStyles.subheading()),
+                                  style: AppTextStyles.subheading(color: cs.onSurface)),
                               Text(
                                 'Unit ${user.unit}',
-                                style: AppTextStyles.caption(),
+                                style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                               ),
                             ],
                           ),
                         ),
                         if (isSelected)
-                          const Icon(Icons.check_circle_rounded,
-                              color: AppColors.blue, size: 22),
+                          Icon(Icons.check_circle_rounded,
+                              color: accent, size: 22),
                       ],
                     ),
                   ),

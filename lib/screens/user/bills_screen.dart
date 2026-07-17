@@ -56,7 +56,7 @@ class _BillsScreenState extends State<BillsScreen> {
                       gradient: isActive
                           ? LinearGradient(colors: theme.gradient)
                           : null,
-                      color: isActive ? null : AppColors.white,
+                      color: isActive ? null : Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
@@ -139,6 +139,8 @@ class _UserMonthlyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     Color statusColor;
     String statusLabel;
     IconData statusIcon;
@@ -179,14 +181,14 @@ class _UserMonthlyCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(16),
           border: summary.status != 'Paid'
               ? Border.all(color: statusColor.withOpacity(0.2))
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -207,11 +209,11 @@ class _UserMonthlyCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(summary.month, style: AppTextStyles.subheading()),
+                  Text(summary.month, style: AppTextStyles.subheading(color: cs.onSurface)),
                   const SizedBox(height: 3),
                   Text(
                     '${summary.views.length} categor${summary.views.length == 1 ? 'y' : 'ies'} · ${AppUtils.formatCurrency(summary.totalAmount)}',
-                    style: AppTextStyles.caption(),
+                    style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                   ),
                   if (summary.isFullyPaid && summary.paidDate != null) ...[
                     const SizedBox(height: 3),

@@ -83,20 +83,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     final theme = RoleTheme.of(UserRole.admin);
 
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
       appBar: _buildAppBar(theme),
       body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          border: Border(top: BorderSide(color: cs.outline.withOpacity(0.2), width: 1)),
         ),
         child: NavigationBar(
           selectedIndex: _currentIndex,
           onDestinationSelected: (i) => setState(() => _currentIndex = i),
-          backgroundColor: Colors.white,
-          indicatorColor: theme.primary.withOpacity(0.12),
+          backgroundColor: Colors.transparent,
+          indicatorColor: theme.effectivePrimary(context).withOpacity(0.15),
           surfaceTintColor: Colors.transparent,
           shadowColor: Colors.transparent,
           elevation: 0,
@@ -293,6 +294,10 @@ class _AdminHome extends StatelessWidget {
       return const ShimmerDashboard();
     }
 
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = theme.effectivePrimary(context);
+
     final hour = DateTime.now().hour;
     final greeting = hour < 12
         ? 'Good morning,'
@@ -307,7 +312,7 @@ class _AdminHome extends StatelessWidget {
         context.watch<MeetingProvider>().upcomingMeetings(aptId);
 
     return RefreshIndicator(
-      color: theme.primary,
+      color: accent,
       onRefresh: () async => dashboard.refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -436,17 +441,17 @@ class _AdminHome extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: hasPending
-                          ? AppColors.blue.withOpacity(0.06)
-                          : AppColors.white,
+                          ? accent.withOpacity(0.06)
+                          : cs.surface,
                       borderRadius: BorderRadius.circular(16),
                       border: hasPending
                           ? Border.all(
-                              color: AppColors.blue.withOpacity(0.35),
+                              color: accent.withOpacity(0.35),
                               width: 1.5)
                           : null,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 3),
                         ),
@@ -458,14 +463,14 @@ class _AdminHome extends StatelessWidget {
                           padding: const EdgeInsets.all(11),
                           decoration: BoxDecoration(
                             color: hasPending
-                                ? AppColors.blue.withOpacity(0.12)
-                                : AppColors.lightGray,
+                                ? accent.withOpacity(0.12)
+                                : cs.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(13),
                           ),
                           child: Icon(
                             Icons.person_add_alt_1_outlined,
                             color: hasPending
-                                ? AppColors.blue
+                                ? accent
                                 : AppColors.textSecondary,
                             size: 22,
                           ),
@@ -476,7 +481,7 @@ class _AdminHome extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('Resident Requests',
-                                  style: AppTextStyles.subheading()),
+                                  style: AppTextStyles.subheading(color: cs.onSurface)),
                               const SizedBox(height: 1),
                               Text(
                                 hasPending
@@ -484,7 +489,7 @@ class _AdminHome extends StatelessWidget {
                                     : 'No pending requests',
                                 style: AppTextStyles.caption(
                                   color: hasPending
-                                      ? AppColors.blue
+                                      ? accent
                                       : AppColors.textSecondary,
                                 ),
                               ),
@@ -496,7 +501,7 @@ class _AdminHome extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 9, vertical: 5),
                             decoration: BoxDecoration(
-                              color: AppColors.blue,
+                              color: accent,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
@@ -513,7 +518,7 @@ class _AdminHome extends StatelessWidget {
                         Icon(
                           Icons.chevron_right_rounded,
                           color: hasPending
-                              ? AppColors.blue
+                              ? accent
                               : AppColors.textSecondary,
                         ),
                       ],
@@ -547,11 +552,11 @@ class _AdminHome extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: cs.surface,
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -574,15 +579,15 @@ class _AdminHome extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Schedule Meeting',
-                              style: AppTextStyles.subheading()),
+                              style: AppTextStyles.subheading(color: cs.onSurface)),
                           Text(
                               'Notify all flat members about an upcoming meeting',
-                              style: AppTextStyles.caption()),
+                              style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textSecondary),
+                    Icon(Icons.chevron_right_rounded,
+                        color: cs.onSurfaceVariant),
                   ],
                 ),
               ),
@@ -591,7 +596,7 @@ class _AdminHome extends StatelessWidget {
             // Upcoming meetings section
             if (upcomingMeetings.isNotEmpty) ...[
               const SizedBox(height: 24),
-              Text('Upcoming Meetings', style: AppTextStyles.heading3()),
+              Text('Upcoming Meetings', style: AppTextStyles.heading3(color: cs.onSurface)),
               const SizedBox(height: 14),
               ...upcomingMeetings.map((m) => _MeetingCard(
                     meeting: m,
@@ -600,7 +605,7 @@ class _AdminHome extends StatelessWidget {
             ],
 
             const SizedBox(height: 24),
-            Text('Quick Stats', style: AppTextStyles.heading3()),
+            Text('Quick Stats', style: AppTextStyles.heading3(color: cs.onSurface)),
             const SizedBox(height: 14),
 
             GridView.count(
@@ -615,7 +620,7 @@ class _AdminHome extends StatelessWidget {
                   title: 'Total Bills',
                   value: '${stats['totalBills']}',
                   icon: Icons.receipt_long_outlined,
-                  color: theme.primary,
+                  color: accent,
                 ),
                 StatCard(
                   title: 'Fully Paid',
@@ -644,11 +649,11 @@ class _AdminHome extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: cs.surface,
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -661,11 +666,11 @@ class _AdminHome extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('Collection Rate',
-                          style: AppTextStyles.subheading()),
+                          style: AppTextStyles.subheading(color: cs.onSurface)),
                       Text(
                         '${((stats['collectionRate'] as double) * 100).toInt()}%',
                         style:
-                            AppTextStyles.subheading(color: theme.primary),
+                            AppTextStyles.subheading(color: accent),
                       ),
                     ],
                   ),
@@ -674,9 +679,9 @@ class _AdminHome extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                     child: LinearProgressIndicator(
                       value: stats['collectionRate'] as double,
-                      backgroundColor: AppColors.lightGray,
+                      backgroundColor: cs.surfaceContainerHighest,
                       valueColor:
-                          AlwaysStoppedAnimation<Color>(theme.primary),
+                          AlwaysStoppedAnimation<Color>(accent),
                       minHeight: 10,
                     ),
                   ),
@@ -686,7 +691,7 @@ class _AdminHome extends StatelessWidget {
                     children: [
                       Text(
                         '${stats['paidPayments']} of ${stats['totalPayments']} payments collected',
-                        style: AppTextStyles.caption(),
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -719,7 +724,7 @@ class _AdminHome extends StatelessWidget {
             ),
 
             const SizedBox(height: 24),
-            Text('Recent Bills', style: AppTextStyles.heading3()),
+            Text('Recent Bills', style: AppTextStyles.heading3(color: cs.onSurface)),
             const SizedBox(height: 14),
 
             if (recentBills.isEmpty)
@@ -741,11 +746,11 @@ class _AdminHome extends StatelessWidget {
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.fromLTRB(14, 14, 4, 14),
                   decoration: BoxDecoration(
-                    color: AppColors.white,
+                    color: cs.surface,
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
@@ -758,20 +763,20 @@ class _AdminHome extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(bill.title,
-                                style: AppTextStyles.subheading(),
+                                style: AppTextStyles.subheading(color: cs.onSurface),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),
                             const SizedBox(height: 3),
                             Text(
                               '${AppUtils.formatCurrency(bill.totalAmount)} · ${bill.totalFlats} flats · ${AppUtils.formatCurrency(bill.perFlatShare)}/flat',
-                              style: AppTextStyles.caption(),
+                              style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 3),
                             Text(
                               'Due: ${AppUtils.formatDate(bill.dueDate)}',
-                              style: AppTextStyles.caption(),
+                              style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                             ),
                           ],
                         ),
@@ -782,9 +787,9 @@ class _AdminHome extends StatelessWidget {
                           Text(
                             '$paidCount/${bill.totalFlats}',
                             style: AppTextStyles.subheading(
-                                color: theme.primary),
+                                color: accent),
                           ),
-                          Text('paid', style: AppTextStyles.caption()),
+                          Text('paid', style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                         ],
                       ),
                       GestureDetector(
@@ -797,8 +802,8 @@ class _AdminHome extends StatelessWidget {
                         ),
                         child: Padding(
                           padding: const EdgeInsets.all(8),
-                          child: const Icon(Icons.more_vert_rounded,
-                              size: 20, color: AppColors.textSecondary),
+                          child: Icon(Icons.more_vert_rounded,
+                              size: 20, color: cs.onSurfaceVariant),
                         ),
                       ),
                     ],
@@ -857,16 +862,19 @@ class _MeetingCard extends StatelessWidget {
             : 'In $days days';
     final urgencyColor = days <= 1 ? AppColors.overdue : AppColors.purple;
 
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.purple.withOpacity(0.15)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -890,12 +898,12 @@ class _MeetingCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(meeting.title,
-                    style: AppTextStyles.subheading(),
+                    style: AppTextStyles.subheading(color: cs.onSurface),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 3),
                 Text(meeting.description,
-                    style: AppTextStyles.caption(),
+                    style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 6),
@@ -986,12 +994,12 @@ void _showBillActionsSheet(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (_) => SafeArea(
+    builder: (ctx) => SafeArea(
       top: false,
       child: Container(
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: Theme.of(ctx).colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Column(
@@ -1003,7 +1011,7 @@ void _showBillActionsSheet(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: Theme.of(ctx).colorScheme.outlineVariant,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1017,7 +1025,9 @@ void _showBillActionsSheet(
                     icon: Icons.edit_outlined,
                     title: 'Edit Bill',
                     subtitle: 'Update categories, amounts or due date',
-                    color: AppColors.blue,
+                    color: Theme.of(ctx).brightness == Brightness.dark
+                        ? const Color(0xFF60A5FA)
+                        : AppColors.blue,
                     onTap: () {
                       Navigator.pop(context);
                       showEditBillSheet(context,
