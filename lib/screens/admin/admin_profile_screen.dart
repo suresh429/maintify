@@ -6,6 +6,7 @@ import '../../core/theme/role_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/apartment_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../core/utils/app_utils.dart';
 import '../../widgets/change_password_sheet.dart';
 import '../../widgets/logout_sheet.dart';
 import '../shared/notifications_screen.dart';
@@ -227,6 +228,13 @@ class AdminProfileScreen extends StatelessWidget {
                           MaterialPageRoute(
                               builder: (_) => const TransferPresidentScreen()),
                         ),
+                      ),
+                      const _Divider(),
+                      _MenuTile(
+                        icon: Icons.privacy_tip_outlined,
+                        label: 'Privacy Policy',
+                        iconColor: theme.effectivePrimary(context),
+                        onTap: () => AppUtils.launchPrivacyPolicy(context),
                       ),
                       const _Divider(),
                       _MenuTile(

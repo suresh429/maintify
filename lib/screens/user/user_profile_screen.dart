@@ -9,6 +9,7 @@ import '../../providers/apartment_provider.dart';
 import '../../providers/theme_provider.dart';
 import 'complaints_screen.dart';
 import 'i_paid_screen.dart';
+import '../../core/utils/app_utils.dart';
 import '../../widgets/change_password_sheet.dart';
 import '../../widgets/logout_sheet.dart';
 
@@ -231,6 +232,18 @@ class UserProfileScreen extends StatelessWidget {
                   subtitle: user.phone.isNotEmpty ? user.phone : '—',
                   iconColor: cs.onSurfaceVariant,
                   onTap: null,
+                ),
+                Divider(
+                    height: 1,
+                    indent: 56,
+                    color: cs.outline.withOpacity(0.5)),
+                // Privacy Policy
+                _MenuTile(
+                  icon: Icons.privacy_tip_outlined,
+                  label: 'Privacy Policy',
+                  subtitle: 'How we handle your data',
+                  iconColor: isDark ? const Color(0xFF60A5FA) : AppColors.blue,
+                  onTap: () => AppUtils.launchPrivacyPolicy(context),
                 ),
                 Divider(
                     height: 1,

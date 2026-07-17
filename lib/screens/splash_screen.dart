@@ -69,103 +69,111 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final titleColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF2A2D3E);
+    final taglineColor = isDark ? const Color(0xFFC39A51) : const Color(0xFF684505);
+    final indicatorColor = isDark
+        ? const Color(0xFF60A5FA).withOpacity(0.5)
+        : const Color(0xFF2A2D3E).withOpacity(0.25);
+    final versionColor = isDark
+        ? const Color(0xFF94A3B8).withOpacity(0.6)
+        : const Color(0xFF2A2D3E).withOpacity(0.3);
+
     return Scaffold(
-      body: Container(
-        color: Colors.white,
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // Centre content
-              Center(
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Centre content
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // ── Logo ───────────────────────────────────────────────
+                  FadeTransition(
+                    opacity: _fadeAnim,
+                    child: ScaleTransition(
+                      scale: _scaleAnim,
+                      child: Image.asset(
+                        'assets/app_logo.png',
+                        width: 96,
+                        height: 96,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // ── App name ───────────────────────────────────────────
+                  FadeTransition(
+                    opacity: _fadeAnim,
+                    child: Text(
+                      AppConstants.appName,
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 38,
+                        fontWeight: FontWeight.w700,
+                        color: titleColor,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // ── Tagline ────────────────────────────────────────────
+                  FadeTransition(
+                    opacity: _taglineFadeAnim,
+                    child: Text(
+                      AppConstants.tagline,
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        color: taglineColor,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Loading indicator — pinned to bottom ───────────────────
+            Positioned(
+              bottom: 48,
+              left: 0,
+              right: 0,
+              child: FadeTransition(
+                opacity: _taglineFadeAnim,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // ── Logo ───────────────────────────────────────────────
-                    FadeTransition(
-                      opacity: _fadeAnim,
-                      child: ScaleTransition(
-                        scale: _scaleAnim,
-                        child: Image.asset(
-                          'assets/app_logo.png',
-                          width: 96,
-                          height: 96,
-                          fit: BoxFit.contain,
-                        ),
+                    SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(indicatorColor),
                       ),
                     ),
-
-                    const SizedBox(height: 28),
-
-                    // ── App name ───────────────────────────────────────────
-                    FadeTransition(
-                      opacity: _fadeAnim,
-                      child: const Text(
-                        AppConstants.appName,
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 38,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF2A2D3E), // dark navy
-                          letterSpacing: 2.0,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // ── Tagline ────────────────────────────────────────────
-                    FadeTransition(
-                      opacity: _taglineFadeAnim,
-                      child: const Text(
-                        AppConstants.tagline,
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFF684505), // gold
-                          letterSpacing: 1.2,
-                        ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'v${AppConstants.version}',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 11,
+                        color: versionColor,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ],
                 ),
               ),
-
-              // ── Loading indicator — pinned to bottom ───────────────────
-              Positioned(
-                bottom: 48,
-                left: 0,
-                right: 0,
-                child: FadeTransition(
-                  opacity: _taglineFadeAnim,
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        width: 28,
-                        height: 28,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white.withOpacity(0.4),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'v${AppConstants.version}',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 11,
-                          color: Colors.white.withOpacity(0.25),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AppUtils {
   static String formatCurrency(double amount) {
@@ -64,6 +66,23 @@ class AppUtils {
       if (part.length > 1 && !part.endsWith('.')) return part;
     }
     return parts.last;
+  }
+
+  static const _privacyPolicyUrl =
+      'https://suresh429.github.io/maintify/privacy/';
+
+  /// Opens the privacy policy.
+  /// Android → Chrome Custom Tabs; iOS → external browser (Safari).
+  static Future<void> launchPrivacyPolicy(BuildContext context) async {
+    final uri = Uri.parse(_privacyPolicyUrl);
+    final mode = defaultTargetPlatform == TargetPlatform.android
+        ? LaunchMode.inAppBrowserView
+        : LaunchMode.externalApplication;
+    if (!await launchUrl(uri, mode: mode)) {
+      if (context.mounted) {
+        showSnackBar(context, 'Could not open Privacy Policy', isError: true);
+      }
+    }
   }
 
   static Future<bool?> showConfirmDialog(

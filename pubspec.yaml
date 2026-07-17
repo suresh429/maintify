@@ -24,6 +24,7 @@ dependencies:
   flutter_local_notifications: ^17.2.4
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
@@ -40,9 +41,8 @@ flutter:
 
 flutter_native_splash:
   # ── Background ──────────────────────────────────────────────────────────────
-  # Dark navy — matches Flutter SplashScreen gradient start (#141E30)
   color: "#FFFFFF"
-  color_dark: "#FFFFFF"
+  color_dark: "#0F172A"
 
   # ── Logo image ──────────────────────────────────────────────────────────────
   image: assets/app_logo.png
@@ -64,10 +64,10 @@ flutter_native_splash:
     image: assets/android12.png
     image_dark: assets/android12.png
     color: "#FFFFFF"
-    color_dark: "#FFFFFF"
+    color_dark: "#0F172A"
     # Icon background matches outer background → seamless look
-    icon_background_color: "#141E30"
-    icon_background_color_dark: "#141E30"
+    icon_background_color: "#FFFFFF"
+    icon_background_color_dark: "#0F172A"
 
   # ── iOS ─────────────────────────────────────────────────────────────────────
   ios: true
