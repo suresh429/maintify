@@ -21,6 +21,9 @@
 
 const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const admin = require('firebase-admin');
+const { sendEmail, GMAIL_EMAIL, GMAIL_APP_PASSWORD } = require('./services/mailService');
+const { buildWelcomeEmail }          = require('./templates/welcome_email');
+const { buildResidentApprovedEmail } = require('./templates/resident_approved_email');
 
 admin.initializeApp();
 
@@ -188,54 +191,58 @@ async function writeNotification(title, body, type, targetRole) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 0. Apartment created  →  Email invitation to the designated president
-//    Uses the Firebase Trigger Email extension (writes to `mail` collection).
+// 0. Apartment created  →  Welcome email to the designated president
+//    Uses Gmail SMTP via Nodemailer. Credentials from Firebase Secret Manager.
+//    Idempotency: sets `welcomeEmailSentAt` on the apartment doc so the email
+//    is never sent twice even if the function retries.
 // ─────────────────────────────────────────────────────────────────────────────
 
-exports.onApartmentCreated = onDocumentCreated('apartments/{aptId}', async (event) => {
-  const apt = event.data.data();
-  const presidentEmail = apt.presidentEmail;
-  const presidentName  = apt.presidentName;
-  const aptName        = apt.name;
-  // Support both new field name (`code`) and legacy field name (`apartmentCode`)
-  const aptCode        = apt.code || apt.apartmentCode;
+exports.onApartmentCreated = onDocumentCreated(
+  { document: 'apartments/{aptId}', secrets: [GMAIL_EMAIL, GMAIL_APP_PASSWORD] },
+  async (event) => {
+    const apt            = event.data.data();
+    const presidentEmail = apt.presidentEmail;
+    const presidentName  = apt.presidentName ?? 'President';
+    const aptName        = apt.name;
+    // Support both field names: `code` (new) and `apartmentCode` (legacy)
+    const aptCode        = apt.code || apt.apartmentCode;
 
-  if (!presidentEmail || !aptCode) {
-    console.warn('[EMAIL] Missing presidentEmail or code — skipping invitation');
-    return;
+    // ── Guard: skip if required fields are missing ──────────────────────────
+    if (!presidentEmail) {
+      console.warn('[EMAIL] onApartmentCreated: presidentEmail is empty — skipping');
+      return;
+    }
+    if (!aptCode) {
+      console.warn('[EMAIL] onApartmentCreated: apartment code is missing — skipping');
+      return;
+    }
+
+    // ── Idempotency: skip if email was already sent (function retry safety) ─
+    if (apt.welcomeEmailSentAt) {
+      console.log('[EMAIL] onApartmentCreated: welcomeEmailSentAt already set — skipping duplicate');
+      return;
+    }
+
+    // ── Send via Gmail SMTP ─────────────────────────────────────────────────
+    try {
+      console.log('[EMAIL] Sending email to:', presidentEmail);
+      await sendEmail({
+        to:      presidentEmail,
+        subject: 'Welcome to Maintify',
+        html:    buildWelcomeEmail({ presidentName, apartmentName: aptName, apartmentCode: aptCode }),
+      });
+      console.log('[EMAIL] Email sent successfully.');
+
+      // Mark email as sent — prevents duplicate sends on function retry
+      await event.data.ref.update({
+        welcomeEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('[EMAIL] Failed:', error?.message ?? error);
+      // Do not rethrow — email failures must not crash the Firestore trigger
+    }
   }
-
-  // Write to `mail` collection — picked up by Firebase Trigger Email extension.
-  await db.collection('mail').add({
-    to: presidentEmail,
-    message: {
-      subject: 'Welcome to Maintify — Your Apartment is Ready',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto;">
-          <h2 style="color: #1E3A8A;">Welcome to Maintify</h2>
-          <p>Hello <strong>${presidentName ?? 'President'}</strong>,</p>
-          <p>Your apartment has been successfully created on Maintify.</p>
-          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-            <tr>
-              <td style="padding: 8px; color: #64748B;">Apartment</td>
-              <td style="padding: 8px; font-weight: bold;">${aptName}</td>
-            </tr>
-            <tr style="background: #F8FAFC;">
-              <td style="padding: 8px; color: #64748B;">Apartment Code</td>
-              <td style="padding: 8px; font-weight: bold; font-size: 22px; letter-spacing: 3px; color: #1E3A8A;">${aptCode}</td>
-            </tr>
-          </table>
-          <p>Please download the <strong>Maintify</strong> app and complete your registration using this email address and the Apartment Code above.</p>
-          <p style="color: #64748B; font-size: 13px;">If you did not expect this email, please ignore it.</p>
-          <br/>
-          <p>Thank You,<br/><strong>Maintify Team</strong></p>
-        </div>
-      `,
-    },
-  });
-
-  console.log(`[EMAIL] Invitation sent to ${presidentEmail} for apartment ${aptName} (code: ${aptCode})`);
-});
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. President registered  →  FCM to all super admins
@@ -283,50 +290,51 @@ exports.onResidentRequestCreated = onDocumentCreated('resident_requests/{request
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. Resident approved  →  Email to the resident
+// 3. Resident approved  →  Email to the resident via Gmail SMTP
 //    Triggered when a users document is created with role='user'.
-//    FCM is skipped here because the resident has no fcmToken yet at approval time
-//    (they log in for the first time after seeing this email).
+//    FCM is skipped — the resident has no fcmToken yet at approval time.
 // ─────────────────────────────────────────────────────────────────────────────
 
-exports.onResidentApproved = onDocumentCreated('users/{userId}', async (event) => {
-  const user = event.data.data();
+exports.onResidentApproved = onDocumentCreated(
+  { document: 'users/{userId}', secrets: [GMAIL_EMAIL, GMAIL_APP_PASSWORD] },
+  async (event) => {
+    const user = event.data.data();
 
-  // Only handle residents; admins and super admins are handled separately
-  if (user.role !== 'user') return;
+    // Only handle residents; admins/superAdmins are handled by other flows
+    if (user.role !== 'user') return;
 
-  const email = user.email;
-  const name  = user.name ?? 'Resident';
-  if (!email) {
-    console.warn('[EMAIL] onResidentApproved: no email on users doc — skipping');
-    return;
+    const email = user.email;
+    const name  = user.name ?? 'Resident';
+
+    if (!email) {
+      console.warn('[EMAIL] onResidentApproved: no email on users doc — skipping');
+      return;
+    }
+
+    // Idempotency guard
+    if (user.approvalEmailSentAt) {
+      console.log('[EMAIL] onResidentApproved: approvalEmailSentAt already set — skipping duplicate');
+      return;
+    }
+
+    try {
+      console.log('[EMAIL] Sending email to:', email);
+      await sendEmail({
+        to:      email,
+        subject: "You're In! — Maintify Registration Approved",
+        html:    buildResidentApprovedEmail(name),
+      });
+      console.log('[EMAIL] Email sent successfully.');
+
+      await event.data.ref.update({
+        approvalEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('[EMAIL] Failed:', error?.message ?? error);
+      // Do not rethrow — email failures must not crash the Firestore trigger
+    }
   }
-
-  await db.collection('mail').add({
-    to: email,
-    message: {
-      subject: 'You\'re In! — Maintify Registration Approved',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto;">
-          <h2 style="color: #1E3A8A;">Registration Approved</h2>
-          <p>Hello <strong>${name}</strong>,</p>
-          <p>Great news! Your registration request has been approved by the apartment president.</p>
-          <div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 8px; padding: 16px; margin: 20px 0;">
-            <p style="margin: 0; color: #166534; font-weight: bold;">
-              ✓ You can now log in to Maintify using your registered email and password.
-            </p>
-          </div>
-          <p>Open the Maintify app and sign in to access your apartment dashboard, view bills, raise complaints, and more.</p>
-          <p style="color: #64748B; font-size: 13px;">If you did not register for Maintify, please ignore this email.</p>
-          <br/>
-          <p>Welcome aboard,<br/><strong>Maintify Team</strong></p>
-        </div>
-      `,
-    },
-  });
-
-  console.log(`[EMAIL] Approval email sent to ${email}`);
-});
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. President transfer  →  FCM to old president and new president
