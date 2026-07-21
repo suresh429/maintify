@@ -23,6 +23,12 @@ flutter test test/widget_test.dart
 
 # Get dependencies
 flutter pub get
+
+# Deploy Cloud Functions
+firebase deploy --only functions
+
+# Install Cloud Functions dependencies
+cd functions && npm install
 ```
 
 > `test/widget_test.dart` contains a pre-existing compile error (references `MyApp` which doesn't exist). This is not introduced by changes — ignore it.
@@ -216,3 +222,44 @@ Use `Column(mainAxisSize: MainAxisSize.min)` to avoid full-height expansion.
 - **Admin:** AppBar settings icon (`Icons.settings_outlined`) → `showChangePasswordSheet(context)`
 - **User:** Profile screen "More" menu → "Change Password" tile → `showChangePasswordSheet(context)`
 - **First login:** `_FirstLoginWrapper` in `DashboardRouter` opens automatically with `isFirstLogin: true`
+
+## Backend: Firebase Cloud Functions (`functions/`)
+
+Node.js v2 functions in `functions/index.js`. Deploy with `firebase deploy --only functions`. Firebase project: `tivastraapp` (see `.firebaserc`).
+
+### Cloud Function Triggers
+
+| Function | Trigger | Action |
+|---|---|---|
+| `onApartmentCreated` | `apartments/{aptId}` onCreate | Gmail SMTP welcome email to designated president with apartment code |
+| `onPresidentRegistered` | `apartments/{aptId}` onUpdate | FCM to all superAdmins when status changes `waiting_for_president` → `active` |
+| `onResidentRequestCreated` | `resident_requests/{id}` onCreate | FCM to apartment admin |
+| `onResidentApproved` | `users/{userId}` onCreate (role=`user`) | Gmail SMTP approval email to resident |
+| `onPresidentTransferred` | `apartments/{aptId}` onUpdate | FCM to old + new president when `presidentId` changes between two real UIDs |
+| `onBillCreated` | `bills/{billId}` onCreate | FCM to all residents in the apartment |
+| `onMeetingCreated` | `meetings/{meetingId}` onCreate | FCM to all residents |
+| `onComplaintCreated` | `complaints/{complaintId}` onCreate | FCM to apartment admin |
+| `onComplaintMessage` | `complaints/{id}/messages/{msgId}` onCreate | FCM to the other party (admin reply → resident; resident message → admin) |
+| `onPaymentUpdated` | `payments/{paymentId}` onUpdate | Case A: resident submits → FCM + in-app notification to admin. Case B: admin verifies → FCM + in-app notification to resident |
+
+### Email Service
+
+`functions/services/mailService.js` — exports `sendEmail({ to, subject, html })` using Nodemailer with Gmail SMTP. HTML templates in `functions/templates/welcome_email.js` and `functions/templates/resident_approved_email.js`. Both email functions in `index.js` use idempotency guards (`welcomeEmailSentAt`, `approvalEmailSentAt`) written back to Firestore to prevent duplicate sends on function retry. The Nodemailer transporter is created lazily inside `sendEmail()` — secrets are unavailable at module init time.
+
+### Firebase Secrets (Gmail SMTP credentials)
+
+Credentials are stored in Firebase Secret Manager — never in code. Set them once:
+```bash
+firebase functions:secrets:set GMAIL_EMAIL
+firebase functions:secrets:set GMAIL_APP_PASSWORD
+```
+
+### FCM Helpers
+
+- `getTokensForApartment(aptId, role)` — queries users by `apartmentId` + `role`, returns `fcmToken` array
+- `getTokensForRole(role)` — same but across all apartments (used for `superAdmin`)
+- `sendMulticast(tokens, title, body, data)` — wraps `admin.messaging().sendEachForMulticast()`; FCM `data` payload values must be strings; uses `fcm_fallback_notification_channel` on Android
+
+### In-App Notifications
+
+`writeNotification(title, body, type, targetRole)` writes to the `notifications` Firestore collection. `NotificationProvider` streams pick these up automatically. Only called by `onPaymentUpdated` (Cases A and B).

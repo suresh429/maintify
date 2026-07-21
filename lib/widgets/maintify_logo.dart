@@ -1,95 +1,56 @@
 import 'package:flutter/material.dart';
 
-/// The Maintify brand logo — a geometric "M" (two towers + V-dip) with a
-/// gold accent bar at the base. Renders cleanly at any size via CustomPainter.
+/// Official Maintify brand badge.
+///
+/// Displays [assets/app_logo.png] centered inside a translucent
+/// rounded-square container — the canonical brand presentation used on
+/// every gradient header, authentication screen, and email template.
+///
+/// The glass-style container is achieved through transparency alone so it
+/// renders correctly on all backgrounds and in every email client.
 ///
 /// Usage:
-///   MaintifyLogo(size: 80)                   // white M on transparent
-///   MaintifyLogo(size: 80, showBackground: true)  // with dark gradient bg
+///   const MaintifyLogo()                         // 64 × 64 — auth headers
+///   const MaintifyLogo(size: 96)                 // splash screen
+///   MaintifyLogo(size: 64, backgroundOpacity: 0) // no container (edge case)
 class MaintifyLogo extends StatelessWidget {
+  /// Side length of the outer container in logical pixels. Defaults to 64.
   final double size;
 
-  /// When true, draws a rounded-square dark-navy gradient background
-  /// (suitable for use as an app icon preview or stand-alone badge).
-  final bool showBackground;
+  /// Opacity of the white translucent container background (0.0–1.0).
+  /// Defaults to 0.14 — matches the app's glass-card design language.
+  final double backgroundOpacity;
 
   const MaintifyLogo({
     super.key,
-    this.size = 80,
-    this.showBackground = false,
+    this.size = 64,
+    this.backgroundOpacity = 0.14,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    // Logo fills ~73 % of the container (≈ 47 px inside a 64 px badge).
+    final double logoSize = size * (47.0 / 64.0);
+
+    return Container(
       width: size,
       height: size,
-      child: CustomPaint(painter: _LogoPainter(showBackground: showBackground)),
-    );
-  }
-}
-
-class _LogoPainter extends CustomPainter {
-  final bool showBackground;
-  const _LogoPainter({required this.showBackground});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    // ── Background ────────────────────────────────────────────────────────────
-    if (showBackground) {
-      final bgPaint = Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF141E30), Color(0xFF243B55)],
-        ).createShader(Rect.fromLTWH(0, 0, w, h));
-
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(0, 0, w, h),
-          Radius.circular(w * 0.22),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(backgroundOpacity),
+        borderRadius: BorderRadius.circular(size * 0.25), // 16 px at size = 64
+        border: Border.all(
+          color: Colors.white.withOpacity(0.10),
+          width: 1,
         ),
-        bgPaint,
-      );
-    }
-
-    // ── M shape ───────────────────────────────────────────────────────────────
-    // Two vertical towers (left & right) connected at the top by a V-notch.
-    // strokeWidth ≈ 11 % of size so it stays proportional.
-    final mPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * 0.114
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final mPath = Path()
-      ..moveTo(w * 0.13, h * 0.82) // bottom-left
-      ..lineTo(w * 0.13, h * 0.17) // top-left tower
-      ..lineTo(w * 0.50, h * 0.54) // centre dip (V-notch)
-      ..lineTo(w * 0.87, h * 0.17) // top-right tower
-      ..lineTo(w * 0.87, h * 0.82); // bottom-right
-
-    canvas.drawPath(mPath, mPaint);
-
-    // ── Gold accent bar ───────────────────────────────────────────────────────
-    // Sits just below the base of the M, spanning the full width of the towers.
-    final accentPaint = Paint()
-      ..color = const Color(0xFFFECB6E)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.13, h * 0.875, w * 0.74, h * 0.058),
-        Radius.circular(h * 0.029),
       ),
-      accentPaint,
+      child: Center(
+        child: Image.asset(
+          'assets/app_logo.png',
+          width: logoSize,
+          height: logoSize,
+          fit: BoxFit.contain,
+        ),
+      ),
     );
   }
-
-  @override
-  bool shouldRepaint(covariant _LogoPainter old) => old.showBackground != showBackground;
 }

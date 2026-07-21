@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../providers/apartment_provider.dart';
 import '../../widgets/app_text_field.dart';
@@ -91,137 +92,146 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       isDismissible: false,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle
-            Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Icon
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: AppColors.superAdminGradient,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.apartment_outlined,
-                  color: Colors.white, size: 36),
-            ),
-            const SizedBox(height: 16),
-
-            Text('Apartment Created!', style: AppTextStyles.heading3()),
-            const SizedBox(height: 4),
-            Text(aptName,
-                style: AppTextStyles.subheading(color: AppColors.textSecondary),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 24),
-
-            // Code display
-            Text('Apartment Code', style: AppTextStyles.label()),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-              decoration: BoxDecoration(
-                color: AppColors.superAdminGradient.first.withOpacity(0.07),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: AppColors.superAdminGradient.last.withOpacity(0.3),
-                  width: 1.5,
+      builder: (ctx) {
+        final sheetCs   = Theme.of(ctx).colorScheme;
+        final accentColor = RoleTheme.of(UserRole.superAdmin).effectivePrimary(ctx);
+        return Container(
+          decoration: BoxDecoration(
+            color: sheetCs.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: sheetCs.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              child: Text(
-                code,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.superAdminGradient.last,
-                  letterSpacing: 4,
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
+              const SizedBox(height: 24),
 
-            // Copy button
-            OutlinedButton.icon(
-              icon: const Icon(Icons.copy_rounded, size: 16),
-              label: const Text('Copy Code'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.superAdminGradient.last,
-                side: BorderSide(
-                    color: AppColors.superAdminGradient.last.withOpacity(0.4)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                textStyle: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: code));
-                AppUtils.showSnackBar(ctx, 'Apartment code copied!');
-              },
-            ),
-            const SizedBox(height: 20),
-
-            // Email sent note
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.paid.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.paid.withOpacity(0.2)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.mark_email_read_outlined,
-                      size: 16, color: AppColors.paid),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'An invitation email with this code has been sent to the president automatically.',
-                      style: AppTextStyles.caption(color: AppColors.paid),
-                    ),
+              // Icon
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: AppColors.superAdminGradient,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.apartment_outlined,
+                    color: Colors.white, size: 36),
               ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-            CommonButton(
-              text: 'Done',
-              gradient: AppColors.superAdminGradient,
-              onPressed: () => Navigator.of(ctx).pop(),
-            ),
-          ],
-        ),
-      ),
+              Text('Apartment Created!',
+                  style: AppTextStyles.heading3(color: sheetCs.onSurface)),
+              const SizedBox(height: 4),
+              Text(aptName,
+                  style: AppTextStyles.subheading(color: sheetCs.onSurfaceVariant),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 24),
+
+              // Code display
+              Text('Apartment Code',
+                  style: AppTextStyles.label(color: sheetCs.onSurfaceVariant)),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: accentColor.withOpacity(0.35),
+                    width: 1.5,
+                  ),
+                ),
+                child: Text(
+                  code,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: accentColor,
+                    letterSpacing: 4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Copy button
+              OutlinedButton.icon(
+                icon: const Icon(Icons.copy_rounded, size: 16),
+                label: const Text('Copy Code'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: accentColor,
+                  side: BorderSide(color: accentColor.withOpacity(0.4)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  textStyle: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: code));
+                  AppUtils.showSnackBar(ctx, 'Apartment code copied!');
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Email sent note
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.paid.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.paid.withOpacity(0.25)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.mark_email_read_outlined,
+                        size: 16, color: AppColors.paid),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'An invitation email with this code has been sent to the president automatically.',
+                        style: AppTextStyles.caption(color: AppColors.paid),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              CommonButton(
+                text: 'Done',
+                gradient: AppColors.superAdminGradient,
+                onPressed: () => Navigator.of(ctx).pop(),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs    = Theme.of(context).colorScheme;
+    final theme = RoleTheme.of(UserRole.superAdmin);
+    final accent = theme.effectivePrimary(context);
+
     return Scaffold(
-      backgroundColor: AppColors.lightGray,
+      backgroundColor: cs.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -333,20 +343,19 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.blue.withOpacity(0.06),
+                  color: accent.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.blue.withOpacity(0.15)),
+                  border: Border.all(color: accent.withOpacity(0.2)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.info_outline,
-                        size: 16, color: AppColors.blue),
+                    Icon(Icons.info_outline, size: 16, color: accent),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'An invitation email with the Apartment Code will be sent to the president as soon as the apartment is created.',
-                        style: AppTextStyles.caption(color: AppColors.blue),
+                        style: AppTextStyles.caption(color: accent),
                       ),
                     ),
                   ],
@@ -421,20 +430,21 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs     = Theme.of(context).colorScheme;
+    final accent = RoleTheme.of(UserRole.superAdmin).effectivePrimary(context);
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.superAdminGradient.first.withOpacity(0.1),
+            color: accent.withOpacity(0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon,
-              size: 18, color: AppColors.superAdminGradient.last),
+          child: Icon(icon, size: 18, color: accent),
         ),
         const SizedBox(width: 10),
         Text(title,
-            style: AppTextStyles.subheading(color: AppColors.textPrimary)),
+            style: AppTextStyles.subheading(color: cs.onSurface)),
       ],
     );
   }

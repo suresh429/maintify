@@ -8,6 +8,7 @@ import '../../providers/registration_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/common_button.dart';
+import '../../widgets/maintify_logo.dart';
 
 class ResidentSignupScreen extends StatefulWidget {
   const ResidentSignupScreen({super.key});
@@ -212,12 +213,7 @@ class _ResidentSignupScreenState extends State<ResidentSignupScreen>
                             ),
                           ),
                           const SizedBox(width: 14),
-                          Image.asset(
-                            'assets/app_logo.png',
-                            width: 36,
-                            height: 36,
-                            fit: BoxFit.contain,
-                          ),
+                          const MaintifyLogo(size: 64),
                           const SizedBox(width: 10),
                           Text(
                             AppConstants.appName,

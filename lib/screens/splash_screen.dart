@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../core/constants/app_constants.dart';
+import '../widgets/maintify_logo.dart';
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -96,12 +97,7 @@ class _SplashScreenState extends State<SplashScreen>
                     opacity: _fadeAnim,
                     child: ScaleTransition(
                       scale: _scaleAnim,
-                      child: Image.asset(
-                        'assets/app_logo.png',
-                        width: 96,
-                        height: 96,
-                        fit: BoxFit.contain,
-                      ),
+                      child: const MaintifyLogo(size: 96),
                     ),
                   ),
 

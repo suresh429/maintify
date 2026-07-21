@@ -7,6 +7,7 @@ import '../core/constants/app_constants.dart';
 import '../core/utils/app_utils.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/common_button.dart';
+import '../widgets/maintify_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -211,12 +212,7 @@ class _LoginScreenState extends State<LoginScreen>
                       // Brand
                       Row(
                         children: [
-                          Image.asset(
-                            'assets/app_logo.png',
-                            width: 48,
-                            height: 48,
-                            fit: BoxFit.contain,
-                          ),
+                          const MaintifyLogo(size: 64),
                           const SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

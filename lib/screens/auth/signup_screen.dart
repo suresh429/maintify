@@ -4,6 +4,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import 'president_signup_screen.dart';
 import 'resident_signup_screen.dart';
+import '../../widgets/maintify_logo.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -97,12 +98,7 @@ class _SignupScreenState extends State<SignupScreen>
                             ),
                           ),
                           const SizedBox(width: 14),
-                          Image.asset(
-                            'assets/app_logo.png',
-                            width: 40,
-                            height: 40,
-                            fit: BoxFit.contain,
-                          ),
+                          const MaintifyLogo(size: 64),
                           const SizedBox(width: 10),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
