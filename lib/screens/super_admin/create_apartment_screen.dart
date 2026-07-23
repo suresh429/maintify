@@ -10,6 +10,12 @@ import '../../providers/apartment_provider.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/common_button.dart';
 
+const List<String> _kApartmentTypes = [
+  'Apartment',
+  'Villa',
+  'Gated Community',
+];
+
 class CreateApartmentScreen extends StatefulWidget {
   const CreateApartmentScreen({super.key});
 
@@ -20,26 +26,40 @@ class CreateApartmentScreen extends StatefulWidget {
 class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final _nameCtrl          = TextEditingController();
-  final _flatsCtrl         = TextEditingController();
-  final _presidentNameCtrl = TextEditingController();
-  final _presidentEmailCtrl= TextEditingController();
-  final _presidentPhoneCtrl= TextEditingController();
+  final _nameCtrl           = TextEditingController();
+  final _addressCtrl        = TextEditingController();
+  final _flatsCtrl          = TextEditingController();
+  final _towerCountCtrl     = TextEditingController(text: '1');
+  final _towerNamesCtrl     = TextEditingController(text: 'A');
+  final _presidentNameCtrl  = TextEditingController();
+  final _presidentEmailCtrl = TextEditingController();
+  final _presidentPhoneCtrl = TextEditingController();
+  final _presidentFlatCtrl  = TextEditingController();
 
+  String _aptType    = _kApartmentTypes.first;
   bool _isSubmitting = false;
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _addressCtrl.dispose();
     _flatsCtrl.dispose();
+    _towerCountCtrl.dispose();
+    _towerNamesCtrl.dispose();
     _presidentNameCtrl.dispose();
     _presidentEmailCtrl.dispose();
     _presidentPhoneCtrl.dispose();
+    _presidentFlatCtrl.dispose();
     super.dispose();
   }
 
-  /// First 4 alpha chars of apartment name (uppercase, padded with 'X')
-  /// followed by 4 random digits.  e.g. "SAMH4721".
+  void _onTowerCountChanged(String value) {
+    final n = int.tryParse(value.trim()) ?? 0;
+    if (n < 1 || n > 26) return;
+    _towerNamesCtrl.text =
+        List.generate(n, (i) => String.fromCharCode(65 + i)).join(', ');
+  }
+
   String _generateCode(String aptName) {
     final clean = aptName.toUpperCase().replaceAll(RegExp(r'[^A-Z]'), '');
     final letters =
@@ -54,25 +74,39 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
 
     try {
       final aptProvider = context.read<ApartmentProvider>();
-      final aptName = _nameCtrl.text.trim();
-      final aptId   = 'apt_${DateTime.now().millisecondsSinceEpoch}';
-      final code    = _generateCode(aptName);
+      final aptName     = _nameCtrl.text.trim();
+      final aptId       = 'apt_${DateTime.now().millisecondsSinceEpoch}';
+      final code        = _generateCode(aptName);
+      final isGated     = _aptType == 'Gated Community';
+      final towerCount  = isGated
+          ? (int.tryParse(_towerCountCtrl.text.trim()) ?? 1)
+          : 0;
+      final towerNames  = isGated
+          ? _towerNamesCtrl.text
+              .split(',')
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList()
+          : <String>[];
 
       await aptProvider.createApartment(
         id: aptId,
         name: aptName,
+        type: _aptType,
+        address: _addressCtrl.text.trim(),
         totalFlats: int.parse(_flatsCtrl.text.trim()),
+        towerCount: towerCount,
+        towerNames: towerNames,
         presidentName: _presidentNameCtrl.text.trim(),
         presidentEmail: _presidentEmailCtrl.text.trim().toLowerCase(),
         presidentPhone: _presidentPhoneCtrl.text.trim(),
+        presidentFlat: _presidentFlatCtrl.text.trim(),
         code: code,
       );
 
       if (!mounted) return;
       setState(() => _isSubmitting = false);
-
       await _showSuccessSheet(code, aptName);
-
       if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
@@ -93,8 +127,9 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
       backgroundColor: Colors.transparent,
       isDismissible: false,
       builder: (ctx) {
-        final sheetCs   = Theme.of(ctx).colorScheme;
-        final accentColor = RoleTheme.of(UserRole.superAdmin).effectivePrimary(ctx);
+        final sheetCs    = Theme.of(ctx).colorScheme;
+        final accentColor =
+            RoleTheme.of(UserRole.superAdmin).effectivePrimary(ctx);
         return Container(
           decoration: BoxDecoration(
             color: sheetCs.surface,
@@ -104,9 +139,9 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Handle
               Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: sheetCs.outlineVariant,
                   borderRadius: BorderRadius.circular(2),
@@ -114,7 +149,6 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Icon
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: const BoxDecoration(
@@ -134,23 +168,22 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
                   style: AppTextStyles.heading3(color: sheetCs.onSurface)),
               const SizedBox(height: 4),
               Text(aptName,
-                  style: AppTextStyles.subheading(color: sheetCs.onSurfaceVariant),
+                  style: AppTextStyles.subheading(
+                      color: sheetCs.onSurfaceVariant),
                   textAlign: TextAlign.center),
               const SizedBox(height: 24),
 
-              // Code display
               Text('Apartment Code',
                   style: AppTextStyles.label(color: sheetCs.onSurfaceVariant)),
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 28, vertical: 16),
                 decoration: BoxDecoration(
                   color: accentColor.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: accentColor.withOpacity(0.35),
-                    width: 1.5,
-                  ),
+                      color: accentColor.withOpacity(0.35), width: 1.5),
                 ),
                 child: Text(
                   code,
@@ -165,7 +198,6 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
               ),
               const SizedBox(height: 14),
 
-              // Copy button
               OutlinedButton.icon(
                 icon: const Icon(Icons.copy_rounded, size: 16),
                 label: const Text('Copy Code'),
@@ -187,13 +219,13 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Email sent note
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppColors.paid.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.paid.withOpacity(0.25)),
+                  border:
+                      Border.all(color: AppColors.paid.withOpacity(0.25)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,7 +235,7 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'An invitation email with this code has been sent to the president automatically.',
+                        'An invitation email with apartment details and this code has been sent to the president automatically.',
                         style: AppTextStyles.caption(color: AppColors.paid),
                       ),
                     ),
@@ -312,7 +344,51 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
                     v == null || v.trim().isEmpty ? 'Enter apartment name' : null,
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
+
+              DropdownButtonFormField<String>(
+                value: _aptType,
+                decoration: InputDecoration(
+                  labelText: 'Apartment Type',
+                  prefixIcon: const Icon(Icons.category_outlined, size: 20),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: cs.outline),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: accent, width: 2),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                  labelStyle: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14,
+                      color: cs.onSurfaceVariant),
+                ),
+                style: TextStyle(
+                    fontFamily: 'Poppins', fontSize: 14, color: cs.onSurface),
+                items: _kApartmentTypes
+                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                    .toList(),
+                onChanged: (v) => setState(() => _aptType = v!),
+              ),
+
+              const SizedBox(height: 14),
+
+              AppTextField(
+                label: 'Complete Address',
+                hint: 'Street, City, State, PIN Code',
+                controller: _addressCtrl,
+                maxLines: 3,
+                prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Enter address' : null,
+              ),
+
+              const SizedBox(height: 14),
 
               AppTextField(
                 label: 'Total Flats',
@@ -330,6 +406,43 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
                   return null;
                 },
               ),
+
+              if (_aptType == 'Gated Community') ...[
+                const SizedBox(height: 14),
+
+                AppTextField(
+                  label: 'Number of Towers / Blocks',
+                  hint: 'e.g., 3',
+                  controller: _towerCountCtrl,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  prefixIcon: const Icon(Icons.domain_outlined, size: 20),
+                  onChanged: _onTowerCountChanged,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Enter number of towers';
+                    }
+                    final n = int.tryParse(v.trim());
+                    if (n == null || n < 1 || n > 26) {
+                      return 'Must be between 1 and 26';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 14),
+
+                AppTextField(
+                  label: 'Tower / Block Names',
+                  hint: 'e.g., A, B, C  or  North, South',
+                  controller: _towerNamesCtrl,
+                  prefixIcon:
+                      const Icon(Icons.label_outline_rounded, size: 20),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Enter tower names'
+                      : null,
+                ),
+              ],
 
               const SizedBox(height: 32),
 
@@ -371,8 +484,9 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
                 textCapitalization: TextCapitalization.words,
                 prefixIcon:
                     const Icon(Icons.person_outline_rounded, size: 20),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Enter president name' : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Enter president name'
+                    : null,
               ),
 
               const SizedBox(height: 16),
@@ -400,8 +514,23 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
                 controller: _presidentPhoneCtrl,
                 keyboardType: TextInputType.phone,
                 prefixIcon: const Icon(Icons.phone_outlined, size: 20),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Enter mobile number' : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Enter mobile number'
+                    : null,
+              ),
+
+              const SizedBox(height: 16),
+
+              AppTextField(
+                label: 'President Flat Number',
+                hint: 'e.g., A-101',
+                controller: _presidentFlatCtrl,
+                textCapitalization: TextCapitalization.characters,
+                prefixIcon:
+                    const Icon(Icons.meeting_room_outlined, size: 20),
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Enter flat number'
+                    : null,
               ),
 
               const SizedBox(height: 32),
@@ -431,7 +560,8 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs     = Theme.of(context).colorScheme;
-    final accent = RoleTheme.of(UserRole.superAdmin).effectivePrimary(context);
+    final accent =
+        RoleTheme.of(UserRole.superAdmin).effectivePrimary(context);
     return Row(
       children: [
         Container(

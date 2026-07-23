@@ -5,6 +5,11 @@ class ApartmentModel {
   final String name;
   final String code;           // e.g. "SAMH4721"
   final String status;         // "waiting_for_president" | "active" | "disabled"
+  final String? type;          // "Apartment" | "Villa" | "Gated Community"
+  final String? address;
+  final int? towerCount;
+  final List<String>? towerNames;
+  final String? presidentFlat; // President's flat number e.g. "A-101"
   final String? presidentName;
   final String? presidentEmail;
   final String? presidentPhone;
@@ -19,6 +24,11 @@ class ApartmentModel {
     required this.name,
     required this.code,
     required this.status,
+    this.type,
+    this.address,
+    this.towerCount,
+    this.towerNames,
+    this.presidentFlat,
     this.presidentName,
     this.presidentEmail,
     this.presidentPhone,
@@ -40,6 +50,11 @@ class ApartmentModel {
       // Support legacy docs that still store "apartmentCode"
       code: (d['code'] ?? d['apartmentCode']) as String? ?? '',
       status: d['status'] as String? ?? 'active',
+      type: d['type'] as String?,
+      address: d['address'] as String?,
+      towerCount: d['towerCount'] as int?,
+      towerNames: (d['towerNames'] as List<dynamic>?)?.cast<String>(),
+      presidentFlat: d['presidentFlat'] as String?,
       presidentName: d['presidentName'] as String?,
       presidentEmail: d['presidentEmail'] as String?,
       presidentPhone: d['presidentPhone'] as String?,
@@ -55,6 +70,11 @@ class ApartmentModel {
         'name': name,
         'code': code,
         'status': status,
+        'type': type,
+        'address': address,
+        'towerCount': towerCount,
+        'towerNames': towerNames,
+        'presidentFlat': presidentFlat,
         'presidentName': presidentName,
         'presidentEmail': presidentEmail,
         'presidentPhone': presidentPhone,
@@ -71,6 +91,11 @@ class ApartmentModel {
     bool clearPresident = false,
     String? status,
     String? code,
+    String? type,
+    String? address,
+    int? towerCount,
+    List<String>? towerNames,
+    String? presidentFlat,
     String? presidentEmail,
     String? presidentPhone,
     int? occupiedFlats,
@@ -81,6 +106,11 @@ class ApartmentModel {
       name: name,
       code: code ?? this.code,
       status: status ?? this.status,
+      type: type ?? this.type,
+      address: address ?? this.address,
+      towerCount: towerCount ?? this.towerCount,
+      towerNames: towerNames ?? this.towerNames,
+      presidentFlat: presidentFlat ?? this.presidentFlat,
       presidentId: clearPresident ? null : (presidentId ?? this.presidentId),
       presidentName:
           clearPresident ? null : (presidentName ?? this.presidentName),

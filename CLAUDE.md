@@ -60,7 +60,7 @@ All 10 providers registered at root in `main.dart`. Provider files live in `lib/
 | `ComplaintProvider` | Complaint lifecycle + message threads |
 | `MeetingProvider` | Meeting CRUD, schedules notifications via `NotificationProvider` |
 | `NotificationProvider` | In-app notifications, Firestore-backed, `startListening(role)` |
-| `RegistrationProvider` | Self-registration flows for president and resident; admin approval/rejection of resident requests |
+| `RegistrationProvider` | Self-registration: president self-creates apartment or activates super-admin-created one; resident direct signup with email verification |
 | `ThemeProvider` | Dark/light mode toggle; persists `isDarkMode` flag to Hive `'session'` box under key `isDarkMode` |
 
 Providers that use Firestore streams call `startListening(...)` from `DashboardRouter` after login. They cache data locally and call `notifyListeners()` on stream updates.
@@ -69,12 +69,12 @@ Providers that use Firestore streams call `startListening(...)` from `DashboardR
 
 All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `MockBillData`) exist **only for `DashboardProvider`**, which cannot hold Firestore streams of its own. Every provider's stream listener calls `MockFoo.replaceAll(list)` to keep statics in sync.
 
-**Models** live in `lib/models/` (e.g. `lib/models/user_model.dart`, `lib/models/bill_model.dart`).
+**Models** live in `lib/models/`. Key ones: `user_model.dart`, `bill_model.dart`, `apartment_model.dart` (now has `type`, `address`, `towerCount`, `towerNames`, `presidentFlat` fields), `flat_model.dart` (see below).
 
 **Key Firestore collections:**
 - `users/` — real Firebase Auth UID as document ID
-- `resident_requests/` — self-registered residents awaiting admin approval
 - `apartments/`, `bills/`, `payments/`, `complaints/`, `meetings/`, `notifications/`
+- `flats/` — individual flat docs, auto-generated at apartment creation. Doc ID: `${aptId}_${flatNumber}`. Fields: `flatNumber`, `tower` (null for non-gated), `status` (`available`|`occupied`), `residentId`, `residentType` (`President`|`Resident`|null), `apartmentId`.
 - `_meta/seeded` — guards `DbSeeder` from re-running
 
 **`DashboardProvider` important note:** Its stats getters read from `MockXxx` statics only. This is intentional — it's kept accurate because `UserProvider`, `ApartmentProvider`, and `BillProvider` all call `replaceAll()` in their stream listeners.
@@ -105,10 +105,17 @@ Login goes through `FirebaseAuthService.signIn()` → standard Firebase Auth. On
 
 `AppUtils.displayFirstName(fullName)` strips leading initials (e.g. "G. Srikanth" → "Srikanth").
 
-**Self-registration flows** (via `RegistrationProvider`):
+**Self-registration flows** (via `RegistrationProvider`, unified entry point `lib/screens/auth/registration_screen.dart`):
 
-- **President signup** (`lib/screens/auth/president_signup_screen.dart`): Validates apartment code → checks email matches `apt.presidentEmail` → calls `FirebaseAuthService.registerPresident()` → sets apartment status to `'active'` → notifies all superAdmins.
-- **Resident signup** (`lib/screens/auth/resident_signup_screen.dart`): Validates apartment code → creates Firebase Auth account (then signs out) → writes `resident_requests/` doc with `status: 'pending'` → notifies the apartment admin. Admin approves/rejects from `admin/resident_requests_screen.dart`. On approval: `users/` doc is created and `occupiedFlats` is incremented. The Firebase Auth account is created at signup time; rejection leaves the orphaned Auth account but no `users/` doc (user cannot log in).
+`RegistrationScreen` has a segmented button (President / Resident) that switches form fields in-place.
+
+- **President — self-creation (primary path):** New president creates the apartment themselves. Form collects personal info + apartment details (name, type, address, total flats, flat number). Types: `Apartment`, `Villa`, `Gated Community`. Gated Community additionally captures tower count and names (A–Z). On submit: `RegistrationProvider.selfRegisterPresident()` → checks for duplicate apartment → generates collision-safe 8-char code (4 letters from apartment name + 4 random digits) → calls `FirebaseAuthService.selfRegisterPresident()` (creates Auth account + apartment doc + user doc atomically) → auto-generates all `flats/` docs via `generateFlatsForApartment()` (president flat marked `occupied`). Then shows email verification bottom sheet — after verification resolves, shows success sheet with apartment code.
+
+- **President — activation (secondary path):** For apartments pre-created by a super admin (`status: 'waiting_for_president'`). President enters apartment code + their email (must match `apt.presidentEmail`) via `president_signup_screen.dart`. Calls `RegistrationProvider.registerPresident()` → activates apartment → updates president flat's `residentId` in `flats/` → notifies superAdmins.
+
+- **Resident — direct registration:** Resident enters apartment code + flat number. `RegistrationProvider.registerResident()` → validates apartment is `active` → looks up flat in `flats/` collection (must exist and be `available`) → checks email + phone uniqueness → calls `FirebaseAuthService.registerResident()` (creates Auth account + users doc + marks flat `occupied` atomically) → shows email verification bottom sheet → on verify, logs in and shows success sheet. **No pending queue** — residents get immediate access after email verification.
+
+**Email verification:** Both president (self-creation) and resident flows show a non-dismissible bottom sheet after account creation. `RegistrationProvider.checkEmailVerified()` reloads the Auth user and checks `emailVerified`. `resendVerificationEmail()` resends. `abortRegistration()` signs out and cancels, returning to login.
 
 ### President Assignment
 
@@ -151,12 +158,11 @@ screens/
 ├── dashboard_router.dart          ← Role router + _FirstLoginWrapper + _StreamStarter (manages listener lifecycle) + provider startListening calls
 ├── splash_screen.dart
 ├── auth/
-│   ├── signup_screen.dart         ← Role selector (president vs resident)
-│   ├── president_signup_screen.dart ← Apartment code + email auth validation
-│   └── resident_signup_screen.dart  ← Signup creates Auth account; request pending until admin approves
-├── admin/                         ← 10 screens: dashboard, create-bill, edit-bill-sheet, complaints,
+│   ├── registration_screen.dart   ← Unified signup: segmented button switches President / Resident form fields; handles email verification bottom sheet + success sheet
+│   └── president_signup_screen.dart ← Activation-only path for super-admin-created apartments (apartment code + email validation)
+├── admin/                         ← 9 screens: dashboard, create-bill, edit-bill-sheet, complaints,
 │                                    manage-users, mark-paid, monthly-bill-detail, transfer-president,
-│                                    resident-requests, admin-profile
+│                                    admin-profile
 ├── super_admin/                   ← 6 screens: dashboard, apartments, reports, assign-admin,
 │                                    assign-president, create-apartment
 ├── user/                          ← 7 screens: dashboard, bills, monthly-bill-detail,
@@ -233,7 +239,6 @@ Node.js v2 functions in `functions/index.js`. Deploy with `firebase deploy --onl
 |---|---|---|
 | `onApartmentCreated` | `apartments/{aptId}` onCreate | Gmail SMTP welcome email to designated president with apartment code |
 | `onPresidentRegistered` | `apartments/{aptId}` onUpdate | FCM to all superAdmins when status changes `waiting_for_president` → `active` |
-| `onResidentRequestCreated` | `resident_requests/{id}` onCreate | FCM to apartment admin |
 | `onResidentApproved` | `users/{userId}` onCreate (role=`user`) | Gmail SMTP approval email to resident |
 | `onPresidentTransferred` | `apartments/{aptId}` onUpdate | FCM to old + new president when `presidentId` changes between two real UIDs |
 | `onBillCreated` | `bills/{billId}` onCreate | FCM to all residents in the apartment |

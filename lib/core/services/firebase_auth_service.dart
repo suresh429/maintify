@@ -6,8 +6,8 @@ import '../../models/apartment_model.dart';
 /// Wraps all FirebaseAuth operations.
 /// Providers call this service; no UI has a direct Firebase dependency.
 class FirebaseAuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth      _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _db   = FirebaseFirestore.instance;
 
   User? get firebaseUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -15,8 +15,8 @@ class FirebaseAuthService {
   // ── Sign in ───────────────────────────────────────────────────────────────
 
   /// Signs in with email/password.
-  /// If the Firebase Auth sign-in succeeds but no users doc exists, checks
-  /// resident_requests to return a helpful "pending approval" message.
+  /// Returns error: 'EMAIL_NOT_VERIFIED' if the account exists but email
+  /// hasn't been verified yet — the caller shows a resend-verification prompt.
   Future<({UserModel? user, String? error})> signIn(
     String email,
     String password,
@@ -26,23 +26,16 @@ class FirebaseAuthService {
         email: email.trim().toLowerCase(),
         password: password,
       );
+
+      // Block unverified accounts
+      if (!cred.user!.emailVerified) {
+        await _auth.signOut();
+        return (user: null, error: 'EMAIL_NOT_VERIFIED');
+      }
+
       final user = await _loadUserDoc(cred.user!.uid);
       if (user == null) {
-        // Check if this user has a pending resident request
-        final isPending = await _db
-            .collection('resident_requests')
-            .where('uid', isEqualTo: cred.user!.uid)
-            .where('status', isEqualTo: 'pending')
-            .limit(1)
-            .get();
         await _auth.signOut();
-        if (isPending.docs.isNotEmpty) {
-          return (
-            user: null,
-            error:
-                'Your registration is pending approval by the apartment president.',
-          );
-        }
         return (user: null, error: 'Account data not found. Contact support.');
       }
       return (user: user, error: null);
@@ -51,99 +44,244 @@ class FirebaseAuthService {
     }
   }
 
-  // ── President self-registration ───────────────────────────────────────────
+  // ── President activation (Secondary flow) ────────────────────────────────
 
-  /// Creates a Firebase Auth account for the apartment president and writes
-  /// the users doc and updates the apartment in a single flow.
+  /// Creates a Firebase Auth account for the president, writes the users doc,
+  /// and updates the apartment atomically via WriteBatch.
+  /// Rolls back the Auth account if Firestore fails.
   Future<({UserModel? user, String? error})> registerPresident({
     required String email,
     required String password,
     required ApartmentModel apt,
-    String unit = '',
+    required String unit,
   }) async {
+    User? createdUser;
     try {
-      // 1. Create Firebase Auth account
       final cred = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      final uid = cred.user!.uid;
+      createdUser = cred.user;
+      final uid = createdUser!.uid;
 
-      // 2. Compute avatar initials from apt.presidentName
-      final name = apt.presidentName ?? email.split('@').first;
-      final words = name.trim().split(RegExp(r'\s+'));
+      // Send verification email (in background — don't block activation)
+      createdUser.sendEmailVerification().catchError((_) {});
+
+      final name     = apt.presidentName ?? email.split('@').first;
+      final words    = name.trim().split(RegExp(r'\s+'));
       final initials = words
           .where((w) => w.isNotEmpty)
           .take(2)
           .map((w) => w[0].toUpperCase())
           .join();
+      final now = DateTime.now();
 
-      // 3. Write users/{uid} doc
-      await _db.collection('users').doc(uid).set({
-        'name': name,
-        'email': email,
-        'phone': apt.presidentPhone ?? '',
-        'role': 'admin',
-        'apartmentId': apt.id,
-        'unit': unit,
-        'avatarInitials': initials.isEmpty ? name[0].toUpperCase() : initials,
-        'isActive': true,
-        'joinedAt': Timestamp.fromDate(DateTime.now()),
+      // Atomic batch: create users doc + activate apartment
+      final batch = _db.batch();
+      batch.set(_db.collection('users').doc(uid), {
+        'name':            name,
+        'email':           email,
+        'phone':           apt.presidentPhone ?? '',
+        'role':            'admin',
+        'apartmentId':     apt.id,
+        'unit':            unit,
+        'avatarInitials':  initials.isEmpty ? name[0].toUpperCase() : initials,
+        'isActive':        true,
+        'joinedAt':        Timestamp.fromDate(now),
       });
-
-      // 4. Update apartment: set status='active', presidentId, occupiedFlats +1
-      await _db.collection('apartments').doc(apt.id).update({
-        'status': 'active',
-        'presidentId': uid,
-        'presidentName': name,
-        'occupiedFlats': FieldValue.increment(1),
+      batch.update(_db.collection('apartments').doc(apt.id), {
+        'status':         'active',
+        'presidentId':    uid,
+        'presidentName':  name,
+        'occupiedFlats':  FieldValue.increment(1),
+        'updatedAt':      Timestamp.fromDate(now),
       });
+      await batch.commit();
 
-      // 5. Return loaded UserModel
       final user = await _loadUserDoc(uid);
       return (user: user, error: null);
     } on FirebaseAuthException catch (e) {
       return (user: null, error: _friendlyError(e.code));
     } catch (_) {
-      return (user: null, error: 'An error occurred. Please try again.');
+      // Rollback: delete Auth account so it doesn't become an orphan
+      await createdUser?.delete().catchError((_) {});
+      return (user: null, error: 'Registration failed. Please try again.');
     }
   }
 
-  // ── Resident self-registration ────────────────────────────────────────────
+  // ── President self-registration (Primary flow) ────────────────────────────
 
-  /// Creates a Firebase Auth account for a resident then immediately signs out.
-  /// The caller is responsible for creating the resident_request doc with the
-  /// returned UID.
-  Future<({String? uid, String? error})> registerResident({
+  /// Creates Auth account, apartment doc, and president users doc atomically.
+  /// Rolls back Auth account if Firestore batch fails.
+  Future<({UserModel? user, String? error})> selfRegisterPresident({
     required String name,
     required String email,
     required String phone,
     required String password,
-    required ApartmentModel apt,
-    required String unit,
+    required String apartmentId,
+    required String apartmentCode,
+    required String apartmentName,
+    required String apartmentType,
+    required String address,
+    required int    totalFlats,
+    required int    towerCount,
+    required List<String> towerNames,
+    required String presidentFlat,
   }) async {
+    User? createdUser;
     try {
-      // 1. Create Firebase Auth account
       final cred = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      final uid = cred.user!.uid;
+      createdUser = cred.user;
+      final uid = createdUser!.uid;
 
-      // 2. Sign out immediately — no users doc is written yet
-      await _auth.signOut();
+      // Send verification email in background
+      createdUser.sendEmailVerification().catchError((_) {});
 
-      return (uid: uid, error: null);
+      final words    = name.trim().split(RegExp(r'\s+'));
+      final initials = words
+          .where((w) => w.isNotEmpty)
+          .take(2)
+          .map((w) => w[0].toUpperCase())
+          .join();
+      final now = DateTime.now();
+
+      // Atomic batch: apartment + user doc
+      final batch = _db.batch();
+      batch.set(_db.collection('apartments').doc(apartmentId), {
+        'name':           apartmentName,
+        'code':           apartmentCode,
+        'status':         'active',
+        'type':           apartmentType,
+        'address':        address,
+        'totalFlats':     totalFlats,
+        'towerCount':     towerCount,
+        'towerNames':     towerNames,
+        'presidentId':    uid,
+        'presidentName':  name,
+        'presidentEmail': email,
+        'presidentPhone': phone,
+        'presidentFlat':  presidentFlat,
+        'occupiedFlats':  1,
+        'createdAt':      Timestamp.fromDate(now),
+        'updatedAt':      Timestamp.fromDate(now),
+      });
+      batch.set(_db.collection('users').doc(uid), {
+        'name':           name,
+        'email':          email,
+        'phone':          phone,
+        'role':           'admin',
+        'apartmentId':    apartmentId,
+        'unit':           presidentFlat,
+        'avatarInitials': initials.isEmpty ? name[0].toUpperCase() : initials,
+        'isActive':       true,
+        'joinedAt':       Timestamp.fromDate(now),
+      });
+      await batch.commit();
+
+      final user = await _loadUserDoc(uid);
+      return (user: user, error: null);
     } on FirebaseAuthException catch (e) {
-      return (uid: null, error: _friendlyError(e.code));
+      return (user: null, error: _friendlyError(e.code));
     } catch (_) {
-      return (uid: null, error: 'An error occurred. Please try again.');
+      await createdUser?.delete().catchError((_) {});
+      return (user: null, error: 'Registration failed. Please try again.');
+    }
+  }
+
+  // ── Resident direct registration ──────────────────────────────────────────
+
+  /// Creates a resident Firebase Auth account, users doc, and reserves the flat
+  /// atomically. Sends a verification email immediately.
+  /// Signs out after creating — login requires email verification.
+  /// Rolls back the Auth account if Firestore batch fails.
+  Future<({UserModel? user, String? error})> registerResident({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+    required String apartmentId,
+    required String flatId,
+    required String flatNumber,
+  }) async {
+    User? createdUser;
+    try {
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      createdUser = cred.user;
+      final uid = createdUser!.uid;
+
+      // Send email verification before anything else
+      await createdUser.sendEmailVerification();
+
+      final words    = name.trim().split(RegExp(r'\s+'));
+      final initials = words
+          .where((w) => w.isNotEmpty)
+          .take(2)
+          .map((w) => w[0].toUpperCase())
+          .join();
+      final now = DateTime.now();
+
+      // Atomic batch: create users doc + reserve flat + increment occupiedFlats
+      final batch = _db.batch();
+      batch.set(_db.collection('users').doc(uid), {
+        'name':           name,
+        'email':          email,
+        'phone':          phone,
+        'role':           'user',
+        'apartmentId':    apartmentId,
+        'unit':           flatNumber,
+        'avatarInitials': initials.isEmpty ? name[0].toUpperCase() : initials,
+        'isActive':       true,
+        'joinedAt':       Timestamp.fromDate(now),
+      });
+      batch.update(_db.collection('flats').doc(flatId), {
+        'status':       'occupied',
+        'residentId':   uid,
+        'residentType': 'Resident',
+        'updatedAt':    Timestamp.fromDate(now),
+      });
+      batch.update(_db.collection('apartments').doc(apartmentId), {
+        'occupiedFlats': FieldValue.increment(1),
+        'updatedAt':     Timestamp.fromDate(now),
+      });
+      await batch.commit();
+
+      final user = await _loadUserDoc(uid);
+      return (user: user, error: null);
+    } on FirebaseAuthException catch (e) {
+      return (user: null, error: _friendlyError(e.code));
+    } catch (_) {
+      await createdUser?.delete().catchError((_) {});
+      return (user: null, error: 'Registration failed. Please try again.');
+    }
+  }
+
+  // ── Email verification ────────────────────────────────────────────────────
+
+  /// Temporarily signs in to resend a verification email, then signs out.
+  Future<bool> resendEmailVerification(String email, String password) async {
+    try {
+      final cred = await _auth.signInWithEmailAndPassword(
+        email: email.trim().toLowerCase(),
+        password: password,
+      );
+      if (cred.user != null && !cred.user!.emailVerified) {
+        await cred.user!.sendEmailVerification();
+      }
+      await _auth.signOut();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
   // ── Password management ───────────────────────────────────────────────────
 
-  /// Re-authenticates then updates the password.
   Future<({bool ok, String? error})> changePassword({
     required String currentPassword,
     required String newPassword,
@@ -168,7 +306,6 @@ class FirebaseAuthService {
     }
   }
 
-  /// Sends a Firebase password-reset email.
   Future<bool> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(
@@ -183,16 +320,7 @@ class FirebaseAuthService {
 
   Future<void> signOut() => _auth.signOut();
 
-  // ── FCM token ─────────────────────────────────────────────────────────────
-
-  Future<void> saveFcmToken(String uid, String token) async {
-    await _db
-        .collection('users')
-        .doc(uid)
-        .update({'fcmToken': token});
-  }
-
-  // ── User doc helpers ──────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   Future<UserModel?> _loadUserDoc(String uid) async {
     final doc = await _db.collection('users').doc(uid).get();
@@ -200,10 +328,7 @@ class FirebaseAuthService {
     return UserModel.fromFirestore(doc);
   }
 
-  /// Returns the Firestore UID for the currently signed-in user, or null.
   String? get currentUid => _auth.currentUser?.uid;
-
-  // ── Error messages ────────────────────────────────────────────────────────
 
   String _friendlyError(String code) {
     switch (code) {
@@ -222,7 +347,7 @@ class FirebaseAuthService {
       case 'email-already-in-use':
         return 'Email is already registered.';
       case 'weak-password':
-        return 'Password is too weak.';
+        return 'Password is too weak. Use at least 6 characters.';
       default:
         return 'Something went wrong. Please try again.';
     }

@@ -1,58 +1,109 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/resident_request_model.dart';
+import '../models/user_model.dart';
+import '../models/apartment_model.dart';
+import '../models/flat_model.dart';
 import '../core/theme/role_theme.dart';
 import '../core/services/firestore_service.dart';
 import '../core/services/firebase_auth_service.dart';
 import 'notification_provider.dart';
 
 class RegistrationProvider extends ChangeNotifier {
-  final FirestoreService _fs = FirestoreService();
+  final FirestoreService    _fs          = FirestoreService();
   final FirebaseAuthService _authService = FirebaseAuthService();
 
-  bool _isLoading = false;
+  bool    _isLoading = false;
   String? _error;
-  List<ResidentRequestModel> _requests = [];
-  StreamSubscription<List<ResidentRequestModel>>? _requestsSub;
 
-  bool get isLoading => _isLoading;
-  String? get error => _error;
-  List<ResidentRequestModel> get requests => _requests;
-  List<ResidentRequestModel> get pendingRequests =>
-      _requests.where((r) => r.status == 'pending').toList();
+  bool    get isLoading => _isLoading;
+  String? get error     => _error;
 
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
-  // ── Stream management ─────────────────────────────────────────────────────
+  // ── President self-registration (Primary — creates apartment + account) ────
 
-  /// Start listening to resident requests for an apartment (called by admin).
-  void startListeningRequests(String aptId) {
-    _requestsSub?.cancel();
-    _requestsSub = _fs.streamResidentRequests(aptId).listen(
-      (list) {
-        _requests = list;
-        notifyListeners();
-      },
-      onError: (e) => debugPrint('[REALTIME] Resident requests stream ERROR (apt $aptId): $e'),
-    );
+  Future<({UserModel? user, String? aptCode, String? error})>
+      selfRegisterPresident({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+    required String apartmentName,
+    required String apartmentType,
+    required String address,
+    required int    totalFlats,
+    required int    towerCount,
+    required List<String> towerNames,
+    required String presidentFlat,
+  }) async {
+    _isLoading = true;
+    _error     = null;
+    notifyListeners();
+
+    try {
+      // 1. Duplicate apartment check (name + address + type)
+      final isDuplicate = await _fs.apartmentExists(
+        name:    apartmentName.trim(),
+        address: address.trim(),
+        type:    apartmentType,
+      );
+      if (isDuplicate) {
+        return _fail('An apartment with this name and address already exists.');
+      }
+
+      // 2. Collision-safe unique apartment code
+      final aptCode = await _fs.generateUniqueApartmentCode(apartmentName);
+      final aptId   = 'apt_${DateTime.now().millisecondsSinceEpoch}';
+
+      // 3. Create Auth account + apartment doc + user doc (atomic batch)
+      final result = await _authService.selfRegisterPresident(
+        name:          name.trim(),
+        email:         email.trim().toLowerCase(),
+        phone:         phone.trim(),
+        password:      password,
+        apartmentId:   aptId,
+        apartmentCode: aptCode,
+        apartmentName: apartmentName.trim(),
+        apartmentType: apartmentType,
+        address:       address.trim(),
+        totalFlats:    totalFlats,
+        towerCount:    towerCount,
+        towerNames:    towerNames,
+        presidentFlat: presidentFlat.trim(),
+      );
+
+      if (result.error != null) {
+        return _fail(result.error!);
+      }
+
+      // 4. Auto-generate all flats (with president flat reserved + UID set)
+      final uid   = result.user!.id;
+      final flats = generateFlatsForApartment(
+        apartmentId:         aptId,
+        totalFlats:          totalFlats,
+        isGated:             apartmentType == 'Gated Community',
+        towerCount:          towerCount,
+        towerNames:          towerNames,
+        presidentFlatNumber: presidentFlat.trim(),
+        presidentUid:        uid,
+      );
+      await _fs.createFlats(flats);
+
+      _isLoading = false;
+      notifyListeners();
+      return (user: result.user, aptCode: aptCode, error: null);
+    } catch (e) {
+      return _fail('An error occurred. Please try again.');
+    }
   }
 
-  @override
-  void dispose() {
-    _requestsSub?.cancel();
-    super.dispose();
-  }
+  // ── President activation (Secondary — activates super-admin-created apt) ──
 
-  // ── President self-registration ───────────────────────────────────────────
-
-  /// Looks up the apartment by code, validates email + status, then registers
-  /// the president via [FirebaseAuthService.registerPresident].
-  /// Returns (user, error). On success user is non-null.
-  Future<({dynamic user, String? error})> registerPresident({
+  Future<({UserModel? user, ApartmentModel? apt, String? error})>
+      registerPresident({
     required String email,
     required String password,
     required String apartmentCode,
@@ -60,65 +111,60 @@ class RegistrationProvider extends ChangeNotifier {
     required NotificationProvider notifProvider,
   }) async {
     _isLoading = true;
-    _error = null;
+    _error     = null;
     notifyListeners();
 
-    // 1. Lookup apartment by code
     final apt =
         await _fs.findApartmentByCode(apartmentCode.trim().toUpperCase());
     if (apt == null) {
-      _error = 'Invalid Apartment Code. Please check and try again.';
-      _isLoading = false;
-      notifyListeners();
-      return (user: null, error: _error);
+      return _failApt('Invalid Apartment Code. Please check and try again.');
     }
-
-    // 2. Verify status
     if (apt.status == 'active') {
-      _error = 'This apartment already has a registered president.';
-      _isLoading = false;
-      notifyListeners();
-      return (user: null, error: _error);
+      return _failApt('This apartment already has a registered president.');
     }
     if (apt.status == 'disabled') {
-      _error = 'This apartment is currently disabled.';
-      _isLoading = false;
-      notifyListeners();
-      return (user: null, error: _error);
+      return _failApt('This apartment is currently disabled.');
     }
 
-    // 3. Verify email matches the pre-registered president email
     final emailTrimmed = email.trim().toLowerCase();
     if (apt.presidentEmail?.toLowerCase() != emailTrimmed) {
-      _error =
-          'This email is not authorized for President registration for this apartment.';
-      _isLoading = false;
-      notifyListeners();
-      return (user: null, error: _error);
+      return _failApt(
+          'This email is not authorized for President registration for this apartment.');
     }
 
-    // 4. Register via auth service
     final result = await _authService.registerPresident(
-      email: emailTrimmed,
+      email:    emailTrimmed,
       password: password,
-      apt: apt,
-      unit: unit.trim(),
+      apt:      apt,
+      unit:     unit.trim(),
     );
 
     if (result.error != null) {
-      _error = result.error;
-      _isLoading = false;
-      notifyListeners();
-      return (user: null, error: _error);
+      return _failApt(result.error!);
     }
 
-    // 5. Notify all super admins
+    final uid = result.user!.id;
+
+    // Update president flat's residentId (flat was pre-generated by super admin)
+    final presFlat = apt.presidentFlat;
+    if (presFlat != null && presFlat.isNotEmpty) {
+      final flatDoc = await _fs.getFlatByNumber(apt.id, presFlat);
+      if (flatDoc != null) {
+        await _fs.updateFlat(flatDoc.id, {
+          'residentId':   uid,
+          'residentType': 'President',
+          'updatedAt':    Timestamp.fromDate(DateTime.now()),
+        });
+      }
+    }
+
+    // Notify all super admins
     await notifProvider
         .addAndPersistNotification(
-          title: 'New President Registered',
+          title:      'New President Registered',
           body:
               '${apt.presidentName ?? 'A president'} has joined ${apt.name} as President.',
-          type: 'president_registered',
+          type:       'president_registered',
           targetRole: UserRole.superAdmin,
         )
         .catchError(
@@ -126,209 +172,126 @@ class RegistrationProvider extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
-    return (user: result.user, error: null);
+    return (user: result.user, apt: apt, error: null);
   }
 
-  // ── Resident self-registration ────────────────────────────────────────────
+  // ── Resident direct registration ──────────────────────────────────────────
 
-  /// Creates a Firebase Auth account, signs out immediately, then creates a
-  /// resident_request doc awaiting admin approval.
-  /// Returns null on success; returns an error string on failure.
-  Future<String?> registerResident({
+  /// Validates apartment code → finds & verifies flat is available →
+  /// checks email + phone uniqueness → creates account → reserves flat →
+  /// sends email verification.
+  ///
+  /// Returns (user, apt, error). error is null on success.
+  Future<({UserModel? user, ApartmentModel? apt, String? error})>
+      registerResident({
     required String name,
     required String email,
     required String phone,
     required String password,
     required String apartmentCode,
-    required String unit,
-    required NotificationProvider notifProvider,
+    required String flatNumber,
   }) async {
     _isLoading = true;
-    _error = null;
+    _error     = null;
     notifyListeners();
 
-    // 1. Lookup apartment
-    final apt =
-        await _fs.findApartmentByCode(apartmentCode.trim().toUpperCase());
-    if (apt == null) {
-      _error = 'Invalid Apartment Code. Please check and try again.';
+    try {
+      // 1. Find apartment
+      final apt =
+          await _fs.findApartmentByCode(apartmentCode.trim().toUpperCase());
+      if (apt == null) {
+        return _failApt('Invalid Apartment Code. Please check and try again.');
+      }
+      if (apt.status != 'active') {
+        return _failApt(
+            'This apartment is not yet active. Please contact the president.');
+      }
+
+      // 2. Find flat → must exist and be available
+      final flat = await _fs.getFlatByNumber(apt.id, flatNumber.trim());
+      if (flat == null) {
+        return _failApt(
+            'Flat "$flatNumber" was not found in this apartment. Please check the flat number.');
+      }
+      if (!flat.isAvailable) {
+        return _failApt(
+            'Flat "$flatNumber" is already occupied. Please contact your president.');
+      }
+
+      final emailTrimmed = email.trim().toLowerCase();
+      final phoneTrimmed = phone.trim();
+
+      // 3. Email uniqueness
+      final existingUid = await _fs.uidForEmail(emailTrimmed);
+      if (existingUid != null) {
+        return _failApt('This email is already registered.');
+      }
+
+      // 4. Phone uniqueness
+      final phoneInUse = await _fs.phoneExists(phoneTrimmed);
+      if (phoneInUse) {
+        return _failApt('This mobile number is already registered.');
+      }
+
+      // 5. Create Auth account + users doc + reserve flat (atomic)
+      final authResult = await _authService.registerResident(
+        name:        name.trim(),
+        email:       emailTrimmed,
+        phone:       phoneTrimmed,
+        password:    password,
+        apartmentId: apt.id,
+        flatId:      flat.id,
+        flatNumber:  flat.flatNumber,
+      );
+
+      if (authResult.error != null) {
+        return _failApt(authResult.error!);
+      }
+
       _isLoading = false;
       notifyListeners();
-      return _error;
+      return (user: authResult.user, apt: apt, error: null);
+    } catch (e) {
+      return _failApt('An error occurred. Please try again.');
     }
+  }
 
-    if (apt.status != 'active') {
-      _error =
-          'This apartment is not yet active. Please contact the apartment president.';
-      _isLoading = false;
-      notifyListeners();
-      return _error;
+  /// Reloads the Firebase Auth user and checks emailVerified status.
+  Future<bool> checkEmailVerified() async {
+    try {
+      await _authService.firebaseUser?.reload();
+      return _authService.firebaseUser?.emailVerified ?? false;
+    } catch (_) {
+      return false;
     }
+  }
 
-    final emailTrimmed = email.trim().toLowerCase();
+  /// Sends a new verification email to the currently signed-in user.
+  Future<void> resendVerificationEmail() async {
+    try {
+      await _authService.firebaseUser?.sendEmailVerification();
+    } catch (_) {}
+  }
 
-    // 2. Check email not already in users collection
-    final existingUid = await _fs.uidForEmail(emailTrimmed);
-    if (existingUid != null) {
-      _error = 'Email is already registered.';
-      _isLoading = false;
-      notifyListeners();
-      return _error;
-    }
+  /// Signs out the current user — used when user cancels from verification sheet.
+  Future<void> abortRegistration() async {
+    await _authService.signOut();
+  }
 
-    // 3. Create Auth account (signs in, then signs out)
-    final uidResult = await _authService.registerResident(
-      name: name.trim(),
-      email: emailTrimmed,
-      phone: phone.trim(),
-      password: password,
-      apt: apt,
-      unit: unit.trim(),
-    );
+  // ── Internal helpers ──────────────────────────────────────────────────────
 
-    if (uidResult.error != null) {
-      _error = uidResult.error;
-      _isLoading = false;
-      notifyListeners();
-      return _error;
-    }
-
-    // 4. Create resident_request doc
-    await _fs.createResidentRequest({
-      'name': name.trim(),
-      'email': emailTrimmed,
-      'phone': phone.trim(),
-      'apartmentId': apt.id,
-      'uid': uidResult.uid!,
-      'unit': unit.trim(),
-      'status': 'pending',
-      'requestedAt': Timestamp.fromDate(DateTime.now()),
-    });
-
-    // 5. Notify apartment admin
-    await notifProvider
-        .addAndPersistNotification(
-          title: 'New Resident Request',
-          body:
-              '${name.trim()} from Flat ${unit.trim()} has requested to join ${apt.name}.',
-          type: 'resident_request',
-          targetRole: UserRole.admin,
-          aptId: apt.id,
-        )
-        .catchError((e) => debugPrint('[NOTIF] resident_request error: $e'));
-
+  ({UserModel? user, String? aptCode, String? error}) _fail(String msg) {
+    _error     = msg;
     _isLoading = false;
     notifyListeners();
-    return null; // null = success
+    return (user: null, aptCode: null, error: msg);
   }
 
-  // ── Admin approval / rejection ────────────────────────────────────────────
-
-  /// Approves a resident request: creates users doc, increments occupiedFlats,
-  /// notifies the resident, then deletes the request.
-  Future<bool> approveRequest(
-    ResidentRequestModel request,
-    NotificationProvider notifProvider,
-  ) async {
-    _isLoading = true;
-    _error = null;
+  ({UserModel? user, ApartmentModel? apt, String? error}) _failApt(String msg) {
+    _error     = msg;
+    _isLoading = false;
     notifyListeners();
-
-    try {
-      // Compute avatar initials
-      final words = request.name.trim().split(RegExp(r'\s+'));
-      final initials = words
-          .where((w) => w.isNotEmpty)
-          .take(2)
-          .map((w) => w[0].toUpperCase())
-          .join();
-
-      // 1. Create users doc using the stored UID from the request
-      await _fs.createUser(request.uid, {
-        'name': request.name,
-        'email': request.email,
-        'phone': request.phone,
-        'role': 'user',
-        'apartmentId': request.apartmentId,
-        'unit': request.unit,
-        'avatarInitials':
-            initials.isEmpty ? request.name[0].toUpperCase() : initials,
-        'isActive': true,
-        'joinedAt': Timestamp.fromDate(DateTime.now()),
-      });
-
-      // 2. Increment apartment occupiedFlats
-      await _fs.updateApartment(request.apartmentId, {
-        'occupiedFlats': FieldValue.increment(1),
-      });
-
-      // 3. Notify the resident
-      await notifProvider
-          .addAndPersistNotification(
-            title: 'Registration Approved',
-            body:
-                'Your registration has been approved! You can now log in to Maintify.',
-            type: 'registration_approved',
-            targetRole: UserRole.user,
-            targetUserIds: [request.uid],
-          )
-          .catchError((e) => debugPrint('[NOTIF] approved error: $e'));
-
-      // 4. Delete the request doc
-      await _fs.deleteResidentRequest(request.id);
-
-      // Optimistically remove from local list — don't wait for stream update
-      _requests.removeWhere((r) => r.id == request.id);
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      debugPrint('[REGISTRATION] approveRequest error: $e');
-      _error = 'Approval failed. Please try again.';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
+    return (user: null, apt: null, error: msg);
   }
 
-  /// Rejects a resident request by deleting the request doc and notifying the
-  /// resident. The Firebase Auth account remains but they cannot log in without
-  /// a users doc.
-  Future<bool> rejectRequest(
-    ResidentRequestModel request,
-    NotificationProvider notifProvider,
-  ) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      // 1. Notify the resident before deleting (uses their uid)
-      await notifProvider
-          .addAndPersistNotification(
-            title: 'Registration Rejected',
-            body:
-                'Your registration request for Flat ${request.unit} has been rejected. Please contact the apartment president for more information.',
-            type: 'registration_rejected',
-            targetRole: UserRole.user,
-            targetUserIds: [request.uid],
-          )
-          .catchError((e) => debugPrint('[NOTIF] rejected error: $e'));
-
-      // 2. Delete the request doc
-      await _fs.deleteResidentRequest(request.id);
-
-      // Optimistically remove from local list — don't wait for stream update
-      _requests.removeWhere((r) => r.id == request.id);
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      debugPrint('[REGISTRATION] rejectRequest error: $e');
-      _error = 'Failed to reject request.';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
 }

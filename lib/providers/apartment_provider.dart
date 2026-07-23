@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/apartment_model.dart';
+import '../models/flat_model.dart';
 import '../models/user_model.dart';
 import '../core/theme/role_theme.dart';
 import '../core/services/firestore_service.dart';
@@ -140,12 +141,13 @@ class ApartmentProvider extends ChangeNotifier {
     String? presidentName,
     String? presidentEmail,
     String? presidentPhone,
+    String? presidentFlat,
+    String? type,
+    String? address,
+    int? towerCount,
+    List<String>? towerNames,
     // New canonical field name
     String? code,
-    // Legacy / UI-facing aliases (accepted but not written to Firestore)
-    @Deprecated('Field removed from schema') String? address,
-    @Deprecated('Field removed from schema') String? city,
-    @Deprecated('Field removed from schema') List<String> amenities = const [],
     @Deprecated('Use code instead') String? apartmentCode,
   }) async {
     _isLoading = true;
@@ -153,17 +155,21 @@ class ApartmentProvider extends ChangeNotifier {
 
     final now = DateTime.now();
     final docId = id ?? 'apt_${now.millisecondsSinceEpoch}';
-    // Prefer explicit `code`, fall back to legacy `apartmentCode`
     final resolvedCode = code ?? apartmentCode ?? '';
 
     final data = {
       'name': name,
       'code': resolvedCode,
+      'type': type,
+      'address': address,
       'totalFlats': totalFlats,
+      'towerCount': towerCount,
+      'towerNames': towerNames,
       'presidentId': null,
       'presidentName': presidentName,
       'presidentEmail': presidentEmail,
       'presidentPhone': presidentPhone,
+      'presidentFlat': presidentFlat,
       'status': 'waiting_for_president',
       'occupiedFlats': 0,
       'createdAt': Timestamp.fromDate(now),
@@ -171,6 +177,20 @@ class ApartmentProvider extends ChangeNotifier {
     };
 
     await _fs.createApartment(docId, data);
+
+    // Auto-generate all flats immediately after apartment creation.
+    // presidentUid is null here — the president hasn't registered yet.
+    // The president flat will be updated when the president activates.
+    final flats = generateFlatsForApartment(
+      apartmentId:         docId,
+      totalFlats:          totalFlats,
+      isGated:             type == 'Gated Community',
+      towerCount:          towerCount ?? 0,
+      towerNames:          towerNames ?? [],
+      presidentFlatNumber: presidentFlat ?? '',
+      presidentUid:        null,
+    );
+    await _fs.createFlats(flats);
 
     _isLoading = false;
     notifyListeners();

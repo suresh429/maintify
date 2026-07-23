@@ -74,9 +74,104 @@ class _LoginScreenState extends State<LoginScreen>
     if (!mounted) return;
     if (success) {
       Navigator.pushReplacementNamed(context, '/dashboard');
+    } else if (auth.emailNotVerified) {
+      auth.clearEmailNotVerified();
+      _showEmailNotVerifiedSheet();
     } else {
       AppUtils.showSnackBar(context, auth.error ?? 'Login failed', isError: true);
     }
+  }
+
+  void _showEmailNotVerifiedSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        bool _isSending = false;
+        return StatefulBuilder(
+          builder: (ctx, setSt) => Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(ctx).colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.mark_email_unread_outlined,
+                        color: Colors.orange, size: 36),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Email Not Verified',
+                      style: AppTextStyles.heading3(
+                          color: Theme.of(ctx).colorScheme.onSurface),
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Please verify your email before logging in.\n'
+                    'Check your inbox for a verification link.',
+                    style: AppTextStyles.bodySmall(
+                        color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  CommonButton(
+                    text: 'Resend Verification Email',
+                    gradient: const [Color(0xFF1E3A8A), Color(0xFF06B6D4)],
+                    icon: Icons.send_outlined,
+                    isLoading: _isSending,
+                    onPressed: () async {
+                      setSt(() => _isSending = true);
+                      final auth = context.read<AuthProvider>();
+                      final sent = await auth.resendEmailVerification(
+                        _emailCtrl.text.trim(),
+                        _passCtrl.text,
+                      );
+                      if (!ctx.mounted) return;
+                      Navigator.pop(ctx);
+                      AppUtils.showSnackBar(
+                        context,
+                        sent
+                            ? 'Verification email sent. Please check your inbox.'
+                            : 'Could not send email. Check your credentials.',
+                        isError: !sent,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text('Dismiss',
+                        style: AppTextStyles.caption(
+                            color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _showForgotPassword() {

@@ -1,12 +1,13 @@
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/user_model.dart';
 import '../../models/apartment_model.dart';
+import '../../models/flat_model.dart';
 import '../../models/bill_model.dart';
 import '../../models/complaint_model.dart';
 import '../../models/meeting_model.dart';
 import '../../models/notification_model.dart';
-import '../../models/resident_request_model.dart';
 import '../../core/theme/role_theme.dart';
 
 /// Central Firestore service — all collection reads/writes go through here.
@@ -17,6 +18,7 @@ class FirestoreService {
   FirestoreService._();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final _rng = Random();
 
   // ─────────────────────────────────── USERS ──────────────────────────────────
 
@@ -58,6 +60,17 @@ class FirestoreService {
     return snap.docs.isEmpty ? null : snap.docs.first.id;
   }
 
+  /// Returns true if the given phone number is already registered.
+  Future<bool> phoneExists(String phone) async {
+    if (phone.trim().isEmpty) return false;
+    final snap = await _db
+        .collection('users')
+        .where('phone', isEqualTo: phone.trim())
+        .limit(1)
+        .get();
+    return snap.docs.isNotEmpty;
+  }
+
   Future<void> createUser(String uid, Map<String, dynamic> data) =>
       _db.collection('users').doc(uid).set(data);
 
@@ -65,7 +78,6 @@ class FirestoreService {
       _db.collection('users').doc(uid).update(data);
 
   /// Streams only the `activeSessionId` field from a user doc.
-  /// Used by [AuthProvider] to detect logins from other devices.
   Stream<String?> streamUserSessionId(String uid) => _db
       .collection('users')
       .doc(uid)
@@ -75,16 +87,13 @@ class FirestoreService {
   // ─────────────────────────────── APARTMENTS ─────────────────────────────────
 
   /// Finds an apartment by its unique apartment code (case-sensitive).
-  /// Checks the new `code` field; falls back to legacy `apartmentCode` field.
   Future<ApartmentModel?> findApartmentByCode(String code) async {
-    // Try new field name first
     var snap = await _db
         .collection('apartments')
         .where('code', isEqualTo: code)
         .limit(1)
         .get();
     if (snap.docs.isEmpty) {
-      // Fallback for legacy documents still using the old field name
       snap = await _db
           .collection('apartments')
           .where('apartmentCode', isEqualTo: code)
@@ -103,6 +112,49 @@ class FirestoreService {
 
   Future<void> createApartment(String id, Map<String, dynamic> data) =>
       _db.collection('apartments').doc(id).set(data);
+
+  /// Returns true if an apartment with the same name, address, and optional
+  /// type already exists. Prevents duplicate apartment creation.
+  Future<bool> apartmentExists({
+    required String name,
+    required String address,
+    String? type,
+  }) async {
+    if (address.trim().isEmpty) return false;
+    var query = _db
+        .collection('apartments')
+        .where('name', isEqualTo: name)
+        .where('address', isEqualTo: address);
+    if (type != null && type.isNotEmpty) {
+      query = query.where('type', isEqualTo: type);
+    }
+    final snap = await query.limit(1).get();
+    return snap.docs.isNotEmpty;
+  }
+
+  /// Returns true if an apartment code already exists (used for unique-code retry).
+  Future<bool> apartmentCodeExists(String code) async {
+    final snap = await _db
+        .collection('apartments')
+        .where('code', isEqualTo: code)
+        .limit(1)
+        .get();
+    return snap.docs.isNotEmpty;
+  }
+
+  /// Generates a collision-safe 8-char apartment code: 4 letters + 4 digits.
+  Future<String> generateUniqueApartmentCode(String aptName) async {
+    final clean = aptName.toUpperCase().replaceAll(RegExp(r'[^A-Z]'), '');
+    final letters = clean.length >= 4
+        ? clean.substring(0, 4)
+        : clean.padRight(4, 'X');
+    String code;
+    do {
+      final digits = (1000 + _rng.nextInt(9000)).toString();
+      code = '$letters$digits';
+    } while (await apartmentCodeExists(code));
+    return code;
+  }
 
   Future<void> updateApartment(String id, Map<String, dynamic> data) =>
       _db.collection('apartments').doc(id).update(data);
@@ -129,20 +181,17 @@ class FirestoreService {
   }) async {
     final batch = _db.batch();
 
-    // Promote new president
     batch.update(_db.collection('users').doc(newPresidentId), {
       'role': 'admin',
       'apartmentId': newPresidentApartmentId,
     });
 
-    // Demote old president if different
     if (oldPresidentId != null && oldPresidentId != newPresidentId) {
       batch.update(_db.collection('users').doc(oldPresidentId), {
         'role': 'user',
       });
     }
 
-    // Update apartment with both presidentId and presidentName
     batch.update(_db.collection('apartments').doc(aptId), {
       'presidentId': newPresidentId,
       'presidentName': newPresidentName,
@@ -150,6 +199,44 @@ class FirestoreService {
 
     await batch.commit();
   }
+
+  // ─────────────────────────────────── FLATS ───────────────────────────────────
+
+  /// Batch-creates all flats for a new apartment. Chunked at 500 per batch.
+  Future<void> createFlats(List<FlatModel> flats) async {
+    const chunkSize = 400;
+    for (int i = 0; i < flats.length; i += chunkSize) {
+      final chunk = flats.sublist(
+          i, (i + chunkSize) < flats.length ? (i + chunkSize) : flats.length);
+      final batch = _db.batch();
+      for (final flat in chunk) {
+        batch.set(_db.collection('flats').doc(flat.id), flat.toMap());
+      }
+      await batch.commit();
+    }
+  }
+
+  /// Finds a flat by its number inside an apartment.
+  Future<FlatModel?> getFlatByNumber(String aptId, String flatNumber) async {
+    final snap = await _db
+        .collection('flats')
+        .where('apartmentId', isEqualTo: aptId)
+        .where('flatNumber', isEqualTo: flatNumber)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return null;
+    return FlatModel.fromFirestore(snap.docs.first);
+  }
+
+  Future<void> updateFlat(String flatId, Map<String, dynamic> data) =>
+      _db.collection('flats').doc(flatId).update(data);
+
+  Stream<List<FlatModel>> streamFlatsForApartment(String aptId) => _db
+      .collection('flats')
+      .where('apartmentId', isEqualTo: aptId)
+      .orderBy('flatNumber')
+      .snapshots()
+      .map((s) => s.docs.map(FlatModel.fromFirestore).toList());
 
   // ──────────────────────────────────── BILLS ──────────────────────────────────
 
@@ -172,9 +259,6 @@ class FirestoreService {
   Future<void> setBill(String id, Map<String, dynamic> data) =>
       _db.collection('bills').doc(id).set(data);
 
-  /// Checks the Firestore SERVER directly (bypasses offline cache) to see if a
-  /// bill already exists for [aptId] + [month]. Use this before creating a new
-  /// monthly bill to avoid false positives from stale local cache.
   Future<bool> monthlyBillExistsOnServer(String aptId, String month) async {
     final snap = await _db
         .collection('bills')
@@ -191,7 +275,6 @@ class FirestoreService {
   Future<void> deleteBill(String id) =>
       _db.collection('bills').doc(id).delete();
 
-  /// Deletes all payment documents for [billId] in a single batch.
   Future<void> deleteAllPaymentsForBill(String billId) async {
     final snap = await _db
         .collection('payments')
@@ -248,8 +331,6 @@ class FirestoreService {
   Future<void> updateComplaint(String id, Map<String, dynamic> data) =>
       _db.collection('complaints').doc(id).update(data);
 
-  // ── Complaint messages (subcollection) ────────────────────────────────────
-
   Stream<List<ComplaintMessage>> streamMessages(String complaintId) => _db
       .collection('complaints')
       .doc(complaintId)
@@ -280,9 +361,6 @@ class FirestoreService {
 
   // ─────────────────────────────────── NOTIFICATIONS ───────────────────────────
 
-  /// Real-time stream of notifications for a specific user.
-  /// Query: userId == currentUserId, ordered by createdAt desc.
-  /// Requires composite index: userId ASC + createdAt DESC (see firestore.indexes.json).
   Stream<List<NotificationModel>> streamNotificationsForUser(String userId) =>
       _db
           .collection('notifications')
@@ -311,14 +389,7 @@ class FirestoreService {
     await batch.commit();
   }
 
-  /// Deletes legacy notification documents that have a `targetRole` field but
-  /// no `userId` field.  These are docs written before the per-user refactor;
-  /// they will never match `where('userId', isEqualTo: ...)` queries.
-  ///
-  /// Safe to call on every login — it is a no-op when there is nothing to delete.
   Future<void> cleanupLegacyNotifications() async {
-    // Query by the three known targetRole values — only legacy docs have this
-    // field (new docs omit targetRole entirely).
     final snap = await _db
         .collection('notifications')
         .where('targetRole', whereIn: ['user', 'admin', 'superAdmin'])
@@ -338,43 +409,11 @@ class FirestoreService {
       batch.delete(doc.reference);
     }
     await batch.commit();
-    debugPrint('[CLEANUP] Deleted ${toDelete.length} legacy notification doc(s) (had targetRole, missing userId)');
-  }
-
-  // ──────────────────────────── RESIDENT REQUESTS ──────────────────────────────
-
-  /// Real-time stream of resident join requests for an apartment.
-  Stream<List<ResidentRequestModel>> streamResidentRequests(String aptId) =>
-      _db
-          .collection('resident_requests')
-          .where('apartmentId', isEqualTo: aptId)
-          .orderBy('requestedAt', descending: true)
-          .snapshots()
-          .map((s) => s.docs.map(ResidentRequestModel.fromFirestore).toList());
-
-  Future<void> createResidentRequest(Map<String, dynamic> data) =>
-      _db.collection('resident_requests').add(data);
-
-  Future<void> updateResidentRequest(String id, Map<String, dynamic> data) =>
-      _db.collection('resident_requests').doc(id).update(data);
-
-  Future<void> deleteResidentRequest(String id) =>
-      _db.collection('resident_requests').doc(id).delete();
-
-  /// Returns true if there is a pending resident_request for the given UID.
-  Future<bool> hasResidentRequest(String uid) async {
-    final snap = await _db
-        .collection('resident_requests')
-        .where('uid', isEqualTo: uid)
-        .where('status', isEqualTo: 'pending')
-        .limit(1)
-        .get();
-    return snap.docs.isNotEmpty;
+    debugPrint('[CLEANUP] Deleted ${toDelete.length} legacy notification doc(s)');
   }
 
   // ─────────────────────────────────── MAIL ────────────────────────────────────
 
-  /// Writes to the `mail` collection consumed by Firebase Trigger Email Extension.
   Future<void> sendEmail(Map<String, dynamic> data) =>
       _db.collection('mail').add(data);
 }

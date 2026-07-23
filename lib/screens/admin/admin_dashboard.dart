@@ -15,12 +15,10 @@ import 'create_bill_screen.dart';
 import 'manage_users_screen.dart';
 import 'mark_paid_screen.dart';
 import 'admin_complaints_screen.dart';
-import 'resident_requests_screen.dart';
 import 'admin_profile_screen.dart';
 import '../../widgets/schedule_meeting_sheet.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/meeting_provider.dart';
-import '../../providers/registration_provider.dart';
 import '../../models/meeting_model.dart';
 import '../../models/bill_model.dart';
 import '../../models/user_model.dart';
@@ -69,13 +67,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardProvider>().initialize();
-      // resident_request tapped → open the requests screen on top of Home tab.
-      if (widget.notificationType == 'resident_request') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ResidentRequestsScreen()),
-        );
-      }
     });
   }
 
@@ -425,110 +416,6 @@ class _AdminHome extends StatelessWidget {
             ),
 
             const SizedBox(height: 20),
-
-            // ── Resident Requests (priority card) ────────────────────────
-            Consumer<RegistrationProvider>(
-              builder: (_, reg, __) {
-                final count = reg.pendingRequests.length;
-                final hasPending = count > 0;
-                return GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const ResidentRequestsScreen()),
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: hasPending
-                          ? accent.withOpacity(0.06)
-                          : cs.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: hasPending
-                          ? Border.all(
-                              color: accent.withOpacity(0.35),
-                              width: 1.5)
-                          : null,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(11),
-                          decoration: BoxDecoration(
-                            color: hasPending
-                                ? accent.withOpacity(0.12)
-                                : cs.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(13),
-                          ),
-                          child: Icon(
-                            Icons.person_add_alt_1_outlined,
-                            color: hasPending
-                                ? accent
-                                : AppColors.textSecondary,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Resident Requests',
-                                  style: AppTextStyles.subheading(color: cs.onSurface)),
-                              const SizedBox(height: 1),
-                              Text(
-                                hasPending
-                                    ? '$count pending · Approve new residents'
-                                    : 'No pending requests',
-                                style: AppTextStyles.caption(
-                                  color: hasPending
-                                      ? accent
-                                      : AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (hasPending)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 9, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: accent,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '$count',
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          color: hasPending
-                              ? accent
-                              : AppColors.textSecondary,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 12),
 
             // ── Schedule Meeting action card ──────────────────────────────
             GestureDetector(

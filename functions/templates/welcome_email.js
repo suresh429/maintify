@@ -14,9 +14,14 @@
  * responsive pattern for email clients.
  *
  * @param {object} params
- * @param {string} params.presidentName   Full name of the apartment president.
- * @param {string} params.apartmentName   Human-readable apartment name.
- * @param {string} params.apartmentCode   Unique registration code (e.g. SAMH5195).
+ * @param {string}      params.presidentName     Full name of the apartment president.
+ * @param {string}      params.apartmentName     Human-readable apartment name.
+ * @param {string}      params.apartmentCode     Unique registration code (e.g. SAMH5195).
+ * @param {string|null} params.apartmentType     e.g. "Apartment", "Villa", "Gated Community".
+ * @param {string|null} params.apartmentAddress  Full address.
+ * @param {string|null} params.towerInfo         e.g. "3 Towers (A, B, C)".
+ * @param {string|null} params.presidentFlat     President's flat number e.g. "A-101".
+ * @param {string|null} params.registrationDate  Human-readable date string.
  * @returns {string}  Complete HTML string ready for the email `html` field.
  */
 
@@ -36,7 +41,16 @@ const CTA_URL = null;
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function buildWelcomeEmail({ presidentName, apartmentName, apartmentCode }) {
+function buildWelcomeEmail({
+  presidentName,
+  apartmentName,
+  apartmentCode,
+  apartmentType   = null,
+  apartmentAddress = null,
+  towerInfo        = null,
+  presidentFlat    = null,
+  registrationDate = null,
+}) {
   const year = new Date().getFullYear();
 
   // ── CTA button: rendered only when CTA_URL is provided ────────────────────
@@ -222,6 +236,111 @@ function buildWelcomeEmail({ presidentName, apartmentName, apartmentCode }) {
                     <div style="height:1px;background:#E2E8F0;"></div>
                   </td>
                 </tr>
+
+                ${apartmentType ? `
+                <tr>
+                  <td style="padding:0 24px;">
+                    <div style="height:1px;background:#E2E8F0;"></div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 24px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-size:13px;color:#94A3B8;width:150px;vertical-align:middle;font-family:'Segoe UI',Arial,sans-serif;">
+                          Type
+                        </td>
+                        <td style="font-size:15px;font-weight:600;color:#2F3147;vertical-align:middle;font-family:'Segoe UI',Arial,sans-serif;">
+                          ${escapeHtml(apartmentType)}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>` : ''}
+
+                ${apartmentAddress ? `
+                <tr>
+                  <td style="padding:0 24px;">
+                    <div style="height:1px;background:#E2E8F0;"></div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 24px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-size:13px;color:#94A3B8;width:150px;vertical-align:top;font-family:'Segoe UI',Arial,sans-serif;">
+                          Address
+                        </td>
+                        <td style="font-size:14px;color:#2F3147;line-height:1.5;vertical-align:top;font-family:'Segoe UI',Arial,sans-serif;">
+                          ${escapeHtml(apartmentAddress)}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>` : ''}
+
+                ${towerInfo ? `
+                <tr>
+                  <td style="padding:0 24px;">
+                    <div style="height:1px;background:#E2E8F0;"></div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 24px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-size:13px;color:#94A3B8;width:150px;vertical-align:middle;font-family:'Segoe UI',Arial,sans-serif;">
+                          Towers
+                        </td>
+                        <td style="font-size:14px;font-weight:500;color:#2F3147;vertical-align:middle;font-family:'Segoe UI',Arial,sans-serif;">
+                          ${escapeHtml(towerInfo)}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>` : ''}
+
+                ${presidentFlat ? `
+                <tr>
+                  <td style="padding:0 24px;">
+                    <div style="height:1px;background:#E2E8F0;"></div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 24px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-size:13px;color:#94A3B8;width:150px;vertical-align:middle;font-family:'Segoe UI',Arial,sans-serif;">
+                          President Flat
+                        </td>
+                        <td style="font-size:15px;font-weight:600;color:#2F3147;vertical-align:middle;font-family:'Segoe UI',Arial,sans-serif;">
+                          ${escapeHtml(presidentFlat)}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>` : ''}
+
+                ${registrationDate ? `
+                <tr>
+                  <td style="padding:0 24px;">
+                    <div style="height:1px;background:#E2E8F0;"></div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 24px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-size:13px;color:#94A3B8;width:150px;vertical-align:middle;font-family:'Segoe UI',Arial,sans-serif;">
+                          Registered On
+                        </td>
+                        <td style="font-size:14px;color:#2F3147;vertical-align:middle;font-family:'Segoe UI',Arial,sans-serif;">
+                          ${escapeHtml(registrationDate)}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>` : ''}
 
                 <!-- Role badge -->
                 <tr>

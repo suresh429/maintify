@@ -22,20 +22,22 @@ class AuthProvider extends ChangeNotifier {
   // overwrites the Firestore sessionId → this device is force-logged out.
   String? _localSessionId;
   StreamSubscription<String?>? _sessionSub;
-  bool _sessionExpired = false;
+  bool _sessionExpired    = false;
+  bool _emailNotVerified  = false;
 
-  UserModel? get currentUser => _currentUser;
-  bool get isLoading => _isLoading;
-  String? get error => _error;
-  bool get isLoggedIn => _currentUser != null;
-  UserRole? get role => _currentUser?.role;
+  UserModel? get currentUser    => _currentUser;
+  bool       get isLoading      => _isLoading;
+  String?    get error          => _error;
+  bool       get isLoggedIn     => _currentUser != null;
+  UserRole?  get role           => _currentUser?.role;
+
   /// True when this session was ended by a login from another device.
-  /// LoginScreen reads this to show a one-time banner, then clears it.
   bool get sessionExpired => _sessionExpired;
+  void clearSessionExpired() { _sessionExpired = false; }
 
-  void clearSessionExpired() {
-    _sessionExpired = false;
-  }
+  /// True when login was blocked because the email is not yet verified.
+  bool get emailNotVerified => _emailNotVerified;
+  void clearEmailNotVerified() { _emailNotVerified = false; }
 
   // ── Login ─────────────────────────────────────────────────────────────────
 
@@ -47,6 +49,13 @@ class AuthProvider extends ChangeNotifier {
     final result = await _auth.signIn(email, password);
 
     _isLoading = false;
+    if (result.error == 'EMAIL_NOT_VERIFIED') {
+      _emailNotVerified = true;
+      _error = 'Please verify your email before logging in.';
+      notifyListeners();
+      return false;
+    }
+    _emailNotVerified = false;
     if (result.error != null) {
       _error = result.error;
       notifyListeners();
@@ -104,6 +113,34 @@ class AuthProvider extends ChangeNotifier {
     _currentUser = null;
     _sessionExpired = true;
     notifyListeners();
+  }
+
+  // ── Post-registration session setup ──────────────────────────────────────
+
+  /// Called after president self-registration to establish a full session
+  /// without going through the login screen. Behaves identically to [login]
+  /// but skips the Firebase Auth step (account is already created and signed in).
+  Future<void> loginWithUser(UserModel user) async {
+    _currentUser = user;
+    final box = Hive.box<String>('session');
+    box.put('isLoggedIn', 'true');
+    box.put('role', user.role.name);
+    final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+    _localSessionId = sessionId;
+    box.put('session_${user.id}', sessionId);
+    _fs.updateUser(user.id, {'activeSessionId': sessionId})
+        .catchError((e) => debugPrint('[SESSION] Write failed: $e'));
+    _startSessionListener(user.id);
+    FcmService().init(user.id).catchError((e) {
+      debugPrint('[FCM] init error: $e');
+    });
+    notifyListeners();
+  }
+
+  // ── Resend email verification ─────────────────────────────────────────────
+
+  Future<bool> resendEmailVerification(String email, String password) async {
+    return _auth.resendEmailVerification(email, password);
   }
 
   // ── Change password ───────────────────────────────────────────────────────

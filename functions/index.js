@@ -8,8 +8,7 @@
  *   apartments/{aptId}                onCreate  → Email invitation to president
  *   apartments/{aptId}                onUpdate  → FCM to super admins (president registered)
  *   apartments/{aptId}                onUpdate  → FCM to old + new president (transfer)
- *   resident_requests/{requestId}     onCreate  → FCM to apartment admin
- *   users/{userId}                    onCreate  → Email to resident (approved)
+ *   users/{userId}                    onCreate  → FCM to admin + welcome email to resident (role=user)
  *   bills/{billId}                    onCreate  → FCM to all apartment users
  *   meetings/{meetingId}              onCreate  → FCM to all apartment users
  *   complaints/{complaintId}          onCreate  → FCM to apartment admin
@@ -223,13 +222,36 @@ exports.onApartmentCreated = onDocumentCreated(
       return;
     }
 
+    // ── Build tower info string ─────────────────────────────────────────────
+    const towerNames = apt.towerNames || [];
+    const towerCount = apt.towerCount || 0;
+    let towerInfo = null;
+    if (towerCount > 0 && towerNames.length > 0) {
+      towerInfo = `${towerCount} ${towerCount === 1 ? 'Tower' : 'Towers'} (${towerNames.join(', ')})`;
+    }
+    const presidentFlat    = apt.presidentFlat  || null;
+    const apartmentType    = apt.type           || null;
+    const apartmentAddress = apt.address        || null;
+    const registrationDate = new Date().toLocaleDateString('en-IN', {
+      day: 'numeric', month: 'short', year: 'numeric',
+    });
+
     // ── Send via Gmail SMTP ─────────────────────────────────────────────────
     try {
       console.log('[EMAIL] Sending email to:', presidentEmail);
       await sendEmail({
         to:      presidentEmail,
         subject: 'Welcome to Maintify',
-        html:    buildWelcomeEmail({ presidentName, apartmentName: aptName, apartmentCode: aptCode }),
+        html:    buildWelcomeEmail({
+          presidentName,
+          apartmentName: aptName,
+          apartmentCode: aptCode,
+          apartmentType,
+          apartmentAddress,
+          towerInfo,
+          presidentFlat,
+          registrationDate,
+        }),
       });
       console.log('[EMAIL] Email sent successfully.');
 
@@ -269,65 +291,60 @@ exports.onPresidentRegistered = onDocumentUpdated('apartments/{aptId}', async (e
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. Resident registered  →  FCM to apartment admin
-//    Triggered when a new resident_requests document is created.
-// ─────────────────────────────────────────────────────────────────────────────
-
-exports.onResidentRequestCreated = onDocumentCreated('resident_requests/{requestId}', async (event) => {
-  const req   = event.data.data();
-  const aptId = req.apartmentId;
-  if (!aptId) return;
-
-  const tokens = await getTokensForApartment(aptId, 'admin');
-  await sendMulticast(
-    tokens,
-    'New Resident Request',
-    `${req.name ?? 'Someone'} from Flat ${req.unit ?? '?'} has requested to join your apartment.`,
-    { type: 'resident_request', aptId }
-  );
-
-  console.log(`[FCM] Resident request from ${req.name} — notified admin for apt ${aptId}`);
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. Resident approved  →  Email to the resident via Gmail SMTP
+// 2. Resident registered  →  FCM to apartment admin + welcome email to resident
 //    Triggered when a users document is created with role='user'.
-//    FCM is skipped — the resident has no fcmToken yet at approval time.
+//    The resident registered directly (no approval required).
+//    Email reminds them to verify their email address.
 // ─────────────────────────────────────────────────────────────────────────────
 
-exports.onResidentApproved = onDocumentCreated(
+exports.onResidentRegistered = onDocumentCreated(
   { document: 'users/{userId}', secrets: [GMAIL_EMAIL, GMAIL_APP_PASSWORD] },
   async (event) => {
-    const user = event.data.data();
+    const user  = event.data.data();
 
     // Only handle residents; admins/superAdmins are handled by other flows
     if (user.role !== 'user') return;
 
+    const aptId = user.apartmentId;
     const email = user.email;
     const name  = user.name ?? 'Resident';
+    const unit  = user.flatNumber ?? user.unit ?? '?';
 
+    // ── FCM: notify apartment admin ───────────────────────────────────────────
+    if (aptId) {
+      const tokens = await getTokensForApartment(aptId, 'admin');
+      await sendMulticast(
+        tokens,
+        'New Resident Registered',
+        `${name} from Flat ${unit} has joined your apartment.`,
+        { type: 'resident_registered', aptId }
+      );
+      console.log(`[FCM] Resident registered — notified admin for apt ${aptId}`);
+    }
+
+    // ── Email: send welcome / verify-your-email message to resident ───────────
     if (!email) {
-      console.warn('[EMAIL] onResidentApproved: no email on users doc — skipping');
+      console.warn('[EMAIL] onResidentRegistered: no email on users doc — skipping');
       return;
     }
 
     // Idempotency guard
-    if (user.approvalEmailSentAt) {
-      console.log('[EMAIL] onResidentApproved: approvalEmailSentAt already set — skipping duplicate');
+    if (user.welcomeEmailSentAt) {
+      console.log('[EMAIL] onResidentRegistered: welcomeEmailSentAt already set — skipping duplicate');
       return;
     }
 
     try {
-      console.log('[EMAIL] Sending email to:', email);
+      console.log('[EMAIL] Sending welcome email to:', email);
       await sendEmail({
         to:      email,
-        subject: "You're In! — Maintify Registration Approved",
+        subject: "Welcome to Maintify — Please Verify Your Email",
         html:    buildResidentApprovedEmail(name),
       });
       console.log('[EMAIL] Email sent successfully.');
 
       await event.data.ref.update({
-        approvalEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        welcomeEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     } catch (error) {
       console.error('[EMAIL] Failed:', error?.message ?? error);

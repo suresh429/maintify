@@ -7,7 +7,6 @@ import '../providers/complaint_provider.dart';
 import '../providers/meeting_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/user_provider.dart';
-import '../providers/registration_provider.dart';
 import '../core/theme/role_theme.dart';
 import 'super_admin/super_admin_dashboard.dart';
 import 'admin/admin_dashboard.dart';
@@ -92,7 +91,6 @@ class _StreamStarterState extends State<_StreamStarter> {
         case UserRole.admin:
           context.read<BillProvider>().startListeningForApartment(aptId);
           context.read<ComplaintProvider>().startListeningForApartment(aptId);
-          context.read<RegistrationProvider>().startListeningRequests(aptId);
           break;
         case UserRole.user:
           // Pass userId so BillProvider streams only this user's payment docs,
