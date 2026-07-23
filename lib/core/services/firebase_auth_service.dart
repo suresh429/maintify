@@ -27,17 +27,18 @@ class FirebaseAuthService {
         password: password,
       );
 
-      // Block unverified accounts
-      if (!cred.user!.emailVerified) {
-        await _auth.signOut();
-        return (user: null, error: 'EMAIL_NOT_VERIFIED');
-      }
-
       final user = await _loadUserDoc(cred.user!.uid);
       if (user == null) {
         await _auth.signOut();
         return (user: null, error: 'Account data not found. Contact support.');
       }
+
+      // SuperAdmin bypasses email verification — all other roles must verify
+      if (!cred.user!.emailVerified && user.role.name != 'superAdmin') {
+        await _auth.signOut();
+        return (user: null, error: 'EMAIL_NOT_VERIFIED');
+      }
+
       return (user: user, error: null);
     } on FirebaseAuthException catch (e) {
       return (user: null, error: _friendlyError(e.code));
@@ -259,6 +260,36 @@ class FirebaseAuthService {
       await createdUser?.delete().catchError((_) {});
       return (user: null, error: 'Registration failed. Please try again.');
     }
+  }
+
+  // ── President activation (invitation flow) ───────────────────────────────
+
+  /// Creates a Firebase Auth account and sends an email verification.
+  /// Does NOT create any Firestore documents — those are created in step 2
+  /// after the email is verified.
+  /// Returns (uid, error). error is null on success.
+  Future<({String? uid, String? error})> createAndVerifyAccount({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email.trim().toLowerCase(),
+        password: password,
+      );
+      await cred.user!.sendEmailVerification();
+      return (uid: cred.user!.uid, error: null);
+    } on FirebaseAuthException catch (e) {
+      return (uid: null, error: _friendlyError(e.code));
+    }
+  }
+
+  /// Deletes the currently signed-in Auth account.
+  /// Used for rollback when Firestore finalization fails after Auth creation.
+  Future<void> deleteCurrentUser() async {
+    try {
+      await _auth.currentUser?.delete();
+    } catch (_) {}
   }
 
   // ── Email verification ────────────────────────────────────────────────────

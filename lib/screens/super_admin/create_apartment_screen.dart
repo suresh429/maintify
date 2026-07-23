@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -6,7 +5,9 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
+import '../../core/services/firestore_service.dart';
 import '../../providers/apartment_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/common_button.dart';
 
@@ -60,23 +61,17 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
         List.generate(n, (i) => String.fromCharCode(65 + i)).join(', ');
   }
 
-  String _generateCode(String aptName) {
-    final clean = aptName.toUpperCase().replaceAll(RegExp(r'[^A-Z]'), '');
-    final letters =
-        clean.length >= 4 ? clean.substring(0, 4) : clean.padRight(4, 'X');
-    final digits = (1000 + Random().nextInt(9000)).toString();
-    return '$letters$digits';
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
 
     try {
       final aptProvider = context.read<ApartmentProvider>();
+      final authProvider = context.read<AuthProvider>();
       final aptName     = _nameCtrl.text.trim();
       final aptId       = 'apt_${DateTime.now().millisecondsSinceEpoch}';
-      final code        = _generateCode(aptName);
+      // Collision-safe unique code
+      final code        = await FirestoreService().generateUniqueApartmentCode(aptName);
       final isGated     = _aptType == 'Gated Community';
       final towerCount  = isGated
           ? (int.tryParse(_towerCountCtrl.text.trim()) ?? 1)
@@ -102,6 +97,7 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
         presidentPhone: _presidentPhoneCtrl.text.trim(),
         presidentFlat: _presidentFlatCtrl.text.trim(),
         code: code,
+        createdBy: authProvider.currentUser?.id,
       );
 
       if (!mounted) return;
@@ -180,18 +176,20 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 28, vertical: 16),
                 decoration: BoxDecoration(
-                  color: accentColor.withOpacity(0.08),
+                  gradient: const LinearGradient(
+                    colors: AppColors.superAdminGradient,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                      color: accentColor.withOpacity(0.35), width: 1.5),
                 ),
                 child: Text(
                   code,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: accentColor,
+                    color: Colors.white,
                     letterSpacing: 4,
                   ),
                 ),

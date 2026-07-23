@@ -146,41 +146,40 @@ class ApartmentProvider extends ChangeNotifier {
     String? address,
     int? towerCount,
     List<String>? towerNames,
-    // New canonical field name
     String? code,
     @Deprecated('Use code instead') String? apartmentCode,
+    String? createdBy,   // Super admin UID — stored in the invitation doc
   }) async {
     _isLoading = true;
     notifyListeners();
 
-    final now = DateTime.now();
-    final docId = id ?? 'apt_${now.millisecondsSinceEpoch}';
+    final now          = DateTime.now();
+    final docId        = id ?? 'apt_${now.millisecondsSinceEpoch}';
     final resolvedCode = code ?? apartmentCode ?? '';
 
     final data = {
-      'name': name,
-      'code': resolvedCode,
-      'type': type,
-      'address': address,
-      'totalFlats': totalFlats,
-      'towerCount': towerCount,
-      'towerNames': towerNames,
-      'presidentId': null,
-      'presidentName': presidentName,
+      'name':           name,
+      'code':           resolvedCode,
+      'type':           type,
+      'address':        address,
+      'totalFlats':     totalFlats,
+      'towerCount':     towerCount,
+      'towerNames':     towerNames,
+      'presidentId':    null,
+      'presidentName':  presidentName,
       'presidentEmail': presidentEmail,
       'presidentPhone': presidentPhone,
-      'presidentFlat': presidentFlat,
-      'status': 'waiting_for_president',
-      'occupiedFlats': 0,
-      'createdAt': Timestamp.fromDate(now),
-      'updatedAt': Timestamp.fromDate(now),
+      'presidentFlat':  presidentFlat,
+      'status':         'waiting_for_president',
+      'occupiedFlats':  0,
+      'createdAt':      Timestamp.fromDate(now),
+      'updatedAt':      Timestamp.fromDate(now),
     };
 
     await _fs.createApartment(docId, data);
 
-    // Auto-generate all flats immediately after apartment creation.
-    // presidentUid is null here — the president hasn't registered yet.
-    // The president flat will be updated when the president activates.
+    // Auto-generate all flats. President flat is reserved (occupied) but
+    // residentId is null — it gets linked when the president activates.
     final flats = generateFlatsForApartment(
       apartmentId:         docId,
       totalFlats:          totalFlats,
@@ -191,6 +190,32 @@ class ApartmentProvider extends ChangeNotifier {
       presidentUid:        null,
     );
     await _fs.createFlats(flats);
+
+    // Create president invitation doc (triggers invitation email via Cloud Function).
+    final towerInfo = (towerCount != null && towerCount > 0 &&
+            towerNames != null && towerNames.isNotEmpty)
+        ? '$towerCount ${towerCount == 1 ? "Tower" : "Towers"} (${towerNames.join(", ")})'
+        : null;
+
+    await _fs.createPresidentInvitation({
+      'invitationToken':   _fs.generateInvitationToken(),
+      'apartmentId':       docId,
+      'apartmentCode':     resolvedCode,
+      'presidentName':     presidentName ?? '',
+      'presidentEmail':    presidentEmail ?? '',
+      'mobileNumber':      presidentPhone ?? '',
+      'apartmentName':     name,
+      'apartmentType':     type ?? '',
+      'apartmentAddress':  address ?? '',
+      'presidentFlatNumber': presidentFlat ?? '',
+      'towerInfo':         towerInfo,
+      'towerCount':        towerCount ?? 0,
+      'towerNames':        towerNames ?? <String>[],
+      'status':            'pending',
+      'expiresAt':         Timestamp.fromDate(now.add(const Duration(days: 7))),
+      'createdAt':         Timestamp.fromDate(now),
+      'createdBy':         createdBy ?? '',
+    });
 
     _isLoading = false;
     notifyListeners();

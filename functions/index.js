@@ -5,10 +5,11 @@
  * triggered by Firestore document events.
  *
  * Trigger map:
- *   apartments/{aptId}                onCreate  → Email invitation to president
+ *   president_invitations/{invId}     onCreate  → Invitation email to president (SMTP)
+ *   users/{userId}                    onUpdate  → Welcome email when welcomeEmailReady=true (SMTP)
  *   apartments/{aptId}                onUpdate  → FCM to super admins (president registered)
  *   apartments/{aptId}                onUpdate  → FCM to old + new president (transfer)
- *   users/{userId}                    onCreate  → FCM to admin + welcome email to resident (role=user)
+ *   users/{userId}                    onCreate  → FCM to admin (role=user, resident joined)
  *   bills/{billId}                    onCreate  → FCM to all apartment users
  *   meetings/{meetingId}              onCreate  → FCM to all apartment users
  *   complaints/{complaintId}          onCreate  → FCM to apartment admin
@@ -21,8 +22,9 @@
 const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const admin = require('firebase-admin');
 const { sendEmail, GMAIL_EMAIL, GMAIL_APP_PASSWORD } = require('./services/mailService');
-const { buildWelcomeEmail }          = require('./templates/welcome_email');
-const { buildResidentApprovedEmail } = require('./templates/resident_approved_email');
+const { buildWelcomeEmail }                = require('./templates/welcome_email');
+const { buildResidentApprovedEmail }       = require('./templates/resident_approved_email');
+const { buildPresidentInvitationEmail }    = require('./templates/president_invitation_email');
 
 admin.initializeApp();
 
@@ -190,77 +192,176 @@ async function writeNotification(title, body, type, targetRole) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 0. Apartment created  →  Welcome email to the designated president
-//    Uses Gmail SMTP via Nodemailer. Credentials from Firebase Secret Manager.
-//    Idempotency: sets `welcomeEmailSentAt` on the apartment doc so the email
-//    is never sent twice even if the function retries.
+// 0. President invitation created  →  Invitation email to the designated president
+//    Triggered when a super admin creates an apartment and a president_invitations
+//    document is written. Sends the 12-char activation token via Gmail SMTP.
+//    Idempotency: sets `invitationEmailSentAt` to prevent duplicate sends on retry.
 // ─────────────────────────────────────────────────────────────────────────────
 
-exports.onApartmentCreated = onDocumentCreated(
-  { document: 'apartments/{aptId}', secrets: [GMAIL_EMAIL, GMAIL_APP_PASSWORD] },
+exports.onPresidentInvitationCreated = onDocumentCreated(
+  { document: 'president_invitations/{invId}', secrets: [GMAIL_EMAIL, GMAIL_APP_PASSWORD] },
   async (event) => {
-    const apt            = event.data.data();
-    const presidentEmail = apt.presidentEmail;
-    const presidentName  = apt.presidentName ?? 'President';
-    const aptName        = apt.name;
-    // Support both field names: `code` (new) and `apartmentCode` (legacy)
-    const aptCode        = apt.code || apt.apartmentCode;
+    const inv = event.data.data();
 
-    // ── Guard: skip if required fields are missing ──────────────────────────
+    // ── Idempotency: skip if email was already sent ─────────────────────────
+    if (inv.invitationEmailSentAt) {
+      console.log('[EMAIL] onPresidentInvitationCreated: invitationEmailSentAt already set — skipping duplicate');
+      return;
+    }
+
+    const presidentEmail = inv.presidentEmail;
+    const presidentName  = inv.presidentName  || 'President';
+    const aptName        = inv.apartmentName  || '';
+    const aptCode        = inv.apartmentCode  || '';
+    const token          = inv.invitationToken;
+
     if (!presidentEmail) {
-      console.warn('[EMAIL] onApartmentCreated: presidentEmail is empty — skipping');
+      console.warn('[EMAIL] onPresidentInvitationCreated: presidentEmail is empty — skipping');
       return;
     }
-    if (!aptCode) {
-      console.warn('[EMAIL] onApartmentCreated: apartment code is missing — skipping');
-      return;
-    }
-
-    // ── Idempotency: skip if email was already sent (function retry safety) ─
-    if (apt.welcomeEmailSentAt) {
-      console.log('[EMAIL] onApartmentCreated: welcomeEmailSentAt already set — skipping duplicate');
+    if (!token) {
+      console.warn('[EMAIL] onPresidentInvitationCreated: invitationToken is missing — skipping');
       return;
     }
 
-    // ── Build tower info string ─────────────────────────────────────────────
-    const towerNames = apt.towerNames || [];
-    const towerCount = apt.towerCount || 0;
+    // ── Build optional display fields ───────────────────────────────────────
+    const towerCount = inv.towerCount || 0;
+    const towerNames = inv.towerNames || [];
     let towerInfo = null;
     if (towerCount > 0 && towerNames.length > 0) {
       towerInfo = `${towerCount} ${towerCount === 1 ? 'Tower' : 'Towers'} (${towerNames.join(', ')})`;
     }
-    const presidentFlat    = apt.presidentFlat  || null;
-    const apartmentType    = apt.type           || null;
-    const apartmentAddress = apt.address        || null;
-    const registrationDate = new Date().toLocaleDateString('en-IN', {
-      day: 'numeric', month: 'short', year: 'numeric',
-    });
 
     // ── Send via Gmail SMTP ─────────────────────────────────────────────────
     try {
-      console.log('[EMAIL] Sending email to:', presidentEmail);
+      console.log('[EMAIL] Sending invitation email to:', presidentEmail);
       await sendEmail({
         to:      presidentEmail,
-        subject: 'Welcome to Maintify',
-        html:    buildWelcomeEmail({
+        subject: `You're Invited to Activate ${aptName} on Maintify`,
+        html:    buildPresidentInvitationEmail({
           presidentName,
-          apartmentName: aptName,
-          apartmentCode: aptCode,
-          apartmentType,
-          apartmentAddress,
+          apartmentName:    aptName,
+          apartmentCode:    aptCode,
+          invitationToken:  token,
+          apartmentType:    inv.apartmentType    || null,
+          apartmentAddress: inv.apartmentAddress || null,
           towerInfo,
-          presidentFlat,
-          registrationDate,
+          presidentFlat:    inv.presidentFlatNumber || null,
         }),
       });
-      console.log('[EMAIL] Email sent successfully.');
+      console.log('[EMAIL] Invitation email sent successfully.');
 
       // Mark email as sent — prevents duplicate sends on function retry
+      await event.data.ref.update({
+        invitationEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('[EMAIL] Failed to send invitation email:', error?.message ?? error);
+      // Do not rethrow — email failures must not crash the Firestore trigger
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 0b. Welcome email ready  →  Send welcome email after email verification
+//     Triggered when users/{userId} is updated with welcomeEmailReady=true.
+//     The client sets this flag after the user has verified their email and
+//     their session has been initialized successfully.
+//     Role-based:
+//       admin ('admin') → full welcome email (buildWelcomeEmail)
+//       user  ('user')  → resident approved email (buildResidentApprovedEmail)
+//     Idempotency: sets `welcomeEmailSentAt` so email is never sent twice.
+// ─────────────────────────────────────────────────────────────────────────────
+
+exports.onWelcomeEmailReady = onDocumentUpdated(
+  { document: 'users/{userId}', secrets: [GMAIL_EMAIL, GMAIL_APP_PASSWORD] },
+  async (event) => {
+    const before = event.data.before.data();
+    const after  = event.data.after.data();
+
+    // Only fire when welcomeEmailReady flips to true for the first time
+    if (!after.welcomeEmailReady || before.welcomeEmailReady) return;
+    // Skip if already sent (idempotency — handles function retries)
+    if (after.welcomeEmailSentAt) {
+      console.log('[EMAIL] onWelcomeEmailReady: welcomeEmailSentAt already set — skipping duplicate');
+      return;
+    }
+
+    const email = after.email;
+    const name  = after.name ?? 'User';
+    const role  = after.role;
+
+    if (!email) {
+      console.warn('[EMAIL] onWelcomeEmailReady: no email on user doc — skipping');
+      return;
+    }
+    if (role !== 'admin' && role !== 'user') {
+      // superAdmin accounts do not need a welcome email
+      console.log(`[EMAIL] onWelcomeEmailReady: role=${role} — skipping`);
+      return;
+    }
+
+    try {
+      let subject, html;
+
+      if (role === 'admin') {
+        // President activation completed — send full welcome email with apartment details
+        const aptId  = after.apartmentId;
+        let aptName  = after.apartmentName || '';
+        let aptCode  = after.apartmentCode || '';
+        let aptType  = after.apartmentType || null;
+        let aptAddr  = after.apartmentAddress || null;
+        let presFlat = after.flatNumber || null;
+        let towerInfo = null;
+
+        // Fetch apartment doc for full details if not denormalized on user
+        if (aptId && (!aptName || !aptCode)) {
+          const aptDoc = await db.collection('apartments').doc(aptId).get();
+          if (aptDoc.exists) {
+            const apt = aptDoc.data();
+            aptName   = aptName  || apt.name    || '';
+            aptCode   = aptCode  || apt.code    || apt.apartmentCode || '';
+            aptType   = aptType  || apt.type    || null;
+            aptAddr   = aptAddr  || apt.address || null;
+            const towerCount = apt.towerCount || 0;
+            const towerNames = apt.towerNames || [];
+            if (towerCount > 0 && towerNames.length > 0) {
+              towerInfo = `${towerCount} ${towerCount === 1 ? 'Tower' : 'Towers'} (${towerNames.join(', ')})`;
+            }
+          }
+        }
+
+        const registrationDate = new Date().toLocaleDateString('en-IN', {
+          day: 'numeric', month: 'short', year: 'numeric',
+        });
+
+        subject = `Welcome to Maintify — ${aptName} is Live!`;
+        html    = buildWelcomeEmail({
+          presidentName:    name,
+          apartmentName:    aptName,
+          apartmentCode:    aptCode,
+          apartmentType:    aptType,
+          apartmentAddress: aptAddr,
+          towerInfo,
+          presidentFlat:    presFlat,
+          registrationDate,
+        });
+      } else {
+        // role === 'user' — resident joined successfully
+        subject = 'Welcome to Maintify — Your Account is Ready!';
+        html    = buildResidentApprovedEmail(name);
+      }
+
+      console.log(`[EMAIL] Sending welcome email (role=${role}) to:`, email);
+      await sendEmail({ to: email, subject, html });
+      console.log('[EMAIL] Welcome email sent successfully.');
+
+      // Mark as sent — prevents duplicate sends on function retry
       await event.data.ref.update({
         welcomeEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     } catch (error) {
-      console.error('[EMAIL] Failed:', error?.message ?? error);
+      console.error('[EMAIL] Failed to send welcome email:', error?.message ?? error);
       // Do not rethrow — email failures must not crash the Firestore trigger
     }
   }
@@ -291,67 +392,34 @@ exports.onPresidentRegistered = onDocumentUpdated('apartments/{aptId}', async (e
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. Resident registered  →  FCM to apartment admin + welcome email to resident
+// 2. Resident registered  →  FCM to apartment admin
 //    Triggered when a users document is created with role='user'.
-//    The resident registered directly (no approval required).
-//    Email reminds them to verify their email address.
+//    Welcome email is NOT sent here — it fires via onWelcomeEmailReady when the
+//    client sets welcomeEmailReady=true after email verification is confirmed.
 // ─────────────────────────────────────────────────────────────────────────────
 
-exports.onResidentRegistered = onDocumentCreated(
-  { document: 'users/{userId}', secrets: [GMAIL_EMAIL, GMAIL_APP_PASSWORD] },
-  async (event) => {
-    const user  = event.data.data();
+exports.onResidentRegistered = onDocumentCreated('users/{userId}', async (event) => {
+  const user = event.data.data();
 
-    // Only handle residents; admins/superAdmins are handled by other flows
-    if (user.role !== 'user') return;
+  // Only handle residents; admins/superAdmins are handled by other flows
+  if (user.role !== 'user') return;
 
-    const aptId = user.apartmentId;
-    const email = user.email;
-    const name  = user.name ?? 'Resident';
-    const unit  = user.flatNumber ?? user.unit ?? '?';
+  const aptId = user.apartmentId;
+  const name  = user.name ?? 'Resident';
+  const unit  = user.flatNumber ?? user.unit ?? '?';
 
-    // ── FCM: notify apartment admin ───────────────────────────────────────────
-    if (aptId) {
-      const tokens = await getTokensForApartment(aptId, 'admin');
-      await sendMulticast(
-        tokens,
-        'New Resident Registered',
-        `${name} from Flat ${unit} has joined your apartment.`,
-        { type: 'resident_registered', aptId }
-      );
-      console.log(`[FCM] Resident registered — notified admin for apt ${aptId}`);
-    }
-
-    // ── Email: send welcome / verify-your-email message to resident ───────────
-    if (!email) {
-      console.warn('[EMAIL] onResidentRegistered: no email on users doc — skipping');
-      return;
-    }
-
-    // Idempotency guard
-    if (user.welcomeEmailSentAt) {
-      console.log('[EMAIL] onResidentRegistered: welcomeEmailSentAt already set — skipping duplicate');
-      return;
-    }
-
-    try {
-      console.log('[EMAIL] Sending welcome email to:', email);
-      await sendEmail({
-        to:      email,
-        subject: "Welcome to Maintify — Please Verify Your Email",
-        html:    buildResidentApprovedEmail(name),
-      });
-      console.log('[EMAIL] Email sent successfully.');
-
-      await event.data.ref.update({
-        welcomeEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    } catch (error) {
-      console.error('[EMAIL] Failed:', error?.message ?? error);
-      // Do not rethrow — email failures must not crash the Firestore trigger
-    }
+  // ── FCM: notify apartment admin ─────────────────────────────────────────────
+  if (aptId) {
+    const tokens = await getTokensForApartment(aptId, 'admin');
+    await sendMulticast(
+      tokens,
+      'New Resident Registered',
+      `${name} from Flat ${unit} has joined your apartment.`,
+      { type: 'resident_registered', aptId }
+    );
+    console.log(`[FCM] Resident registered — notified admin for apt ${aptId}`);
   }
-);
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. President transfer  →  FCM to old president and new president

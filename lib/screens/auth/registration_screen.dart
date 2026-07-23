@@ -330,6 +330,9 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                       final verified = await reg.checkEmailVerified();
                       if (!ctx.mounted) return;
                       if (verified) {
+                        // Trigger welcome email BEFORE session login
+                        await reg.setWelcomeEmailReady(user.id);
+                        if (!ctx.mounted) return;
                         final auth = context.read<AuthProvider>();
                         await auth.loginWithUser(user);
                         if (!ctx.mounted) return;

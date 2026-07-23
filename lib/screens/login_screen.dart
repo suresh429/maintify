@@ -546,6 +546,28 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+
+                      // Invitation-based activation entry point
+                      Center(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.how_to_reg_outlined, size: 16),
+                          label: const Text('Activate Existing Apartment'),
+                          onPressed: () =>
+                              Navigator.pushNamed(context, '/activate'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: cs.primary,
+                            side: BorderSide(
+                                color: cs.primary.withOpacity(0.4)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 18, vertical: 10),
+                            textStyle: AppTextStyles.caption()
+                                .copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       Center(
                         child: Text(

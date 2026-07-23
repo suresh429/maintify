@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../models/apartment_model.dart';
 import '../models/flat_model.dart';
+import '../models/president_invitation_model.dart';
 import '../core/theme/role_theme.dart';
 import '../core/services/firestore_service.dart';
 import '../core/services/firebase_auth_service.dart';
@@ -278,6 +279,132 @@ class RegistrationProvider extends ChangeNotifier {
     await _authService.signOut();
   }
 
+  // ── Welcome email trigger ─────────────────────────────────────────────────
+
+  /// Sets `welcomeEmailReady: true` on the user doc AFTER email verification.
+  /// The Cloud Function `onWelcomeEmailReady` watches this field and sends the
+  /// welcome email exactly once (guarded by `welcomeEmailSentAt`).
+  Future<void> setWelcomeEmailReady(String userId) async {
+    try {
+      await _fs.setWelcomeEmailReady(userId);
+    } catch (e) {
+      debugPrint('[REG] setWelcomeEmailReady failed: $e');
+    }
+  }
+
+  // ── Invitation-based president activation ─────────────────────────────────
+
+  /// Validates a president invitation token.
+  /// Returns (invitation, error). error is null on success.
+  Future<({PresidentInvitationModel? invitation, String? error})>
+      validateInvitationToken(String token) async {
+    _isLoading = true;
+    _error     = null;
+    notifyListeners();
+
+    try {
+      final invitation = await _fs.getInvitationByToken(token);
+      _isLoading = false;
+      notifyListeners();
+
+      if (invitation == null) {
+        return _failInvitation('Invalid activation token. Please check and try again.');
+      }
+      if (invitation.isCompleted) {
+        return _failInvitation('This invitation has already been used.');
+      }
+      if (invitation.isExpired) {
+        return _failInvitation(
+          'Your invitation has expired. Please contact your Super Admin.',
+        );
+      }
+      return (invitation: invitation, error: null);
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return _failInvitation('Failed to validate token. Please try again.');
+    }
+  }
+
+  /// Step 1 of president activation:
+  ///   Creates a Firebase Auth account and sends email verification.
+  ///   No Firestore records are created yet — those happen in [completePresidentActivation].
+  /// Returns (uid, error). error is null on success.
+  Future<({String? uid, String? error})> beginPresidentActivation({
+    required PresidentInvitationModel invitation,
+    required String password,
+  }) async {
+    _isLoading = true;
+    _error     = null;
+    notifyListeners();
+
+    // Re-validate invitation freshness before creating an Auth account
+    if (invitation.isCompleted) {
+      return _failUid('This invitation has already been used.');
+    }
+    if (invitation.isExpired) {
+      return _failUid('Your invitation has expired. Please contact your Super Admin.');
+    }
+
+    final result = await _authService.createAndVerifyAccount(
+      email:    invitation.presidentEmail,
+      password: password,
+    );
+
+    _isLoading = false;
+    notifyListeners();
+
+    if (result.error != null) return _failUid(result.error!);
+    return (uid: result.uid, error: null);
+  }
+
+  /// Step 2 of president activation (called after email verification confirmed):
+  ///   • Creates the Firestore user doc
+  ///   • Activates the apartment
+  ///   • Marks the invitation as completed
+  ///   • Updates the president flat
+  ///   • Signals the welcome email via [setWelcomeEmailReady]
+  ///
+  /// On failure the Firebase Auth account is deleted to prevent orphans.
+  /// Returns (user, error). error is null on success.
+  Future<({UserModel? user, String? error})> completePresidentActivation({
+    required PresidentInvitationModel invitation,
+    required String uid,
+  }) async {
+    _isLoading = true;
+    _error     = null;
+    notifyListeners();
+
+    try {
+      // Atomic batch: users doc + apartment + invitation
+      await _fs.activatePresidentBatch(uid: uid, invitation: invitation);
+
+      // Update flat (separate read-then-write — acceptable for this step)
+      final flat = await _fs.getFlatByNumber(
+          invitation.apartmentId, invitation.presidentFlatNumber);
+      if (flat != null) {
+        await _fs.updateFlat(flat.id, {
+          'residentId':   uid,
+          'residentType': 'President',
+          'status':       'occupied',
+          'updatedAt':    Timestamp.fromDate(DateTime.now()),
+        });
+      }
+
+      // Trigger welcome email (Cloud Function sends it after this field is set)
+      await _fs.setWelcomeEmailReady(uid);
+
+      final user = await _fs.getUser(uid);
+      _isLoading = false;
+      notifyListeners();
+      return (user: user, error: null);
+    } catch (e) {
+      // Rollback: delete the Auth account to avoid orphans
+      await _authService.deleteCurrentUser();
+      return _failUser('Activation failed. Please try again.');
+    }
+  }
+
   // ── Internal helpers ──────────────────────────────────────────────────────
 
   ({UserModel? user, String? aptCode, String? error}) _fail(String msg) {
@@ -294,4 +421,24 @@ class RegistrationProvider extends ChangeNotifier {
     return (user: null, apt: null, error: msg);
   }
 
+  ({PresidentInvitationModel? invitation, String? error}) _failInvitation(String msg) {
+    _error     = msg;
+    _isLoading = false;
+    notifyListeners();
+    return (invitation: null, error: msg);
+  }
+
+  ({String? uid, String? error}) _failUid(String msg) {
+    _error     = msg;
+    _isLoading = false;
+    notifyListeners();
+    return (uid: null, error: msg);
+  }
+
+  ({UserModel? user, String? error}) _failUser(String msg) {
+    _error     = msg;
+    _isLoading = false;
+    notifyListeners();
+    return (user: null, error: msg);
+  }
 }

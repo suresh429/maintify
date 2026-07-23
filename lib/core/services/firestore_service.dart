@@ -8,6 +8,7 @@ import '../../models/bill_model.dart';
 import '../../models/complaint_model.dart';
 import '../../models/meeting_model.dart';
 import '../../models/notification_model.dart';
+import '../../models/president_invitation_model.dart';
 import '../../core/theme/role_theme.dart';
 
 /// Central Firestore service — all collection reads/writes go through here.
@@ -416,4 +417,97 @@ class FirestoreService {
 
   Future<void> sendEmail(Map<String, dynamic> data) =>
       _db.collection('mail').add(data);
+
+  // ──────────────────────── PRESIDENT INVITATIONS ──────────────────────────────
+
+  /// Generates a unique 12-char alphanumeric invitation token (uppercase).
+  String generateInvitationToken() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return List.generate(12, (_) => chars[_rng.nextInt(chars.length)]).join();
+  }
+
+  /// Creates a president invitation document. Returns the new document ID.
+  Future<String> createPresidentInvitation(Map<String, dynamic> data) async {
+    final ref = await _db.collection('president_invitations').add(data);
+    return ref.id;
+  }
+
+  /// Fetches an invitation by its token. Returns null if not found.
+  Future<PresidentInvitationModel?> getInvitationByToken(String token) async {
+    final snap = await _db
+        .collection('president_invitations')
+        .where('invitationToken', isEqualTo: token.trim().toUpperCase())
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return null;
+    return PresidentInvitationModel.fromFirestore(snap.docs.first);
+  }
+
+  Future<void> updateInvitation(String id, Map<String, dynamic> data) =>
+      _db.collection('president_invitations').doc(id).update(data);
+
+  /// Atomically activates a president:
+  ///  • Creates the users/{uid} doc
+  ///  • Sets apartment status → 'active', links presidentId
+  ///  • Marks invitation as 'completed'
+  ///
+  /// Call [updateFlat] separately after this batch completes.
+  Future<void> activatePresidentBatch({
+    required String uid,
+    required PresidentInvitationModel invitation,
+  }) async {
+    final now    = DateTime.now();
+    final words  = invitation.presidentName.trim().split(RegExp(r'\s+'));
+    final initials = words
+        .where((w) => w.isNotEmpty)
+        .take(2)
+        .map((w) => w[0].toUpperCase())
+        .join();
+
+    final batch = _db.batch();
+
+    // Create president user doc
+    batch.set(_db.collection('users').doc(uid), {
+      'name':           invitation.presidentName,
+      'email':          invitation.presidentEmail,
+      'phone':          invitation.mobileNumber,
+      'role':           'admin',
+      'apartmentId':    invitation.apartmentId,
+      'unit':           invitation.presidentFlatNumber,
+      'avatarInitials': initials.isEmpty
+          ? invitation.presidentName[0].toUpperCase()
+          : initials,
+      'isActive':       true,
+      'joinedAt':       Timestamp.fromDate(now),
+    });
+
+    // Activate apartment + link president
+    batch.update(_db.collection('apartments').doc(invitation.apartmentId), {
+      'status':        'active',
+      'presidentId':   uid,
+      'presidentName': invitation.presidentName,
+      'occupiedFlats': FieldValue.increment(1),
+      'updatedAt':     Timestamp.fromDate(now),
+    });
+
+    // Mark invitation as completed
+    batch.update(
+      _db.collection('president_invitations').doc(invitation.id),
+      {
+        'status':      'completed',
+        'presidentId': uid,
+        'activatedAt': Timestamp.fromDate(now),
+      },
+    );
+
+    await batch.commit();
+  }
+
+  // ──────────────────────── WELCOME EMAIL TRIGGER ───────────────────────────────
+
+  /// Sets `welcomeEmailReady: true` on the user doc.
+  /// The Cloud Function `onWelcomeEmailReady` picks this up and sends the email
+  /// once — it uses `welcomeEmailSentAt` for idempotency.
+  Future<void> setWelcomeEmailReady(String userId) =>
+      _db.collection('users').doc(userId).update({'welcomeEmailReady': true});
 }
