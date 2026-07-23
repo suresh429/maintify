@@ -2,11 +2,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/theme/role_theme.dart';
 
 class NotificationType {
-  static const String bill = 'bill';
-  static const String payment = 'payment';
-  static const String complaint = 'complaint';
-  static const String system = 'system';
-  static const String meeting = 'meeting';
+  static const String bill              = 'bill';
+  static const String billUpdated       = 'bill_updated';
+  static const String billDeleted       = 'bill_deleted';
+  static const String payment           = 'payment';
+  static const String paymentReceived   = 'payment_received';
+  static const String paymentApproved   = 'payment_approved';
+  static const String paymentRejected   = 'payment_rejected';
+  static const String complaint         = 'complaint';
+  static const String complaintReply    = 'complaint_reply';
+  static const String complaintClosed   = 'complaint_closed';
+  static const String meeting           = 'meeting';
+  static const String meetingUpdated    = 'meeting_updated';
+  static const String meetingCancelled  = 'meeting_cancelled';
+  static const String presidentTransfer = 'president_transfer';
+  static const String residentRegistered = 'resident_registered';
+  static const String system            = 'system';
 }
 
 class NotificationModel {
@@ -17,6 +28,13 @@ class NotificationModel {
   final DateTime createdAt;
   final bool isRead;
   final UserRole targetRole;
+  // Extended fields (populated by new Cloud Function triggers)
+  final String? receiverId;
+  final String? senderId;
+  final String? apartmentId;
+  final String? route;
+  final String? referenceId;
+  final String? referenceType;
 
   const NotificationModel({
     required this.id,
@@ -26,6 +44,12 @@ class NotificationModel {
     required this.createdAt,
     required this.isRead,
     required this.targetRole,
+    this.receiverId,
+    this.senderId,
+    this.apartmentId,
+    this.route,
+    this.referenceId,
+    this.referenceType,
   });
 
   factory NotificationModel.fromFirestore(DocumentSnapshot doc) {
@@ -42,35 +66,52 @@ class NotificationModel {
         role = UserRole.user;
     }
     return NotificationModel(
-      id: doc.id,
-      title: d['title'] as String? ?? '',
-      body: d['body'] as String? ?? '',
-      type: d['type'] as String? ?? NotificationType.system,
-      createdAt:
-          (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      isRead: d['isRead'] as bool? ?? false,
-      targetRole: role,
+      id:            doc.id,
+      title:         d['title']         as String?   ?? '',
+      body:          d['body']          as String?   ?? '',
+      type:          d['type']          as String?   ?? NotificationType.system,
+      createdAt:     (d['createdAt']    as Timestamp?)?.toDate() ?? DateTime.now(),
+      isRead:        d['isRead']        as bool?     ?? false,
+      targetRole:    role,
+      receiverId:    d['receiverId']    as String?,
+      senderId:      d['senderId']      as String?,
+      apartmentId:   d['apartmentId']   as String?,
+      route:         d['route']         as String?,
+      referenceId:   d['referenceId']   as String?,
+      referenceType: d['referenceType'] as String?,
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'title': title,
-        'body': body,
-        'type': type,
-        'createdAt': Timestamp.fromDate(createdAt),
-        'isRead': isRead,
-        'targetRole': targetRole.name,
+        'title':         title,
+        'body':          body,
+        'type':          type,
+        'createdAt':     Timestamp.fromDate(createdAt),
+        'isRead':        isRead,
+        'targetRole':    targetRole.name,
+        'receiverId':    receiverId,
+        'senderId':      senderId,
+        'apartmentId':   apartmentId,
+        'route':         route,
+        'referenceId':   referenceId,
+        'referenceType': referenceType,
       };
 
   NotificationModel copyWith({bool? isRead}) {
     return NotificationModel(
-      id: id,
-      title: title,
-      body: body,
-      type: type,
-      createdAt: createdAt,
-      isRead: isRead ?? this.isRead,
-      targetRole: targetRole,
+      id:            id,
+      title:         title,
+      body:          body,
+      type:          type,
+      createdAt:     createdAt,
+      isRead:        isRead ?? this.isRead,
+      targetRole:    targetRole,
+      receiverId:    receiverId,
+      senderId:      senderId,
+      apartmentId:   apartmentId,
+      route:         route,
+      referenceId:   referenceId,
+      referenceType: referenceType,
     );
   }
 }

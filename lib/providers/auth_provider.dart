@@ -186,6 +186,10 @@ class AuthProvider extends ChangeNotifier {
     final box = Hive.box<String>('session');
     if (_currentUser != null) {
       box.delete('session_${_currentUser!.id}');
+      // Remove FCM token so this device no longer receives notifications
+      FcmService().clearToken(_currentUser!.id).catchError(
+        (e) => debugPrint('[FCM] clearToken error: $e'),
+      );
     }
     box.delete('isLoggedIn');
     box.delete('role');

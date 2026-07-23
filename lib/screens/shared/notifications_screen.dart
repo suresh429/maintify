@@ -110,13 +110,30 @@ class _NotificationTile extends StatelessWidget {
   IconData _iconForType(String type) {
     switch (type) {
       case NotificationType.bill:
+      case NotificationType.billUpdated:
+        return Icons.receipt_long_outlined;
+      case NotificationType.billDeleted:
         return Icons.receipt_long_outlined;
       case NotificationType.payment:
+      case NotificationType.paymentReceived:
+      case NotificationType.paymentApproved:
         return Icons.payments_outlined;
+      case NotificationType.paymentRejected:
+        return Icons.money_off_outlined;
       case NotificationType.complaint:
+      case NotificationType.complaintReply:
         return Icons.chat_bubble_outline_rounded;
+      case NotificationType.complaintClosed:
+        return Icons.check_circle_outline_rounded;
       case NotificationType.meeting:
+      case NotificationType.meetingUpdated:
         return Icons.event_rounded;
+      case NotificationType.meetingCancelled:
+        return Icons.event_busy_outlined;
+      case NotificationType.presidentTransfer:
+        return Icons.swap_horiz_rounded;
+      case NotificationType.residentRegistered:
+        return Icons.person_add_outlined;
       default:
         return Icons.info_outline_rounded;
     }
@@ -125,12 +142,28 @@ class _NotificationTile extends StatelessWidget {
   Color _colorForType(String type, bool isDark) {
     switch (type) {
       case NotificationType.bill:
+      case NotificationType.billUpdated:
         return AppColors.pending;
+      case NotificationType.billDeleted:
+        return isDark ? const Color(0xFFFC8181) : AppColors.overdue;
       case NotificationType.payment:
+      case NotificationType.paymentReceived:
+      case NotificationType.paymentApproved:
         return AppColors.paid;
+      case NotificationType.paymentRejected:
+        return isDark ? const Color(0xFFFC8181) : AppColors.overdue;
       case NotificationType.complaint:
+      case NotificationType.complaintReply:
         return isDark ? const Color(0xFF60A5FA) : AppColors.blue;
+      case NotificationType.complaintClosed:
+        return AppColors.paid;
       case NotificationType.meeting:
+      case NotificationType.meetingUpdated:
+        return isDark ? const Color(0xFFA78BFA) : AppColors.purple;
+      case NotificationType.meetingCancelled:
+        return isDark ? const Color(0xFFFC8181) : AppColors.overdue;
+      case NotificationType.presidentTransfer:
+      case NotificationType.residentRegistered:
         return isDark ? const Color(0xFFA78BFA) : AppColors.purple;
       default:
         return isDark ? const Color(0xFFA78BFA) : AppColors.purple;

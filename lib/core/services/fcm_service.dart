@@ -10,10 +10,10 @@ import 'firestore_service.dart';
 ///
 /// Design notes:
 /// - Singleton: only one instance ever exists.
-/// - `init()` is safe to call multiple times (re-login). `_initialized` ensures
-///   listeners are registered exactly once per process.
-/// - `_activeUserId` is updated on every `init()` so `onTokenRefresh` always
-///   writes to the current user's Firestore doc, not a stale one.
+/// - `init()` is safe to call multiple times (re-login). `_initialized` guards
+///   one-time listener registration.
+/// - `clearToken(userId)` removes the FCM token from Firestore on logout so
+///   stale tokens never receive pushes for signed-out users.
 class FcmService {
   static final FcmService _instance = FcmService._();
   factory FcmService() => _instance;
@@ -27,9 +27,7 @@ class FcmService {
   bool _initialized = false;
   String? _activeUserId;
 
-  // Must match AndroidManifest meta-data:
-  // com.google.firebase.messaging.default_notification_channel_id
-  static const _channelId = 'fcm_fallback_notification_channel';
+  static const _channelId   = 'maintify_notifications';
   static const _channelName = 'Maintify Notifications';
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -37,35 +35,25 @@ class FcmService {
   /// Call once after every successful login.
   Future<void> init(String userId) async {
     _activeUserId = userId;
-    // ignore: avoid_print
-    print('[FCM] init() called for $userId (initialized=$_initialized)');
+    debugPrint('[FCM] init() for $userId (initialized=$_initialized)');
 
-    // 1. Request permission (Android 13+ / iOS)
     await _requestPermission();
-
-    // 2. Save token to Firestore + print full token
     await _saveToken(userId);
 
-    // 3. One-time listeners
     if (_initialized) return;
     _initialized = true;
 
-    // 4. Init flutter_local_notifications for Android foreground banners
     await _initLocalNotifications();
 
-    // Token rotation — FCM may issue a new token; keep Firestore up to date
+    // Token rotation — keep Firestore up to date
     _messaging.onTokenRefresh.listen((newToken) {
       final uid = _activeUserId;
       if (uid == null) return;
-      // ignore: avoid_print
-      print('╔══ FCM TOKEN REFRESHED (user: $uid) ══╗');
-      // ignore: avoid_print
-      print('║  $newToken');
-      // ignore: avoid_print
-      print('╚══════════════════════════════════════╝');
-      _fs.updateUser(uid, {'fcmToken': newToken}).catchError((e) {
-        debugPrint('[FCM] Token refresh save error: $e');
-      });
+      debugPrint('[FCM] Token refreshed for $uid');
+      _fs.updateUser(uid, {
+        'fcmToken':         newToken,
+        'lastTokenUpdated': DateTime.now().toIso8601String(),
+      }).catchError((e) => debugPrint('[FCM] Token refresh save error: $e'));
     });
 
     // iOS: show system banner while app is in foreground
@@ -77,20 +65,13 @@ class FcmService {
       );
     }
 
-    // Foreground messages
+    // Foreground messages — show local notification on Android
     FirebaseMessaging.onMessage.listen((message) {
-      debugPrint('[FCM] Foreground — title: ${message.notification?.title}'
-          ' | body: ${message.notification?.body}'
-          ' | type: ${message.data["type"]}');
-      // Android: FCM does NOT show a system banner in foreground — show one
-      // manually via flutter_local_notifications.
-      // iOS: handled natively via setForegroundNotificationPresentationOptions.
-      if (Platform.isAndroid) {
-        _showLocalNotification(message);
-      }
+      debugPrint('[FCM] Foreground — ${message.notification?.title} | type: ${message.data["type"]}');
+      if (Platform.isAndroid) _showLocalNotification(message);
     });
 
-    // Background tap (app running, not in foreground)
+    // Background tap (app in background, not terminated)
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       debugPrint('[FCM] Background tap: ${message.data}');
       _handleTap(message);
@@ -107,6 +88,22 @@ class FcmService {
     }
   }
 
+  /// Call on logout — removes FCM token from Firestore so this device
+  /// no longer receives notifications for the signed-out user.
+  Future<void> clearToken(String userId) async {
+    try {
+      await _fs.updateUser(userId, {
+        'fcmToken':            null,
+        'notificationEnabled': false,
+        'lastTokenUpdated':    DateTime.now().toIso8601String(),
+      });
+      debugPrint('[FCM] Token cleared for $userId');
+    } catch (e) {
+      debugPrint('[FCM] clearToken error: $e');
+    }
+    _activeUserId = null;
+  }
+
   /// Returns the current FCM token (full string). Use in FcmDebugScreen.
   Future<String?> getToken() => _messaging.getToken();
 
@@ -114,24 +111,17 @@ class FcmService {
 
   Future<void> _initLocalNotifications() async {
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosInit = DarwinInitializationSettings();
-    const settings = InitializationSettings(android: androidInit, iOS: iosInit);
+    const iosInit     = DarwinInitializationSettings();
+    const settings    = InitializationSettings(android: androidInit, iOS: iosInit);
 
     await _localNotif.initialize(
       settings,
       onDidReceiveNotificationResponse: (details) {
-        debugPrint('[FCM] Local notification tapped: payload=${details.payload}');
-        // Pass the notification type (stored as payload) so DashboardRouter
-        // can deep-link to the correct tab/screen.
-        navigatorKey.currentState?.pushNamedAndRemoveUntil(
-          '/dashboard',
-          (r) => false,
-          arguments: details.payload,
-        );
+        debugPrint('[FCM] Local tap: payload=${details.payload}');
+        _navigateFromPayload(details.payload);
       },
     );
 
-    // Create the Android notification channel (no-op if it already exists)
     await _localNotif
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
@@ -142,6 +132,7 @@ class FcmService {
             description: 'Apartment alerts and updates from Maintify',
             importance: Importance.high,
             playSound: true,
+            enableVibration: true,
           ),
         );
 
@@ -152,8 +143,13 @@ class FcmService {
     final notification = message.notification;
     if (notification == null) return;
 
+    // Encode type + referenceId + referenceType as pipe-delimited payload
+    final type          = message.data['type'] ?? '';
+    final referenceId   = message.data['referenceId'] ?? '';
+    final referenceType = message.data['referenceType'] ?? '';
+    final payload       = '$type|$referenceId|$referenceType';
+
     _localNotif.show(
-      // Use notification.hashCode as a cheap unique ID
       notification.hashCode,
       notification.title,
       notification.body,
@@ -165,9 +161,11 @@ class FcmService {
           importance: Importance.high,
           priority: Priority.high,
           playSound: true,
+          enableVibration: true,
+          visibility: NotificationVisibility.public,
         ),
       ),
-      payload: message.data['type'],
+      payload: payload,
     );
   }
 
@@ -176,105 +174,114 @@ class FcmService {
   Future<void> _requestPermission() async {
     final settings = await _messaging.requestPermission(
       alert: true,
-      announcement: false,
       badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
       sound: true,
+      provisional: false,
     );
 
+    final granted =
+        settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional;
+
     debugPrint('[FCM] Permission: ${settings.authorizationStatus}');
-    if (settings.authorizationStatus == AuthorizationStatus.denied) {
-      debugPrint('[FCM] ⚠ Notifications DENIED. '
-          'Android 13+: ensure POST_NOTIFICATIONS in AndroidManifest and '
-          'user accepted runtime dialog. iOS: Settings → Notifications → Maintify.');
+
+    final uid = _activeUserId;
+    if (uid != null) {
+      _fs.updateUser(uid, {'notificationEnabled': granted})
+          .catchError((e) => debugPrint('[FCM] notificationEnabled save error: $e'));
     }
   }
 
   // ── Token ─────────────────────────────────────────────────────────────────
 
   Future<void> _saveToken(String userId) async {
-    // ignore: avoid_print
-    print('[FCM] _saveToken START for $userId');
+    debugPrint('[FCM] _saveToken for $userId');
     try {
-      // iOS: getToken() fails if APNS token isn't assigned yet
       if (Platform.isIOS) {
-        final apnsToken = await _messaging.getAPNSToken();
-        if (apnsToken == null) {
-          // ignore: avoid_print
-          print('[FCM] ⚠ APNS token not ready — skipping');
+        final apns = await _messaging.getAPNSToken();
+        if (apns == null) {
+          debugPrint('[FCM] APNS token not ready — skipping');
           return;
         }
       }
 
-      // getToken() can hang on some devices — apply a 10-second timeout.
-      // ignore: avoid_print
-      print('[FCM] Calling getToken()…');
       final token = await _messaging.getToken().timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          // ignore: avoid_print
-          print('[FCM] ⚠ getToken() timed out after 10s — check network / Play Services');
+          debugPrint('[FCM] getToken() timed out');
           return null;
         },
       );
 
       if (token == null) {
-        // ignore: avoid_print
-        print('[FCM] ⚠ getToken() returned null. '
-            'Causes: no internet, Play Services issue, or google-services.json mismatch.');
+        debugPrint('[FCM] getToken() returned null');
         return;
       }
 
-      // ── Print FULL token FIRST (before Firestore write that could fail) ──
       // ignore: avoid_print
-      print('╔══════════════════════════════════════════════════════╗');
+      print('╔══════════════════════════════════════════╗');
       // ignore: avoid_print
-      print('║  FCM TOKEN  (user: $userId)');
+      print('║  FCM TOKEN (user: $userId)');
       // ignore: avoid_print
       print('║  $token');
       // ignore: avoid_print
-      print('╚══════════════════════════════════════════════════════╝');
+      print('╚══════════════════════════════════════════╝');
 
-      // Save token to Firestore (non-blocking for the print above)
-      await _fs.updateUser(userId, {'fcmToken': token});
-      // ignore: avoid_print
-      print('[FCM] Token saved to Firestore ✓');
+      await _fs.updateUser(userId, {
+        'fcmToken':            token,
+        'notificationEnabled': true,
+        'lastTokenUpdated':    DateTime.now().toIso8601String(),
+        'platform':            Platform.isAndroid ? 'android' : 'ios',
+      });
+      debugPrint('[FCM] Token saved ✓');
     } catch (e) {
-      // ignore: avoid_print
-      print('[FCM] ✗ _saveToken error for $userId: $e');
+      debugPrint('[FCM] _saveToken error: $e');
     }
   }
 
   // ── Tap navigation ────────────────────────────────────────────────────────
 
-  /// Routes to the appropriate screen when a push notification is tapped.
-  ///
-  /// Cloud Functions attach a `type` field in `message.data`:
-  ///   bill              → admin created a new bill     (receivers: users)
-  ///   meeting           → meeting scheduled            (receivers: users)
-  ///   complaint         → new complaint / reply        (receivers: admin or user)
-  ///   payment           → payment reported/verified    (receivers: admin or user)
-  ///   resident_request  → new signup request           (receivers: admin)
-  ///   president_registered → president signed up       (receivers: super admin)
-  ///   president_transfer   → presidency transferred    (receivers: old/new admin)
   void _handleTap(RemoteMessage message) {
+    final type          = message.data['type'] as String?;
+    final referenceId   = message.data['referenceId'] as String?;
+    final referenceType = message.data['referenceType'] as String?;
+    final payload       = '${type ?? ''}|${referenceId ?? ''}|${referenceType ?? ''}';
+
+    debugPrint('[FCM] Tapped — type: $type | referenceId: $referenceId');
+    _navigateFromPayload(payload);
+  }
+
+  /// Parses a pipe-delimited payload and navigates to the correct screen.
+  /// Payload format: "type|referenceId|referenceType"
+  ///
+  /// Navigates to /dashboard with a Map argument so DashboardRouter can
+  /// deep-link to the correct tab or push the correct detail screen.
+  void _navigateFromPayload(String? payload) {
     final navigator = navigatorKey.currentState;
     if (navigator == null) {
-      debugPrint('[FCM] _handleTap: navigator not ready yet.');
+      debugPrint('[FCM] Navigator not ready — retrying in 500ms');
+      Future.delayed(
+        const Duration(milliseconds: 500),
+        () => _navigateFromPayload(payload),
+      );
       return;
     }
 
-    final type = message.data['type'] as String?;
-    debugPrint('[FCM] Notification tapped — type: $type | data: ${message.data}');
+    final parts         = (payload ?? '').split('|');
+    final type          = parts.isNotEmpty ? parts[0] : '';
+    final referenceId   = parts.length > 1 ? parts[1] : '';
+    final referenceType = parts.length > 2 ? parts[2] : '';
 
-    // Navigate to role-correct dashboard, passing the notification type as a
-    // route argument so DashboardRouter can deep-link to the correct tab/screen.
+    debugPrint('[FCM] Navigate — type: $type | refId: $referenceId');
+
     navigator.pushNamedAndRemoveUntil(
       '/dashboard',
       (route) => false,
-      arguments: type,
+      arguments: {
+        'notificationType': type,
+        'referenceId':      referenceId,
+        'referenceType':    referenceType,
+      },
     );
   }
 }
