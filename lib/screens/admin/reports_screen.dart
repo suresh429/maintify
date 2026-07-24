@@ -19,7 +19,7 @@ class ReportsScreen extends StatelessWidget {
 
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = RoleTheme.of(UserRole.superAdmin).effectivePrimary(context);
+    final accent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
 
     // Global totals from all apartments
     double totalCollected = 0;

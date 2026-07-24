@@ -596,7 +596,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Your activation token is in the invitation email from your Super Admin.',
+                              'Your activation token is in the invitation email from your Admin.',
                               style: AppTextStyles.caption(
                                   color: cs.onSurfaceVariant),
                             ),

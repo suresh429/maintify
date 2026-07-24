@@ -22,8 +22,8 @@ class _ApartmentsScreenState extends State<ApartmentsScreen> {
   @override
   Widget build(BuildContext context) {
     final aptProvider = context.watch<ApartmentProvider>();
-    final superAccent = RoleTheme.of(UserRole.superAdmin).effectivePrimary(context);
-    final adminAccent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
+    final superAccent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
+    final adminAccent = RoleTheme.of(UserRole.president).effectivePrimary(context);
     final filtered = aptProvider.apartments
         .where((a) =>
             a.name.toLowerCase().contains(_search.toLowerCase()) ||
@@ -161,8 +161,8 @@ class _ApartmentDetailCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = RoleTheme.of(UserRole.superAdmin).effectivePrimary(context);
-    final adminAccent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
+    final accent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
+    final adminAccent = RoleTheme.of(UserRole.president).effectivePrimary(context);
     final billProvider = context.watch<BillProvider>();
     final presidentName = apt.presidentName ?? 'Unassigned';
     final collected = billProvider.collectedForApartment(apt.id);

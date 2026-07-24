@@ -30,7 +30,7 @@ class _EditBillPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = RoleTheme.of(UserRole.admin);
+    final theme = RoleTheme.of(UserRole.president);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -281,7 +281,7 @@ class _EditBillContentState extends State<_EditBillContent> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
+    final accent = RoleTheme.of(UserRole.president).effectivePrimary(context);
     final s = _summary;
 
     return Form(
@@ -357,7 +357,7 @@ class _EditBillContentState extends State<_EditBillContent> {
               child: Consumer<BillProvider>(
                 builder: (_, bp, __) => CommonButton(
                   text: 'Save Changes',
-                  gradient: RoleTheme.of(UserRole.admin).gradient,
+                  gradient: RoleTheme.of(UserRole.president).gradient,
                   icon: Icons.check_circle_outline,
                   isLoading: bp.isLoading,
                   onPressed: _submit,
@@ -883,7 +883,7 @@ class _EditBillContentState extends State<_EditBillContent> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: RoleTheme.of(UserRole.admin).gradient,
+          colors: RoleTheme.of(UserRole.president).gradient,
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),

@@ -7,13 +7,14 @@ import '../../providers/auth_provider.dart';
 import '../../providers/apartment_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/utils/app_utils.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../widgets/change_password_sheet.dart';
 import '../../widgets/logout_sheet.dart';
 import '../shared/notifications_screen.dart';
 import 'transfer_president_screen.dart';
 
-class AdminProfileScreen extends StatelessWidget {
-  const AdminProfileScreen({super.key});
+class PresidentProfileScreen extends StatelessWidget {
+  const PresidentProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +24,7 @@ class AdminProfileScreen extends StatelessWidget {
 
     final aptProvider = context.watch<ApartmentProvider>();
     final apt = aptProvider.findById(user.apartmentId ?? '');
-    final theme = RoleTheme.of(UserRole.admin);
+    final theme = RoleTheme.of(UserRole.president);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -238,13 +239,6 @@ class AdminProfileScreen extends StatelessWidget {
                       ),
                       const _Divider(),
                       _MenuTile(
-                        icon: Icons.help_outline_rounded,
-                        label: 'Help & Support',
-                        iconColor: AppColors.pending,
-                        onTap: () {},
-                      ),
-                      const _Divider(),
-                      _MenuTile(
                         icon: Icons.info_outline_rounded,
                         label: 'About',
                         iconColor: AppColors.textSecondary,
@@ -266,7 +260,7 @@ class AdminProfileScreen extends StatelessWidget {
                         showChevron: false,
                         onTap: () async {
                           final confirm =
-                              await showLogoutSheet(context, UserRole.admin);
+                              await showLogoutSheet(context, UserRole.president);
                           if (confirm == true && context.mounted) {
                             context.read<AuthProvider>().logout();
                             Navigator.pushReplacementNamed(context, '/login');
@@ -275,16 +269,21 @@ class AdminProfileScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
           ),
+
         ],
       ),
     );
   }
 
-  void _showAbout(BuildContext context) {
+  void _showAbout(BuildContext context) async {
+    final info = await PackageInfo.fromPlatform();
+    if (!context.mounted) return;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -294,9 +293,9 @@ class AdminProfileScreen extends StatelessWidget {
           style: TextStyle(
               fontFamily: 'Poppins', fontWeight: FontWeight.bold),
         ),
-        content: const Text(
-          'Maintify v2.1.0\nApartment Management Application\n\n© 2026 Maintify. All rights reserved.',
-          style: TextStyle(fontFamily: 'Poppins', fontSize: 13, height: 1.6),
+        content: Text(
+          'Maintify v${info.version}\nApartment Management Application\n\n© 2026 Maintify. All rights reserved.',
+          style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, height: 1.6),
         ),
         actions: [
           TextButton(

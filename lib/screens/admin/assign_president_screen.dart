@@ -96,7 +96,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
 
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = RoleTheme.of(UserRole.superAdmin).effectivePrimary(context);
+    final accent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -313,7 +313,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                           height: 44,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: RoleTheme.of(UserRole.user).gradient,
+                              colors: RoleTheme.of(UserRole.resident).gradient,
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
                             ),

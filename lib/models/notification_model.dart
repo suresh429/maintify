@@ -56,14 +56,14 @@ class NotificationModel {
     final d = doc.data() as Map<String, dynamic>;
     UserRole role;
     switch (d['targetRole'] as String?) {
-      case 'superAdmin':
-        role = UserRole.superAdmin;
-        break;
       case 'admin':
         role = UserRole.admin;
         break;
+      case 'president':
+        role = UserRole.president;
+        break;
       default:
-        role = UserRole.user;
+        role = UserRole.resident;
     }
     return NotificationModel(
       id:            doc.id,
@@ -126,7 +126,7 @@ class MockNotifications {
       type: NotificationType.system,
       createdAt: DateTime.now().subtract(const Duration(days: 2)),
       isRead: true,
-      targetRole: UserRole.superAdmin,
+      targetRole: UserRole.admin,
     ),
     NotificationModel(
       id: 'n2',
@@ -135,7 +135,7 @@ class MockNotifications {
       type: NotificationType.system,
       createdAt: DateTime.now().subtract(const Duration(days: 1)),
       isRead: false,
-      targetRole: UserRole.superAdmin,
+      targetRole: UserRole.admin,
     ),
     NotificationModel(
       id: 'n3',
@@ -144,7 +144,7 @@ class MockNotifications {
       type: NotificationType.bill,
       createdAt: DateTime.now().subtract(const Duration(hours: 3)),
       isRead: false,
-      targetRole: UserRole.superAdmin,
+      targetRole: UserRole.admin,
     ),
     NotificationModel(
       id: 'n4',
@@ -153,7 +153,7 @@ class MockNotifications {
       type: NotificationType.system,
       createdAt: DateTime.now().subtract(const Duration(hours: 1)),
       isRead: false,
-      targetRole: UserRole.superAdmin,
+      targetRole: UserRole.admin,
     ),
 
     // ── Admin notifications ──────────────────────────────────
@@ -164,7 +164,7 @@ class MockNotifications {
       type: NotificationType.bill,
       createdAt: DateTime.now().subtract(const Duration(days: 2)),
       isRead: true,
-      targetRole: UserRole.admin,
+      targetRole: UserRole.president,
     ),
     NotificationModel(
       id: 'n6',
@@ -173,7 +173,7 @@ class MockNotifications {
       type: NotificationType.payment,
       createdAt: DateTime.now().subtract(const Duration(days: 1)),
       isRead: true,
-      targetRole: UserRole.admin,
+      targetRole: UserRole.president,
     ),
     NotificationModel(
       id: 'n7',
@@ -182,7 +182,7 @@ class MockNotifications {
       type: NotificationType.complaint,
       createdAt: DateTime.now().subtract(const Duration(hours: 5)),
       isRead: false,
-      targetRole: UserRole.admin,
+      targetRole: UserRole.president,
     ),
     NotificationModel(
       id: 'n8',
@@ -191,7 +191,7 @@ class MockNotifications {
       type: NotificationType.bill,
       createdAt: DateTime.now().subtract(const Duration(hours: 2)),
       isRead: false,
-      targetRole: UserRole.admin,
+      targetRole: UserRole.president,
     ),
     NotificationModel(
       id: 'n9',
@@ -200,7 +200,7 @@ class MockNotifications {
       type: NotificationType.payment,
       createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
       isRead: false,
-      targetRole: UserRole.admin,
+      targetRole: UserRole.president,
     ),
 
     // ── User notifications ───────────────────────────────────
@@ -211,7 +211,7 @@ class MockNotifications {
       type: NotificationType.bill,
       createdAt: DateTime.now().subtract(const Duration(days: 2)),
       isRead: true,
-      targetRole: UserRole.user,
+      targetRole: UserRole.resident,
     ),
     NotificationModel(
       id: 'n11',
@@ -220,7 +220,7 @@ class MockNotifications {
       type: NotificationType.payment,
       createdAt: DateTime.now().subtract(const Duration(days: 1)),
       isRead: true,
-      targetRole: UserRole.user,
+      targetRole: UserRole.resident,
     ),
     NotificationModel(
       id: 'n12',
@@ -229,7 +229,7 @@ class MockNotifications {
       type: NotificationType.bill,
       createdAt: DateTime.now().subtract(const Duration(hours: 2)),
       isRead: false,
-      targetRole: UserRole.user,
+      targetRole: UserRole.resident,
     ),
     NotificationModel(
       id: 'n13',
@@ -238,7 +238,7 @@ class MockNotifications {
       type: NotificationType.complaint,
       createdAt: DateTime.now().subtract(const Duration(hours: 1)),
       isRead: false,
-      targetRole: UserRole.user,
+      targetRole: UserRole.resident,
     ),
   ];
 }

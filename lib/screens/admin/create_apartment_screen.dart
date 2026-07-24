@@ -125,7 +125,7 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
       builder: (ctx) {
         final sheetCs    = Theme.of(ctx).colorScheme;
         final accentColor =
-            RoleTheme.of(UserRole.superAdmin).effectivePrimary(ctx);
+            RoleTheme.of(UserRole.admin).effectivePrimary(ctx);
         return Container(
           decoration: BoxDecoration(
             color: sheetCs.surface,
@@ -257,7 +257,7 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
   @override
   Widget build(BuildContext context) {
     final cs    = Theme.of(context).colorScheme;
-    final theme = RoleTheme.of(UserRole.superAdmin);
+    final theme = RoleTheme.of(UserRole.admin);
     final accent = theme.effectivePrimary(context);
 
     return Scaffold(
@@ -559,7 +559,7 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs     = Theme.of(context).colorScheme;
     final accent =
-        RoleTheme.of(UserRole.superAdmin).effectivePrimary(context);
+        RoleTheme.of(UserRole.admin).effectivePrimary(context);
     return Row(
       children: [
         Container(

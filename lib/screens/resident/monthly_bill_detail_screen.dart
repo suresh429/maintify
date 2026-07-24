@@ -8,11 +8,11 @@ import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../widgets/common_button.dart';
 
-class UserMonthlyBillDetailScreen extends StatelessWidget {
+class ResidentMonthlyBillDetailScreen extends StatelessWidget {
   final UserMonthlySummary summary;
   final String aptId;
 
-  const UserMonthlyBillDetailScreen({
+  const ResidentMonthlyBillDetailScreen({
     super.key,
     required this.summary,
     required this.aptId,
@@ -20,7 +20,7 @@ class UserMonthlyBillDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = RoleTheme.of(UserRole.user);
+    final theme = RoleTheme.of(UserRole.resident);
     final billProvider = context.watch<BillProvider>();
     final auth = context.read<AuthProvider>();
     final userId = auth.currentUser?.id ?? '';

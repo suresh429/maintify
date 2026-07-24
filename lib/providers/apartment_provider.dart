@@ -101,9 +101,9 @@ class ApartmentProvider extends ChangeNotifier {
     );
     MockApartments.assignPresident(aptId, newPresidentId, newPresidentName);
     if (oldPresidentId != null && oldPresidentId != newPresidentId) {
-      MockUsers.updateRole(oldPresidentId, UserRole.user);
+      MockUsers.updateRole(oldPresidentId, UserRole.resident);
     }
-    MockUsers.updateRole(newPresidentId, UserRole.admin);
+    MockUsers.updateRole(newPresidentId, UserRole.president);
 
     _isLoading = false;
     notifyListeners();
@@ -115,7 +115,7 @@ class ApartmentProvider extends ChangeNotifier {
             title: 'You Are Now the Apartment President',
             body: 'You have been assigned as president of the apartment.',
             type: 'president_transfer',
-            targetRole: UserRole.admin,
+            targetRole: UserRole.president,
             targetUserIds: [newPresidentId],
           )
           .catchError((e) => debugPrint('[NOTIF] president_transfer new: $e'));
@@ -126,7 +126,7 @@ class ApartmentProvider extends ChangeNotifier {
               title: 'President Role Transferred',
               body: 'Your president role has been transferred to $newPresidentName.',
               type: 'president_transfer',
-              targetRole: UserRole.user,
+              targetRole: UserRole.resident,
               targetUserIds: [oldPresidentId],
             )
             .catchError((e) => debugPrint('[NOTIF] president_transfer old: $e'));

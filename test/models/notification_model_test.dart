@@ -25,7 +25,7 @@ void main() {
       type: NotificationType.bill,
       createdAt: DateTime(2026, 5, 1),
       isRead: false,
-      targetRole: UserRole.user,
+      targetRole: UserRole.resident,
     );
 
     test('fields are accessible after construction', () {
@@ -33,7 +33,7 @@ void main() {
       expect(base.title, 'New Bill');
       expect(base.type, NotificationType.bill);
       expect(base.isRead, isFalse);
-      expect(base.targetRole, UserRole.user);
+      expect(base.targetRole, UserRole.resident);
     });
 
     test('copyWith(isRead: true) marks as read', () {
@@ -61,7 +61,7 @@ void main() {
 
     test('toMap encodes targetRole as its name string', () {
       final map = base.toMap();
-      expect(map['targetRole'], 'user');
+      expect(map['targetRole'], 'resident');
     });
 
     test('toMap for admin role encodes "admin"', () {
@@ -87,9 +87,9 @@ void main() {
 
     test('contains notifications for all three roles', () {
       final roles = MockNotifications.all.map((n) => n.targetRole).toSet();
-      expect(roles, contains(UserRole.superAdmin));
       expect(roles, contains(UserRole.admin));
-      expect(roles, contains(UserRole.user));
+      expect(roles, contains(UserRole.president));
+      expect(roles, contains(UserRole.resident));
     });
 
     test('some notifications start as unread', () {

@@ -350,7 +350,7 @@ async function sendToUsers(userIds, {
  * Sends FCM push + saves Firestore notification to all users of a ROLE in an APARTMENT.
  *
  * @param {string} aptId
- * @param {string} role  'user' | 'admin' | 'superAdmin'
+ * @param {string} role  'resident' | 'president' | 'admin'
  * @param {{ title, body, type, route?, referenceId?, referenceType?, senderId?, excludeIds?, saveToFirestore? }} opts
  */
 async function sendToApartment(aptId, role, {

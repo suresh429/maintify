@@ -32,7 +32,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final auth = context.read<AuthProvider>();
     final role = auth.role;
     final notifProvider = context.watch<NotificationProvider>();
-    final theme = RoleTheme.of(role ?? UserRole.user);
+    final theme = RoleTheme.of(role ?? UserRole.resident);
     final notifications =
         role != null ? notifProvider.forRole(role) : <NotificationModel>[];
 

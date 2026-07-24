@@ -156,7 +156,7 @@ class ComplaintProvider extends ChangeNotifier {
       title: 'New Complaint Received',
       body: '$userName (Flat $unit): $title',
       type: NotificationType.complaint,
-      targetRole: UserRole.admin,
+      targetRole: UserRole.president,
       aptId: apartmentId,
     );
 
@@ -212,7 +212,7 @@ class ComplaintProvider extends ChangeNotifier {
           body: 'The admin has replied to your complaint'
               '${complaint != null ? ': "${complaint.title}"' : '.'}',
           type: NotificationType.complaint,
-          targetRole: UserRole.user,
+          targetRole: UserRole.resident,
           aptId: aptId,
           targetUserIds: [targetUserId],
         );
@@ -226,7 +226,7 @@ class ComplaintProvider extends ChangeNotifier {
         title: 'New Message on Complaint',
         body: '$senderName: $truncated',
         type: NotificationType.complaint,
-        targetRole: UserRole.admin,
+        targetRole: UserRole.president,
         aptId: aptId,
       );
     }

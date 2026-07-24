@@ -13,22 +13,22 @@ import '../../widgets/shimmer_loading.dart';
 import '../../widgets/apartment_header.dart';
 import 'bills_screen.dart';
 import 'payment_history_screen.dart';
-import 'user_profile_screen.dart';
+import 'resident_profile_screen.dart';
 import 'monthly_bill_detail_screen.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/meeting_provider.dart';
 import '../../models/meeting_model.dart';
 import '../shared/notifications_screen.dart';
 
-class UserDashboard extends StatefulWidget {
+class ResidentDashboard extends StatefulWidget {
   final String? notificationType;
-  const UserDashboard({super.key, this.notificationType});
+  const ResidentDashboard({super.key, this.notificationType});
 
   @override
-  State<UserDashboard> createState() => _UserDashboardState();
+  State<ResidentDashboard> createState() => _ResidentDashboardState();
 }
 
-class _UserDashboardState extends State<UserDashboard> {
+class _ResidentDashboardState extends State<ResidentDashboard> {
   int _currentIndex = 0;
 
   static const _titles = ['Home', 'My Bills', 'Payments', 'Profile'];
@@ -53,10 +53,10 @@ class _UserDashboardState extends State<UserDashboard> {
     super.initState();
     _currentIndex = _tabForType(widget.notificationType);
     _pages = const [
-      _UserHome(),
+      _ResidentHome(),
       BillsScreen(),
       PaymentHistoryScreen(),
-      UserProfileScreen(),
+      ResidentProfileScreen(),
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardProvider>().initialize();
@@ -65,7 +65,7 @@ class _UserDashboardState extends State<UserDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = RoleTheme.of(UserRole.user);
+    final theme = RoleTheme.of(UserRole.resident);
 
     final cs = Theme.of(context).colorScheme;
 
@@ -115,7 +115,7 @@ class _UserDashboardState extends State<UserDashboard> {
   PreferredSizeWidget _buildAppBar(RoleTheme theme) {
     final unread = context
         .watch<NotificationProvider>()
-        .unreadCount(UserRole.user);
+        .unreadCount(UserRole.resident);
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -183,8 +183,8 @@ class _UserDashboardState extends State<UserDashboard> {
 
 // ── User Home ─────────────────────────────────────────────────────────────────
 
-class _UserHome extends StatelessWidget {
-  const _UserHome();
+class _ResidentHome extends StatelessWidget {
+  const _ResidentHome();
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +192,7 @@ class _UserHome extends StatelessWidget {
     final auth = context.read<AuthProvider>();
     final billProvider = context.watch<BillProvider>();
     final aptProvider = context.watch<ApartmentProvider>();
-    final theme = RoleTheme.of(UserRole.user);
+    final theme = RoleTheme.of(UserRole.resident);
     final userId = auth.currentUser?.id ?? '';
     final user = auth.currentUser;
     final aptId = user?.apartmentId ?? '';
@@ -235,7 +235,7 @@ class _UserHome extends StatelessWidget {
             ApartmentHeader(
               apartmentName: apt?.name ?? 'My Apartment',
               presidentName: apt?.presidentName ?? 'Unassigned',
-              role: UserRole.user,
+              role: UserRole.resident,
             ),
 
             // Hero card
@@ -553,7 +553,7 @@ class _PendingMonthCard extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => UserMonthlyBillDetailScreen(
+          builder: (_) => ResidentMonthlyBillDetailScreen(
             summary: summary,
             aptId: aptId,
           ),
@@ -624,7 +624,7 @@ class _PendingMonthCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text('Mark as Paid',
-                    style: AppTextStyles.caption(color: RoleTheme.of(UserRole.user).effectivePrimary(context))),
+                    style: AppTextStyles.caption(color: RoleTheme.of(UserRole.resident).effectivePrimary(context))),
               ],
             ),
           ],

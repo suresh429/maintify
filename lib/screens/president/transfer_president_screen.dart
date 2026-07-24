@@ -91,7 +91,7 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
     final aptId = auth.currentUser?.apartmentId ?? '';
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
+    final accent = RoleTheme.of(UserRole.president).effectivePrimary(context);
 
     final eligible = userProvider.eligibleForPresident(aptId);
 
@@ -207,7 +207,7 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
                           height: 44,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: RoleTheme.of(UserRole.user).gradient,
+                              colors: RoleTheme.of(UserRole.resident).gradient,
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
                             ),

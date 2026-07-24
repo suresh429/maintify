@@ -110,7 +110,7 @@ class _IPaidScreenState extends State<IPaidScreen> {
     final auth = context.read<AuthProvider>();
     final userId = auth.currentUser?.id ?? '';
     final billProvider = context.watch<BillProvider>();
-    final theme = RoleTheme.of(UserRole.user);
+    final theme = RoleTheme.of(UserRole.resident);
 
     final pendingViews =
         billProvider.userBillViews(userId).where((v) => !v.payment.isPaid).toList();

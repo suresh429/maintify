@@ -83,7 +83,7 @@ class MeetingProvider extends ChangeNotifier {
       title: 'Meeting Scheduled: $title',
       body: 'A meeting has been scheduled on $dateStr. $description',
       type: NotificationType.meeting,
-      targetRole: UserRole.user,
+      targetRole: UserRole.resident,
       aptId: aptId,
     );
 

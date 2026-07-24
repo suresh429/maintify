@@ -166,7 +166,7 @@ class RegistrationProvider extends ChangeNotifier {
           body:
               '${apt.presidentName ?? 'A president'} has joined ${apt.name} as President.',
           type:       'president_registered',
-          targetRole: UserRole.superAdmin,
+          targetRole: UserRole.admin,
         )
         .catchError(
             (e) => debugPrint('[NOTIF] president_registered error: $e'));
@@ -315,7 +315,7 @@ class RegistrationProvider extends ChangeNotifier {
       }
       if (invitation.isExpired) {
         return _failInvitation(
-          'Your invitation has expired. Please contact your Super Admin.',
+          'Your invitation has expired. Please contact your Admin.',
         );
       }
       return (invitation: invitation, error: null);
@@ -343,7 +343,7 @@ class RegistrationProvider extends ChangeNotifier {
       return _failUid('This invitation has already been used.');
     }
     if (invitation.isExpired) {
-      return _failUid('Your invitation has expired. Please contact your Super Admin.');
+      return _failUid('Your invitation has expired. Please contact your Admin.');
     }
 
     final result = await _authService.createAndVerifyAccount(

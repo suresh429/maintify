@@ -250,7 +250,7 @@ const List<_TestCase> _kTestCases = [
   _TestCase(
     trigger: '8. President Registered',
     dataType: 'type: "president_registered"',
-    receiver: 'All Super Admins',
+    receiver: 'All Admins',
     howToTest:
         'New president completes sign-up via President Sign Up screen. Function fires on apartments/{id} onUpdate when status → "active".',
   ),

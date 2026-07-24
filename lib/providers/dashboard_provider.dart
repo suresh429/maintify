@@ -15,9 +15,9 @@ class DashboardProvider extends ChangeNotifier {
 
   int get totalApartments => MockApartments.all.length;
   int get totalResidents =>
-      MockUsers.all.where((u) => u.role == UserRole.user).length;
+      MockUsers.all.where((u) => u.role == UserRole.resident).length;
   int get totalAdmins =>
-      MockUsers.all.where((u) => u.role == UserRole.admin).length;
+      MockUsers.all.where((u) => u.role == UserRole.president).length;
 
   int get totalBills => MockBillData.bills.length;
 

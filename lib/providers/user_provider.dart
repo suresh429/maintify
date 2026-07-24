@@ -56,17 +56,17 @@ class UserProvider extends ChangeNotifier {
   // ── Queries ───────────────────────────────────────────────────────────────
 
   List<UserModel> get residents =>
-      _users.where((u) => u.role == UserRole.user).toList();
+      _users.where((u) => u.role == UserRole.resident).toList();
 
   List<UserModel> get admins =>
-      _users.where((u) => u.role == UserRole.admin).toList();
+      _users.where((u) => u.role == UserRole.president).toList();
 
   List<UserModel> residentsForApartment(String aptId) => _users
-      .where((u) => u.role == UserRole.user && u.apartmentId == aptId)
+      .where((u) => u.role == UserRole.resident && u.apartmentId == aptId)
       .toList();
 
   List<UserModel> membersForApartment(String aptId) => _users
-      .where((u) => u.apartmentId == aptId && u.role != UserRole.superAdmin)
+      .where((u) => u.apartmentId == aptId && u.role != UserRole.admin)
       .toList();
 
   int memberCountForApartment(String aptId) =>
@@ -89,25 +89,25 @@ class UserProvider extends ChangeNotifier {
 
   List<UserModel> eligibleForPresident(String aptId) {
     final presidentIds =
-        _users.where((u) => u.role == UserRole.admin).map((u) => u.id).toSet();
+        _users.where((u) => u.role == UserRole.president).map((u) => u.id).toSet();
     return _users
         .where((u) => u.apartmentId == aptId && !presidentIds.contains(u.id))
         .toList();
   }
 
   bool isAlreadyPresident(String userId) =>
-      _users.any((u) => u.id == userId && u.role == UserRole.admin);
+      _users.any((u) => u.id == userId && u.role == UserRole.president);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
   Future<void> updatePresidentRoles(
       String? oldPresidentId, String newPresidentId) async {
-    await _fs.updateUser(newPresidentId, {'role': UserRole.admin.name});
-    MockUsers.updateRole(newPresidentId, UserRole.admin);
+    await _fs.updateUser(newPresidentId, {'role': UserRole.president.name});
+    MockUsers.updateRole(newPresidentId, UserRole.president);
 
     if (oldPresidentId != null && oldPresidentId != newPresidentId) {
-      await _fs.updateUser(oldPresidentId, {'role': UserRole.user.name});
-      MockUsers.updateRole(oldPresidentId, UserRole.user);
+      await _fs.updateUser(oldPresidentId, {'role': UserRole.resident.name});
+      MockUsers.updateRole(oldPresidentId, UserRole.resident);
     }
     notifyListeners();
   }

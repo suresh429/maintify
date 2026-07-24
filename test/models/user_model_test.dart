@@ -17,16 +17,16 @@ void main() {
           joinedAt: DateTime(2024, 1, 1),
         );
 
-    test('superAdmin → "Super Admin"', () {
-      expect(makeUser(UserRole.superAdmin).roleLabel, 'Super Admin');
+    test('admin → "Admin"', () {
+      expect(makeUser(UserRole.admin).roleLabel, 'Admin');
     });
 
-    test('admin → "President"', () {
-      expect(makeUser(UserRole.admin).roleLabel, 'President');
+    test('president → "President"', () {
+      expect(makeUser(UserRole.president).roleLabel, 'President');
     });
 
-    test('user → "Resident"', () {
-      expect(makeUser(UserRole.user).roleLabel, 'Resident');
+    test('resident → "Resident"', () {
+      expect(makeUser(UserRole.resident).roleLabel, 'Resident');
     });
   });
 
@@ -38,15 +38,15 @@ void main() {
       name: 'Rohit',
       email: 'rohit@test.com',
       phone: '+91 00000',
-      role: UserRole.user,
+      role: UserRole.resident,
       unit: '101',
       avatarInitials: 'RO',
       joinedAt: _epoch,
     );
 
     test('copies with new role, preserves other fields', () {
-      final updated = base.copyWith(role: UserRole.admin);
-      expect(updated.role, UserRole.admin);
+      final updated = base.copyWith(role: UserRole.president);
+      expect(updated.role, UserRole.president);
       expect(updated.id, base.id);
       expect(updated.name, base.name);
       expect(updated.email, base.email);
@@ -67,7 +67,7 @@ void main() {
       name: 'X',
       email: 'x@x.com',
       phone: '',
-      role: UserRole.user,
+      role: UserRole.resident,
       unit: '101',
       avatarInitials: 'X',
       joinedAt: _epoch,
@@ -78,41 +78,41 @@ void main() {
   // ── MockUsers ──────────────────────────────────────────────────────────────
 
   group('MockUsers', () {
-    test('contains at least one super admin', () {
+    test('contains at least one admin', () {
       expect(
-        MockUsers.all.where((u) => u.role == UserRole.superAdmin),
+        MockUsers.all.where((u) => u.role == UserRole.admin),
         isNotEmpty,
       );
     });
 
-    test('residents getter returns only user-role entries', () {
+    test('residents getter returns only resident-role entries', () {
       expect(
-        MockUsers.residents.every((u) => u.role == UserRole.user),
+        MockUsers.residents.every((u) => u.role == UserRole.resident),
         isTrue,
       );
     });
 
-    test('admins getter returns only admin-role entries', () {
+    test('admins getter returns only president-role entries', () {
       expect(
-        MockUsers.admins.every((u) => u.role == UserRole.admin),
+        MockUsers.admins.every((u) => u.role == UserRole.president),
         isTrue,
       );
     });
 
-    test('findByEmail returns correct user', () {
+    test('findByEmail returns correct admin user', () {
       final user = MockUsers.findByEmail('superadmin@test.com');
       expect(user, isNotNull);
-      expect(user!.role, UserRole.superAdmin);
+      expect(user!.role, UserRole.admin);
     });
 
     test('findByEmail returns null for unknown email', () {
       expect(MockUsers.findByEmail('nobody@unknown.com'), isNull);
     });
 
-    test('findById returns correct user', () {
+    test('findById returns president for u2', () {
       final user = MockUsers.findById('u2');
       expect(user, isNotNull);
-      expect(user!.role, UserRole.admin);
+      expect(user!.role, UserRole.president);
     });
 
     test('findById returns null for unknown id', () {
@@ -123,13 +123,13 @@ void main() {
       final residents = MockUsers.residentsForApartment('apt1');
       expect(residents, isNotEmpty);
       expect(residents.every((u) => u.apartmentId == 'apt1'), isTrue);
-      expect(residents.every((u) => u.role == UserRole.user), isTrue);
+      expect(residents.every((u) => u.role == UserRole.resident), isTrue);
     });
 
-    test('presidentFor returns admin for matching apartment', () {
+    test('presidentFor returns president for matching apartment', () {
       final president = MockUsers.presidentFor('apt1');
       expect(president, isNotNull);
-      expect(president!.role, UserRole.admin);
+      expect(president!.role, UserRole.president);
       expect(president.apartmentId, 'apt1');
     });
 
@@ -138,11 +138,10 @@ void main() {
     });
 
     test('updateRole changes a user\'s role in-place', () {
-      // Save original role to restore after test
       final u3 = MockUsers.findById('u3')!;
       final original = u3.role;
-      MockUsers.updateRole('u3', UserRole.admin);
-      expect(MockUsers.findById('u3')!.role, UserRole.admin);
+      MockUsers.updateRole('u3', UserRole.president);
+      expect(MockUsers.findById('u3')!.role, UserRole.president);
       // Restore
       MockUsers.updateRole('u3', original);
     });
@@ -155,7 +154,7 @@ void main() {
           name: 'NewUser',
           email: 'new@test.com',
           phone: '',
-          role: UserRole.user,
+          role: UserRole.resident,
           unit: '999',
           avatarInitials: 'NU',
           joinedAt: DateTime(2024),

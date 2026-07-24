@@ -2,29 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
-import '../../providers/bill_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
+import '../../models/apartment_model.dart';
 import '../../providers/apartment_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../widgets/dashboard_card.dart';
 import '../../widgets/shimmer_loading.dart';
-import '../../widgets/apartment_header.dart';
-import 'create_bill_screen.dart';
-import 'manage_users_screen.dart';
-import 'mark_paid_screen.dart';
-import 'admin_complaints_screen.dart';
-import 'admin_profile_screen.dart';
-import '../../widgets/schedule_meeting_sheet.dart';
+import 'apartments_screen.dart';
+import 'assign_president_screen.dart';
+import 'reports_screen.dart';
 import '../../providers/notification_provider.dart';
-import '../../providers/meeting_provider.dart';
-import '../../models/meeting_model.dart';
-import '../../models/bill_model.dart';
-import '../../models/user_model.dart';
-import '../../providers/user_provider.dart';
 import '../shared/notifications_screen.dart';
-import 'edit_bill_sheet.dart';
+import '../../widgets/logout_sheet.dart';
 
 class AdminDashboard extends StatefulWidget {
   final String? notificationType;
@@ -37,48 +29,135 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   int _currentIndex = 0;
 
-  static const _titles = ['Dashboard', 'Manage Users', 'Bills', 'Complaints'];
-
-  late final List<Widget> _pages;
-
-  // Maps a push notification type to the correct bottom-nav tab index.
-  // bill / payment → Bills (2); complaint → Complaints (3); others → Home (0).
-  static int _tabForType(String? type) {
-    switch (type) {
-      case 'bill':
-      case 'payment':
-        return 2;
-      case 'complaint':
-        return 3;
-      default:
-        return 0;
-    }
-  }
+  static const List<String> _titles = [
+    'Dashboard',
+    'Apartments',
+    'Assign President',
+    'Reports',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = _tabForType(widget.notificationType);
-    _pages = const [
-      _AdminHome(),
-      ManageUsersScreen(),
-      MarkPaidScreen(),
-      AdminComplaintsScreen(),
-    ];
+    if (widget.notificationType == 'president_registered') {
+      _currentIndex = 1;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardProvider>().initialize();
     });
   }
 
+  Widget _buildBody() {
+    switch (_currentIndex) {
+      case 1:
+        return const ApartmentsScreen();
+      case 2:
+        return const AssignPresidentScreen();
+      case 3:
+        return const ReportsScreen();
+      default:
+        return const _DashboardHome();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = RoleTheme.of(UserRole.admin);
+    final auth = context.read<AuthProvider>();
 
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: _buildAppBar(theme),
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          _titles[_currentIndex],
+          style: AppTextStyles.heading3(color: Colors.white),
+        ),
+        actions: [
+          Consumer<ThemeProvider>(
+            builder: (_, tp, __) => IconButton(
+              icon: Icon(
+                tp.isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                color: Colors.white,
+              ),
+              tooltip: tp.isDarkMode ? 'Light mode' : 'Dark mode',
+              onPressed: tp.toggle,
+            ),
+          ),
+          Consumer<NotificationProvider>(
+            builder: (context, notifProvider, _) {
+              final unread = notifProvider.unreadCount(UserRole.admin);
+              return SizedBox(
+                width: 48,
+                height: 48,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined,
+                          color: Colors.white),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const NotificationsScreen()),
+                      ),
+                    ),
+                    if (unread > 0)
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: const BoxDecoration(
+                            color: AppColors.overdue,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              unread > 9 ? '9+' : '$unread',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.white),
+            tooltip: 'Logout',
+            onPressed: () async {
+              final confirm =
+                  await showLogoutSheet(context, UserRole.admin);
+              if (confirm == true && mounted) {
+                auth.logout();
+                Navigator.pushReplacementNamed(context, '/login');
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: theme.gradient,
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+          ),
+        ),
+      ),
+      body: _buildBody(),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: cs.surface,
@@ -96,197 +175,44 @@ class _AdminDashboardState extends State<AdminDashboard> {
             NavigationDestination(
               icon: Icon(Icons.dashboard_outlined),
               selectedIcon: Icon(Icons.dashboard_rounded),
-              label: 'Home',
+              label: 'Dashboard',
             ),
             NavigationDestination(
-              icon: Icon(Icons.people_outline_rounded),
-              selectedIcon: Icon(Icons.people_rounded),
-              label: 'Users',
+              icon: Icon(Icons.apartment_outlined),
+              selectedIcon: Icon(Icons.apartment_rounded),
+              label: 'Apartments',
             ),
             NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(Icons.receipt_long_rounded),
-              label: 'Bills',
+              icon: Icon(Icons.manage_accounts_outlined),
+              selectedIcon: Icon(Icons.manage_accounts_rounded),
+              label: 'Assign',
             ),
             NavigationDestination(
-              icon: Icon(Icons.chat_bubble_outline_rounded),
-              selectedIcon: Icon(Icons.chat_bubble_rounded),
-              label: 'Complaints',
+              icon: Icon(Icons.bar_chart_outlined),
+              selectedIcon: Icon(Icons.bar_chart_rounded),
+              label: 'Reports',
             ),
           ],
         ),
       ),
-      floatingActionButton: _currentIndex == 0 ? _buildFAB(theme) : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
-
-  PreferredSizeWidget _buildAppBar(RoleTheme theme) {
-    final unread =
-        context.watch<NotificationProvider>().unreadCount(UserRole.admin);
-    final user = context.read<AuthProvider>().currentUser;
-
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      title: Text(
-        _titles[_currentIndex],
-        style: AppTextStyles.heading3(color: Colors.white),
-      ),
-      actions: [
-        // Notification bell
-        SizedBox(
-          width: 44,
-          height: 44,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined,
-                    color: Colors.white),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const NotificationsScreen()),
-                ),
-              ),
-              if (unread > 0)
-                Positioned(
-                  right: 6,
-                  top: 6,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(
-                      color: AppColors.overdue,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        unread > 9 ? '9+' : '$unread',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        // Profile avatar
-        Padding(
-          padding: const EdgeInsets.only(right: 14),
-          child: GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => const AdminProfileScreen()),
-            ),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.2),
-                border: Border.all(
-                    color: Colors.white.withOpacity(0.7), width: 1.5),
-              ),
-              child: Center(
-                child: Text(
-                  user?.avatarInitials ?? 'A',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: theme.gradient,
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFAB(RoleTheme theme) {
-    return Container(
-      height: 52,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: theme.gradient,
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: theme.primary.withOpacity(0.4),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CreateBillScreen()),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.add_rounded, color: Colors.white, size: 22),
-                const SizedBox(width: 8),
-                Text('Create Bill',
-                    style: AppTextStyles.buttonText(color: Colors.white)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
 }
 
-// ── Admin Home tab ────────────────────────────────────────────────────────────
+// ── Dashboard home tab ────────────────────────────────────────────────────────
 
-class _AdminHome extends StatelessWidget {
-  const _AdminHome();
+class _DashboardHome extends StatelessWidget {
+  const _DashboardHome();
 
   @override
   Widget build(BuildContext context) {
     final dashboard = context.watch<DashboardProvider>();
     final auth = context.read<AuthProvider>();
-    final billProvider = context.watch<BillProvider>();
-    final aptProvider = context.watch<ApartmentProvider>();
     final theme = RoleTheme.of(UserRole.admin);
-    final aptId = auth.currentUser?.apartmentId ?? '';
+    final aptProvider = context.watch<ApartmentProvider>();
 
-    if (billProvider.isInitialLoading || aptProvider.isInitialLoading) {
-      return const ShimmerDashboard();
-    }
+    if (aptProvider.isInitialLoading) return const ShimmerDashboard();
 
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final accent = theme.effectivePrimary(context);
 
     final hour = DateTime.now().hour;
@@ -296,14 +222,8 @@ class _AdminHome extends StatelessWidget {
             ? 'Good afternoon,'
             : 'Good evening,';
 
-    final stats = dashboard.adminStats(aptId);
-    final apt = aptProvider.findById(aptId);
-    final recentBills = billProvider.billsForApartment(aptId).take(5).toList();
-    final upcomingMeetings =
-        context.watch<MeetingProvider>().upcomingMeetings(aptId);
-
     return RefreshIndicator(
-      color: accent,
+      color: theme.effectivePrimary(context),
       onRefresh: () async => dashboard.refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -311,16 +231,9 @@ class _AdminHome extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ApartmentHeader(
-              apartmentName: apt?.name ?? 'My Apartment',
-              presidentName:
-                  apt?.presidentName ?? auth.currentUser?.name ?? 'You',
-              role: UserRole.admin,
-            ),
-
             // Hero banner
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: theme.gradient,
@@ -330,169 +243,102 @@ class _AdminHome extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: theme.primary.withOpacity(0.25),
+                    color: accent.withOpacity(0.25),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),
                 ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(greeting,
+                            style: AppTextStyles.caption(
+                                color: Colors.white.withOpacity(0.8))),
+                        Text(
+                          AppUtils.displayFirstName(
+                              auth.currentUser?.name ?? 'Admin'),
+                          style:
+                              AppTextStyles.heading2(color: Colors.white),
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Global Overview',
+                            style: AppTextStyles.caption(
+                                color: Colors.white.withOpacity(0.8))),
+                        const SizedBox(height: 6),
+                        Text(
+                          AppUtils.formatCurrency(dashboard.totalRevenue),
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 30,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text('Total Collected Revenue',
+                            style: AppTextStyles.bodySmall(
+                                color: Colors.white.withOpacity(0.85))),
+                        const SizedBox(height: 12),
+                        Row(
                           children: [
-                            Text(greeting,
-                                style: AppTextStyles.caption(
-                                    color: Colors.white.withOpacity(0.8))),
-                            Text(
-                              AppUtils.displayFirstName(
-                                  auth.currentUser?.name ?? 'Admin'),
-                              style:
-                                  AppTextStyles.heading2(color: Colors.white),
-                            ),
+                            _miniStat(
+                                '${dashboard.totalApartments}', 'Properties'),
+                            const SizedBox(width: 20),
+                            _miniStat(
+                                '${dashboard.totalResidents}', 'Residents'),
+                            const SizedBox(width: 20),
+                            _miniStat(
+                                '${dashboard.totalAdmins}', 'Presidents'),
                           ],
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(Icons.manage_accounts_outlined,
-                            color: Colors.white, size: 28),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _HeroBannerStat(
-                            label: 'Collected',
-                            value: AppUtils.formatCurrency(
-                                stats['collected'] as double),
-                            icon: Icons.trending_up,
-                          ),
-                        ),
-                        Container(
-                            width: 1,
-                            height: 36,
-                            color: Colors.white.withOpacity(0.2)),
-                        Expanded(
-                          child: _HeroBannerStat(
-                            label: 'Pending',
-                            value: AppUtils.formatCurrency(
-                                stats['pending'] as double),
-                            icon: Icons.schedule_outlined,
-                          ),
-                        ),
-                        Container(
-                            width: 1,
-                            height: 36,
-                            color: Colors.white.withOpacity(0.2)),
-                        Expanded(
-                          child: _HeroBannerStat(
-                            label: 'Residents',
-                            value: '${stats['totalResidents']}',
-                            icon: Icons.people_outline,
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: const Icon(Icons.shield_outlined,
+                        color: Colors.white, size: 36),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
+            Text('Financial Summary', style: AppTextStyles.heading3(color: Theme.of(context).colorScheme.onSurface)),
+            const SizedBox(height: 14),
 
-            // ── Schedule Meeting action card ──────────────────────────────
-            GestureDetector(
-              onTap: () async {
-                final scheduled =
-                    await showScheduleMeetingSheet(context);
-                if (scheduled && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text(
-                          'Meeting scheduled! All members notified.'),
-                      backgroundColor: theme.primary,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                  );
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: cs.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+            Row(
+              children: [
+                Expanded(
+                  child: DashboardCard(
+                    title: 'Collected',
+                    value: AppUtils.formatCurrency(dashboard.totalRevenue),
+                    icon: Icons.account_balance_wallet_outlined,
+                    gradient: [const Color(0xFF4ADE80), const Color(0xFF16A34A)],
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.purple.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.event_rounded,
-                          color: AppColors.purple, size: 22),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Schedule Meeting',
-                              style: AppTextStyles.subheading(color: cs.onSurface)),
-                          Text(
-                              'Notify all flat members about an upcoming meeting',
-                              style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.chevron_right_rounded,
-                        color: cs.onSurfaceVariant),
-                  ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DashboardCard(
+                    title: 'Pending',
+                    value: AppUtils.formatCurrency(dashboard.pendingRevenue),
+                    icon: Icons.pending_actions_outlined,
+                    gradient: [const Color(0xFFFBBF24), const Color(0xFFB45309)],
+                  ),
                 ),
-              ),
+              ],
             ),
 
-            // Upcoming meetings section
-            if (upcomingMeetings.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Text('Upcoming Meetings', style: AppTextStyles.heading3(color: cs.onSurface)),
-              const SizedBox(height: 14),
-              ...upcomingMeetings.map((m) => _MeetingCard(
-                    meeting: m,
-                    theme: theme,
-                  )),
-            ],
-
             const SizedBox(height: 24),
-            Text('Quick Stats', style: AppTextStyles.heading3(color: cs.onSurface)),
+            Text('Bills Overview', style: AppTextStyles.heading3(color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 14),
 
             GridView.count(
@@ -505,25 +351,25 @@ class _AdminHome extends StatelessWidget {
               children: [
                 StatCard(
                   title: 'Total Bills',
-                  value: '${stats['totalBills']}',
+                  value: '${dashboard.totalBills}',
                   icon: Icons.receipt_long_outlined,
-                  color: accent,
+                  color: theme.effectivePrimary(context),
                 ),
                 StatCard(
                   title: 'Fully Paid',
-                  value: '${stats['paidBills']}',
+                  value: '${dashboard.paidBills}',
                   icon: Icons.check_circle_outline,
                   color: AppColors.green,
                 ),
                 StatCard(
                   title: 'Pending',
-                  value: '${stats['pendingBills']}',
+                  value: '${dashboard.pendingBills}',
                   icon: Icons.schedule_outlined,
                   color: AppColors.pending,
                 ),
                 StatCard(
                   title: 'Overdue',
-                  value: '${stats['overdueBills']}',
+                  value: '${dashboard.overdueBills}',
                   icon: Icons.error_outline,
                   color: AppColors.overdue,
                 ),
@@ -531,172 +377,10 @@ class _AdminHome extends StatelessWidget {
             ),
 
             const SizedBox(height: 24),
-
-            // Collection progress
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: cs.surface,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Collection Rate',
-                          style: AppTextStyles.subheading(color: cs.onSurface)),
-                      Text(
-                        '${((stats['collectionRate'] as double) * 100).toInt()}%',
-                        style:
-                            AppTextStyles.subheading(color: accent),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: LinearProgressIndicator(
-                      value: stats['collectionRate'] as double,
-                      backgroundColor: cs.surfaceContainerHighest,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(accent),
-                      minHeight: 10,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${stats['paidPayments']} of ${stats['totalPayments']} payments collected',
-                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: (stats['collectionRate'] as double) > 0.7
-                              ? AppColors.green.withOpacity(0.1)
-                              : AppColors.pending.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          (stats['collectionRate'] as double) > 0.7
-                              ? 'On Track'
-                              : 'Needs Attention',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color:
-                                (stats['collectionRate'] as double) > 0.7
-                                    ? AppColors.green
-                                    : AppColors.pending,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-            Text('Recent Bills', style: AppTextStyles.heading3(color: cs.onSurface)),
+            Text('Properties', style: AppTextStyles.heading3(color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 14),
 
-            if (recentBills.isEmpty)
-              const EmptyState(
-                title: 'No Bills Yet',
-                subtitle: 'Tap "Create Bill" to add a bill',
-                icon: Icons.receipt_long_outlined,
-              )
-            else
-              ...recentBills.map((bill) {
-                final payments = billProvider.paymentsForBill(bill.id);
-                final paidCount = bill.paidFlats(payments);
-                final rawBill =
-                    billProvider.rawBillById(bill.id) ?? bill;
-                final residents = context
-                    .read<UserProvider>()
-                    .membersForApartment(aptId);
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.fromLTRB(14, 14, 4, 14),
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(bill.title,
-                                style: AppTextStyles.subheading(color: cs.onSurface),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
-                            const SizedBox(height: 3),
-                            Text(
-                              '${AppUtils.formatCurrency(bill.totalAmount)} · ${bill.totalFlats} flats · ${AppUtils.formatCurrency(bill.perFlatShare)}/flat',
-                              style: AppTextStyles.caption(color: cs.onSurfaceVariant),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              'Due: ${AppUtils.formatDate(bill.dueDate)}',
-                              style: AppTextStyles.caption(color: cs.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '$paidCount/${bill.totalFlats}',
-                            style: AppTextStyles.subheading(
-                                color: accent),
-                          ),
-                          Text('paid', style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
-                        ],
-                      ),
-                      GestureDetector(
-                        onTap: () => _showBillActionsSheet(
-                          context,
-                          bill: rawBill,
-                          billMonth: bill.month,
-                          residents: residents,
-                          billProvider: billProvider,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Icon(Icons.more_vert_rounded,
-                              size: 20, color: cs.onSurfaceVariant),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+            ...aptProvider.apartments.map((apt) => _ApartmentCard(apt: apt)),
 
             const SizedBox(height: 20),
           ],
@@ -704,61 +388,46 @@ class _AdminHome extends StatelessWidget {
       ),
     );
   }
+
+  Widget _miniStat(String value, String label) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(value,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            )),
+        Text(label,
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 10,
+              color: Colors.white.withOpacity(0.75),
+            )),
+      ],
+    );
+  }
 }
 
-// ── Meeting card ──────────────────────────────────────────────────────────────
-
-class _MeetingCard extends StatelessWidget {
-  final MeetingModel meeting;
-  final RoleTheme theme;
-
-  const _MeetingCard({required this.meeting, required this.theme});
-
-  String _formatDateTime(DateTime dt) {
-    const months = [
-      '',
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
-    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-    final min = dt.minute.toString().padLeft(2, '0');
-    final period = dt.hour < 12 ? 'AM' : 'PM';
-    return '${dt.day} ${months[dt.month]} ${dt.year}  ·  $hour:$min $period';
-  }
-
-  int get _daysUntil =>
-      meeting.scheduledAt.difference(DateTime.now()).inDays;
+class _ApartmentCard extends StatelessWidget {
+  final ApartmentModel apt;
+  const _ApartmentCard({required this.apt});
 
   @override
   Widget build(BuildContext context) {
-    final days = _daysUntil;
-    final urgency = days == 0
-        ? 'Today'
-        : days == 1
-            ? 'Tomorrow'
-            : 'In $days days';
-    final urgencyColor = days <= 1 ? AppColors.overdue : AppColors.purple;
-
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    final accent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
+    final adminAccent = RoleTheme.of(UserRole.president).effectivePrimary(context);
+    final presidentDisplayName = apt.presidentName ?? 'Unassigned';
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.purple.withOpacity(0.15)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
@@ -767,329 +436,93 @@ class _MeetingCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.purple.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.event_rounded,
-                color: AppColors.purple, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(meeting.title,
-                    style: AppTextStyles.subheading(color: cs.onSurface),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 3),
-                Text(meeting.description,
-                    style: AppTextStyles.caption(color: cs.onSurfaceVariant),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 6),
-                Row(
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.apartment_outlined,
+                    color: accent, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.schedule_outlined,
-                        size: 13, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        _formatDateTime(meeting.scheduledAt),
-                        style: AppTextStyles.caption(
-                            color: AppColors.textSecondary),
+                    Text(apt.name, style: AppTextStyles.subheading(color: cs.onSurface)),
+                    Text(apt.code,
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
+                        overflow: TextOverflow.ellipsis),
                   ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: urgencyColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              urgency,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: urgencyColor,
               ),
-            ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: apt.hasPresident
+                      ? AppColors.green.withOpacity(0.1)
+                      : AppColors.overdue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  apt.hasPresident ? 'Active' : 'No President',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: apt.hasPresident
+                        ? AppColors.green
+                        : AppColors.overdue,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _stat(Icons.door_front_door_outlined,
+                  '${apt.totalFlats} Flats', adminAccent, cs),
+              const SizedBox(width: 16),
+              _stat(
+                Icons.person_outline,
+                presidentDisplayName,
+                apt.hasPresident ? cs.onSurface : AppColors.overdue,
+                cs,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
-}
 
-class _HeroBannerStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  const _HeroBannerStat(
-      {required this.label, required this.value, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
+  Widget _stat(IconData icon, String label, Color color, ColorScheme cs) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: Colors.white70, size: 16),
-        const SizedBox(height: 4),
-        Text(value,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              fontSize: 14,
-            )),
-        Text(label,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 10,
-              color: Colors.white.withOpacity(0.7),
-            )),
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(label,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+        ),
       ],
     );
   }
-}
-
-// ── Bill actions sheet ────────────────────────────────────────────────────────
-
-void _showBillActionsSheet(
-  BuildContext context, {
-  required BillModel bill,
-  required String billMonth,
-  required List<UserModel> residents,
-  required BillProvider billProvider,
-}) {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (ctx) => SafeArea(
-      top: false,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        decoration: BoxDecoration(
-          color: Theme.of(ctx).colorScheme.surface,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(ctx).colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
-                children: [
-                  _dashboardActionTile(
-                    icon: Icons.edit_outlined,
-                    title: 'Edit Bill',
-                    subtitle: 'Update categories, amounts or due date',
-                    color: Theme.of(ctx).brightness == Brightness.dark
-                        ? const Color(0xFF60A5FA)
-                        : AppColors.blue,
-                    onTap: () {
-                      Navigator.pop(context);
-                      showEditBillSheet(context,
-                          bill: bill, residents: residents);
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  _dashboardActionTile(
-                    icon: Icons.delete_outline_rounded,
-                    title: 'Delete Bill',
-                    subtitle: 'Permanently remove bill and all payments',
-                    color: AppColors.overdue,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _confirmDeleteBill(context,
-                          billId: bill.id,
-                          billMonth: billMonth,
-                          billProvider: billProvider);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-Widget _dashboardActionTile({
-  required IconData icon,
-  required String title,
-  required String subtitle,
-  required Color color,
-  required VoidCallback onTap,
-}) {
-  return InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(16),
-    child: Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.15)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(Icons.arrow_forward_ios_rounded, color: color, size: 14),
-        ],
-      ),
-    ),
-  );
-}
-
-void _confirmDeleteBill(
-  BuildContext context, {
-  required String billId,
-  required String billMonth,
-  required BillProvider billProvider,
-}) {
-  showDialog<bool>(
-    context: context,
-    builder: (_) => Dialog(
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.overdue.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.warning_rounded,
-                  color: AppColors.overdue, size: 36),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Delete Bill?',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'This will permanently delete the $billMonth bill and all payment records. This cannot be undone.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 13,
-                color: Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Cancel',
-                        style: TextStyle(fontFamily: 'Poppins')),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.overdue,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Delete',
-                        style: TextStyle(
-                            fontFamily: 'Poppins', color: Colors.white)),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    ),
-  ).then((confirmed) async {
-    if (confirmed != true) return;
-    if (!context.mounted) return;
-    await billProvider.adminDeleteBill(billId);
-    if (!context.mounted) return;
-    AppUtils.showSnackBar(context, '$billMonth bill deleted');
-  });
 }

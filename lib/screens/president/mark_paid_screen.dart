@@ -17,7 +17,7 @@ class MarkPaidScreen extends StatelessWidget {
     final auth = context.read<AuthProvider>();
     final aptId = auth.currentUser?.apartmentId ?? '';
     final billProvider = context.watch<BillProvider>();
-    final theme = RoleTheme.of(UserRole.admin);
+    final theme = RoleTheme.of(UserRole.president);
 
     if (billProvider.isLoading) return const ShimmerDashboard();
 

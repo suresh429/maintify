@@ -128,7 +128,7 @@ exports.onWelcomeEmailReady = onDocumentUpdated(
 
     const { email, name, role } = after;
     if (!email) { console.warn('[EMAIL] onWelcomeEmailReady: no email — skipping'); return; }
-    if (role !== 'admin' && role !== 'user') {
+    if (role !== 'president' && role !== 'resident') {
       console.log(`[EMAIL] onWelcomeEmailReady: role=${role} — skipping`);
       return;
     }
@@ -136,7 +136,7 @@ exports.onWelcomeEmailReady = onDocumentUpdated(
     try {
       let subject, html;
 
-      if (role === 'admin') {
+      if (role === 'president') {
         const aptId = after.apartmentId;
         let aptName = after.apartmentName || '';
         let aptCode = after.apartmentCode || '';
@@ -201,7 +201,7 @@ exports.onPresidentRegistered = onDocumentUpdated('apartments/{aptId}', async (e
   if (before.status !== 'waiting_for_president' || after.status !== 'active') return;
 
   const aptId = event.params.aptId;
-  await sendToRole('superAdmin', {
+  await sendToRole('admin', {
     title:        'New President Registered',
     body:         `${after.presidentName ?? 'A president'} has registered for ${after.name ?? 'an apartment'}.`,
     type:         'president_registered',
@@ -254,7 +254,7 @@ exports.onPresidentTransferred = onDocumentUpdated('apartments/{aptId}', async (
 
 exports.onResidentRegistered = onDocumentCreated('users/{userId}', async (event) => {
   const user = event.data.data();
-  if (user.role !== 'user') return;
+  if (user.role !== 'resident') return;
 
   const aptId = user.apartmentId;
   if (!aptId) return;
@@ -262,7 +262,7 @@ exports.onResidentRegistered = onDocumentCreated('users/{userId}', async (event)
   const name = user.name ?? 'A resident';
   const unit = user.flatNumber ?? user.unit ?? '?';
 
-  await sendToApartment(aptId, 'admin', {
+  await sendToApartment(aptId, 'president', {
     title:        'New Resident Joined',
     body:         `${name} from Flat ${unit} has joined your apartment.`,
     type:         'resident_registered',
@@ -287,7 +287,7 @@ exports.onBillCreated = onDocumentCreated('bills/{billId}', async (event) => {
     ? Math.round(bill.totalAmount / bill.totalFlats)
     : bill.totalAmount;
 
-  await sendToApartment(aptId, 'user', {
+  await sendToApartment(aptId, 'resident', {
     title:        `New Bill: ${bill.title ?? bill.month ?? 'Maintenance'}`,
     body:         `A new maintenance bill has been generated — ₹${perFlat} per flat due by ${_formatTimestamp(bill.dueDate)}.`,
     type:         'bill',
@@ -318,7 +318,7 @@ exports.onBillUpdated = onDocumentUpdated('bills/{billId}', async (event) => {
   if (!amountChanged && !dueDateChanged && !titleChanged && !categoriesChanged) return;
 
   const billId = event.params.billId;
-  await sendToApartment(aptId, 'user', {
+  await sendToApartment(aptId, 'resident', {
     title:        'Maintenance Bill Updated',
     body:         `A maintenance bill has been updated. Please review the latest changes.`,
     type:         'bill_updated',
@@ -339,7 +339,7 @@ exports.onBillDeleted = onDocumentDeleted('bills/{billId}', async (event) => {
   const aptId = bill?.apartmentId;
   if (!aptId) return;
 
-  await sendToApartment(aptId, 'user', {
+  await sendToApartment(aptId, 'resident', {
     title:        'Maintenance Bill Removed',
     body:         `A maintenance bill has been removed by the president.`,
     type:         'bill_deleted',
@@ -362,7 +362,7 @@ exports.onMeetingCreated = onDocumentCreated('meetings/{meetingId}', async (even
   const meetingId = event.params.meetingId;
   const dateStr   = _formatTimestamp(meeting.scheduledAt);
 
-  await sendToApartment(aptId, 'user', {
+  await sendToApartment(aptId, 'resident', {
     title:        `New Meeting: ${meeting.title ?? 'Apartment Meeting'}`,
     body:         `A new apartment meeting has been scheduled on ${dateStr}.`,
     type:         'meeting',
@@ -393,7 +393,7 @@ exports.onMeetingUpdated = onDocumentUpdated('meetings/{meetingId}', async (even
     before.status !== 'cancelled' && before.status !== 'canceled';
 
   if (justCancelled) {
-    await sendToApartment(aptId, 'user', {
+    await sendToApartment(aptId, 'resident', {
       title:        'Meeting Cancelled',
       body:         `The scheduled meeting "${after.title ?? 'Apartment Meeting'}" has been cancelled.`,
       type:         'meeting_cancelled',
@@ -413,7 +413,7 @@ exports.onMeetingUpdated = onDocumentUpdated('meetings/{meetingId}', async (even
 
   if (!titleChanged && !agendaChanged && !scheduleChanged && !venueChanged) return;
 
-  await sendToApartment(aptId, 'user', {
+  await sendToApartment(aptId, 'resident', {
     title:        'Meeting Updated',
     body:         `Meeting information for "${after.title ?? 'Apartment Meeting'}" has been updated.`,
     type:         'meeting_updated',
@@ -436,7 +436,7 @@ exports.onComplaintCreated = onDocumentCreated('complaints/{complaintId}', async
 
   const complaintId  = event.params.complaintId;
 
-  await sendToApartment(aptId, 'admin', {
+  await sendToApartment(aptId, 'president', {
     title:        'New Complaint',
     body:         `${complaint.userName ?? 'A resident'} (Flat ${complaint.unit ?? '?'}): ${_truncate(complaint.title, 80)}`,
     type:         'complaint',
@@ -513,7 +513,7 @@ exports.onComplaintMessage = onDocumentCreated(
       });
     } else {
       // Resident sent a message → notify admin
-      await sendToApartment(aptId, 'admin', {
+      await sendToApartment(aptId, 'president', {
         title:        'New Message on Complaint',
         body:         `${msg.senderName ?? 'Resident'}: ${_truncate(msg.content, 80)}`,
         type:         'complaint',
@@ -547,7 +547,7 @@ exports.onPaymentUpdated = onDocumentUpdated('payments/{paymentId}', async (even
 
   // Case A: Resident submitted / reported payment
   if (!before.transactionId && after.transactionId && !after.adminVerified) {
-    await sendToApartment(aptId, 'admin', {
+    await sendToApartment(aptId, 'president', {
       title:        'Payment Received',
       body:         `Flat ${unit} marked the maintenance bill as paid. Awaiting verification.`,
       type:         'payment_received',

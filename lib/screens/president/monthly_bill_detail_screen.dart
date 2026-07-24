@@ -22,7 +22,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = RoleTheme.of(UserRole.admin);
+    final theme = RoleTheme.of(UserRole.president);
     final billProvider = context.watch<BillProvider>();
 
     final fresh = billProvider.monthlyBillsForApartment(aptId).firstWhere(

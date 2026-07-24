@@ -34,7 +34,7 @@ class FirebaseAuthService {
       }
 
       // SuperAdmin bypasses email verification — all other roles must verify
-      if (!cred.user!.emailVerified && user.role.name != 'superAdmin') {
+      if (!cred.user!.emailVerified && user.role.name != 'admin') {
         await _auth.signOut();
         return (user: null, error: 'EMAIL_NOT_VERIFIED');
       }
@@ -83,7 +83,7 @@ class FirebaseAuthService {
         'name':            name,
         'email':           email,
         'phone':           apt.presidentPhone ?? '',
-        'role':            'admin',
+        'role':            'president',
         'apartmentId':     apt.id,
         'unit':            unit,
         'avatarInitials':  initials.isEmpty ? name[0].toUpperCase() : initials,
@@ -173,7 +173,7 @@ class FirebaseAuthService {
         'name':           name,
         'email':          email,
         'phone':          phone,
-        'role':           'admin',
+        'role':           'president',
         'apartmentId':    apartmentId,
         'unit':           presidentFlat,
         'avatarInitials': initials.isEmpty ? name[0].toUpperCase() : initials,
@@ -233,7 +233,7 @@ class FirebaseAuthService {
         'name':           name,
         'email':          email,
         'phone':          phone,
-        'role':           'user',
+        'role':           'resident',
         'apartmentId':    apartmentId,
         'unit':           flatNumber,
         'avatarInitials': initials.isEmpty ? name[0].toUpperCase() : initials,

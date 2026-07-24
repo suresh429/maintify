@@ -88,7 +88,7 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: ColorScheme.light(
-            primary: RoleTheme.of(UserRole.admin).primary,
+            primary: RoleTheme.of(UserRole.president).primary,
           ),
         ),
         child: child!,
@@ -104,7 +104,7 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: ColorScheme.light(
-            primary: RoleTheme.of(UserRole.admin).primary,
+            primary: RoleTheme.of(UserRole.president).primary,
           ),
         ),
         child: child!,
@@ -145,7 +145,7 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = RoleTheme.of(UserRole.admin);
+    final theme = RoleTheme.of(UserRole.president);
     final bottomPad = MediaQuery.of(context).viewPadding.bottom;
 
     final cs = Theme.of(context).colorScheme;

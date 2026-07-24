@@ -11,14 +11,14 @@ import '../../providers/apartment_provider.dart';
 import '../../widgets/pill_filter_bar.dart';
 import '../shared/chat_screen.dart';
 
-class AdminComplaintsScreen extends StatefulWidget {
-  const AdminComplaintsScreen({super.key});
+class PresidentComplaintsScreen extends StatefulWidget {
+  const PresidentComplaintsScreen({super.key});
 
   @override
-  State<AdminComplaintsScreen> createState() => _AdminComplaintsScreenState();
+  State<PresidentComplaintsScreen> createState() => _PresidentComplaintsScreenState();
 }
 
-class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
+class _PresidentComplaintsScreenState extends State<PresidentComplaintsScreen> {
   String _filter = 'All';
 
   static const List<String> _filters = [
@@ -56,11 +56,11 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: RoleTheme.of(UserRole.admin).effectivePrimary(context).withOpacity(0.1),
+                        color: RoleTheme.of(UserRole.president).effectivePrimary(context).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(Icons.apartment_rounded,
-                          color: RoleTheme.of(UserRole.admin).effectivePrimary(context), size: 18),
+                          color: RoleTheme.of(UserRole.president).effectivePrimary(context), size: 18),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -85,7 +85,7 @@ class _AdminComplaintsScreenState extends State<AdminComplaintsScreen> {
                 child: PillFilterBar(
                   options: _filters,
                   selected: _filter,
-                  activeColor: RoleTheme.of(UserRole.admin).effectivePrimary(context),
+                  activeColor: RoleTheme.of(UserRole.president).effectivePrimary(context),
                   onChanged: (f) => setState(() => _filter = f),
                 ),
               ),
@@ -190,7 +190,7 @@ class _AdminComplaintTile extends StatelessWidget {
         (lastMsg?.isFromAdmin == false);
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
+    final accent = RoleTheme.of(UserRole.president).effectivePrimary(context);
 
     return GestureDetector(
       onTap: onTap,

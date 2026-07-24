@@ -8,9 +8,9 @@ import '../providers/meeting_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/user_provider.dart';
 import '../core/theme/role_theme.dart';
-import 'super_admin/super_admin_dashboard.dart';
 import 'admin/admin_dashboard.dart';
-import 'user/user_dashboard.dart';
+import 'president/president_dashboard.dart';
+import 'resident/resident_dashboard.dart';
 import 'login_screen.dart';
 
 class DashboardRouter extends StatelessWidget {
@@ -18,12 +18,12 @@ class DashboardRouter extends StatelessWidget {
 
   Widget _dashboardFor(UserRole? role, {String? notificationType}) {
     switch (role) {
-      case UserRole.superAdmin:
-        return SuperAdminDashboard(notificationType: notificationType);
       case UserRole.admin:
         return AdminDashboard(notificationType: notificationType);
-      case UserRole.user:
-        return UserDashboard(notificationType: notificationType);
+      case UserRole.president:
+        return PresidentDashboard(notificationType: notificationType);
+      case UserRole.resident:
+        return ResidentDashboard(notificationType: notificationType);
       default:
         return const LoginScreen();
     }
@@ -85,14 +85,14 @@ class _StreamStarterState extends State<_StreamStarter> {
       context.read<MeetingProvider>().startListening(aptId);
 
       switch (role) {
-        case UserRole.superAdmin:
+        case UserRole.admin:
           context.read<BillProvider>().startListeningAll();
           break;
-        case UserRole.admin:
+        case UserRole.president:
           context.read<BillProvider>().startListeningForApartment(aptId);
           context.read<ComplaintProvider>().startListeningForApartment(aptId);
           break;
-        case UserRole.user:
+        case UserRole.resident:
           // Pass userId so BillProvider streams only this user's payment docs,
           // avoiding loading every resident's payment records.
           context.read<BillProvider>().startListeningForApartment(aptId, userId: user.id);

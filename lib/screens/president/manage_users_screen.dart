@@ -30,7 +30,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     final userProvider = context.watch<UserProvider>();
     final billProvider = context.watch<BillProvider>();
     final aptProvider = context.watch<ApartmentProvider>();
-    final theme = RoleTheme.of(UserRole.admin);
+    final theme = RoleTheme.of(UserRole.president);
 
     final apt = aptProvider.findById(aptId);
     final maxFlats = apt?.totalFlats ?? 10;
@@ -40,12 +40,12 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     // All apartment members: admin + residents (not super admin)
     final members = userProvider.users
         .where((u) =>
-            u.apartmentId == aptId && u.role != UserRole.superAdmin)
+            u.apartmentId == aptId && u.role != UserRole.admin)
         .toList()
       ..sort((a, b) {
         // President first, then sort by unit number
-        if (a.role == UserRole.admin) return -1;
-        if (b.role == UserRole.admin) return 1;
+        if (a.role == UserRole.president) return -1;
+        if (b.role == UserRole.president) return 1;
         return a.unit.compareTo(b.unit);
       });
 
@@ -175,13 +175,13 @@ class _MemberCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final adminAccent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
+    final adminAccent = RoleTheme.of(UserRole.president).effectivePrimary(context);
     final views = billProvider.userBillViews(user.id);
     final paid = views.where((v) => v.payment.isPaid).length;
     final pending = views.where((v) => v.payment.isPending).length;
     final overdue = views.where((v) => v.payment.isOverdue).length;
     final totalDue = billProvider.totalDueForUser(user.id);
-    final isPresident = user.role == UserRole.admin;
+    final isPresident = user.role == UserRole.president;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

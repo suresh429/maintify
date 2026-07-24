@@ -16,7 +16,7 @@ class PaymentHistoryScreen extends StatelessWidget {
     final auth = context.read<AuthProvider>();
     final userId = auth.currentUser?.id ?? '';
     final billProvider = context.watch<BillProvider>();
-    final theme = RoleTheme.of(UserRole.user);
+    final theme = RoleTheme.of(UserRole.resident);
 
     final allViews = billProvider.userBillViews(userId);
     final paidViews = allViews.where((v) => v.payment.isPaid).toList()

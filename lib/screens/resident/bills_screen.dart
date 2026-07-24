@@ -26,7 +26,7 @@ class _BillsScreenState extends State<BillsScreen> {
     final userId = auth.currentUser?.id ?? '';
     final aptId = auth.currentUser?.apartmentId ?? '';
     final billProvider = context.watch<BillProvider>();
-    final theme = RoleTheme.of(UserRole.user);
+    final theme = RoleTheme.of(UserRole.resident);
 
     if (billProvider.isInitialLoading || billProvider.isLoading) return const ShimmerDashboard();
 
@@ -171,7 +171,7 @@ class _UserMonthlyCard extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => UserMonthlyBillDetailScreen(
+          builder: (_) => ResidentMonthlyBillDetailScreen(
             summary: summary,
             aptId: aptId,
           ),

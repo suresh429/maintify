@@ -28,11 +28,11 @@ class UserModel {
 
   String get roleLabel {
     switch (role) {
-      case UserRole.superAdmin:
-        return 'Super Admin';
       case UserRole.admin:
+        return 'Admin';
+      case UserRole.president:
         return 'President';
-      case UserRole.user:
+      case UserRole.resident:
         return 'Resident';
     }
   }
@@ -40,12 +40,12 @@ class UserModel {
   /// Firestore role string → UserRole enum
   static UserRole _roleFromString(String? s) {
     switch (s) {
-      case 'superAdmin':
-        return UserRole.superAdmin;
       case 'admin':
         return UserRole.admin;
+      case 'president':
+        return UserRole.president;
       default:
-        return UserRole.user;
+        return UserRole.resident;
     }
   }
 
@@ -101,7 +101,7 @@ class MockUsers {
       name: 'Admin System',
       email: 'superadmin@test.com',
       phone: '+91 98765 00001',
-      role: UserRole.superAdmin,
+      role: UserRole.admin,
       unit: 'HQ',
       avatarInitials: 'SA',
       joinedAt: DateTime(2021, 1, 1),
@@ -113,7 +113,7 @@ class MockUsers {
       name: 'G. Srikanth',
       email: 'admin@test.com',
       phone: '+91 98765 00002',
-      role: UserRole.admin,
+      role: UserRole.president,
       apartmentId: 'apt1',
       unit: '402',
       avatarInitials: 'GS',
@@ -126,7 +126,7 @@ class MockUsers {
       name: 'Rohit',
       email: 'user@test.com',
       phone: '+91 98765 00003',
-      role: UserRole.user,
+      role: UserRole.resident,
       apartmentId: 'apt1',
       unit: '101',
       avatarInitials: 'RO',
@@ -137,7 +137,7 @@ class MockUsers {
       name: 'Ravi',
       email: 'ravi@test.com',
       phone: '+91 98765 00004',
-      role: UserRole.user,
+      role: UserRole.resident,
       apartmentId: 'apt1',
       unit: '102',
       avatarInitials: 'RA',
@@ -148,7 +148,7 @@ class MockUsers {
       name: 'Chaitanya',
       email: 'chaitanya@test.com',
       phone: '+91 98765 00005',
-      role: UserRole.user,
+      role: UserRole.resident,
       apartmentId: 'apt1',
       unit: '201',
       avatarInitials: 'CH',
@@ -159,7 +159,7 @@ class MockUsers {
       name: 'Suresh',
       email: 'suresh@test.com',
       phone: '+91 98765 00006',
-      role: UserRole.user,
+      role: UserRole.resident,
       apartmentId: 'apt1',
       unit: '202',
       avatarInitials: 'SU',
@@ -170,7 +170,7 @@ class MockUsers {
       name: 'Sai',
       email: 'sai@test.com',
       phone: '+91 98765 00009',
-      role: UserRole.user,
+      role: UserRole.resident,
       apartmentId: 'apt1',
       unit: '301',
       avatarInitials: 'SA',
@@ -181,7 +181,7 @@ class MockUsers {
       name: 'Raghu',
       email: 'raghu@test.com',
       phone: '+91 98765 00010',
-      role: UserRole.user,
+      role: UserRole.resident,
       apartmentId: 'apt1',
       unit: '302',
       avatarInitials: 'RG',
@@ -192,7 +192,7 @@ class MockUsers {
       name: 'Ganesh',
       email: 'ganesh@test.com',
       phone: '+91 98765 00011',
-      role: UserRole.user,
+      role: UserRole.resident,
       apartmentId: 'apt1',
       unit: '401',
       avatarInitials: 'GN',
@@ -203,7 +203,7 @@ class MockUsers {
       name: 'Sathish',
       email: 'sathish@test.com',
       phone: '+91 98765 00013',
-      role: UserRole.user,
+      role: UserRole.resident,
       apartmentId: 'apt1',
       unit: '501',
       avatarInitials: 'ST',
@@ -214,7 +214,7 @@ class MockUsers {
       name: 'Deepika',
       email: 'deepika@test.com',
       phone: '+91 98765 00014',
-      role: UserRole.user,
+      role: UserRole.resident,
       apartmentId: 'apt1',
       unit: '502',
       avatarInitials: 'DK',
@@ -239,19 +239,19 @@ class MockUsers {
   }
 
   static List<UserModel> get residents =>
-      all.where((u) => u.role == UserRole.user).toList();
+      all.where((u) => u.role == UserRole.resident).toList();
 
   static List<UserModel> get admins =>
-      all.where((u) => u.role == UserRole.admin).toList();
+      all.where((u) => u.role == UserRole.president).toList();
 
   static List<UserModel> residentsForApartment(String aptId) => all
-      .where((u) => u.role == UserRole.user && u.apartmentId == aptId)
+      .where((u) => u.role == UserRole.resident && u.apartmentId == aptId)
       .toList();
 
   static UserModel? presidentFor(String aptId) {
     try {
       return all.firstWhere(
-        (u) => u.role == UserRole.admin && u.apartmentId == aptId,
+        (u) => u.role == UserRole.president && u.apartmentId == aptId,
       );
     } catch (_) {
       return null;

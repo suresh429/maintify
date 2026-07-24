@@ -20,7 +20,7 @@ class ComplaintsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final user = auth.currentUser!;
-    final theme = RoleTheme.of(UserRole.user);
+    final theme = RoleTheme.of(UserRole.resident);
 
     return Consumer<ComplaintProvider>(
       builder: (_, prov, __) {

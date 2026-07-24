@@ -130,7 +130,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
       isScrollControlled: true,
       builder: (ctx) {
         final sheetCs = Theme.of(ctx).colorScheme;
-        final sheetAccent = RoleTheme.of(UserRole.admin).effectivePrimary(ctx);
+        final sheetAccent = RoleTheme.of(UserRole.president).effectivePrimary(ctx);
         return DraggableScrollableSheet(
           initialChildSize: 0.55,
           minChildSize: 0.35,
@@ -332,7 +332,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     final aptId = auth.currentUser?.apartmentId ?? '';
     final apt = context.read<ApartmentProvider>().findById(aptId);
     final residents = context.read<UserProvider>().membersForApartment(aptId);
-    final theme = RoleTheme.of(UserRole.admin);
+    final theme = RoleTheme.of(UserRole.president);
     final accent = theme.effectivePrimary(context);
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;

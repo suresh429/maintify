@@ -87,7 +87,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final theme =
-        auth.role != null ? RoleTheme.of(auth.role!) : RoleTheme.of(UserRole.user);
+        auth.role != null ? RoleTheme.of(auth.role!) : RoleTheme.of(UserRole.resident);
     final cs = Theme.of(context).colorScheme;
 
     return Padding(

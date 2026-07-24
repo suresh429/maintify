@@ -13,8 +13,8 @@ import '../../core/utils/app_utils.dart';
 import '../../widgets/change_password_sheet.dart';
 import '../../widgets/logout_sheet.dart';
 
-class UserProfileScreen extends StatelessWidget {
-  const UserProfileScreen({super.key});
+class ResidentProfileScreen extends StatelessWidget {
+  const ResidentProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +22,7 @@ class UserProfileScreen extends StatelessWidget {
     final user = auth.currentUser!;
     final billProvider = context.watch<BillProvider>();
     final aptProvider = context.watch<ApartmentProvider>();
-    final theme = RoleTheme.of(UserRole.user);
+    final theme = RoleTheme.of(UserRole.resident);
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -258,7 +258,7 @@ class UserProfileScreen extends StatelessWidget {
                   labelColor: AppColors.overdue,
                   onTap: () async {
                     final confirm =
-                        await showLogoutSheet(context, UserRole.user);
+                        await showLogoutSheet(context, UserRole.resident);
                     if (confirm == true && context.mounted) {
                       context.read<AuthProvider>().logout();
                       Navigator.pushReplacementNamed(context, '/login');

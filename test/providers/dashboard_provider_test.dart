@@ -86,12 +86,12 @@ void main() {
         ),
       ]);
 
-      // 1 admin + 2 residents
+      // 1 admin + 1 president + 2 residents
       MockUsers.replaceAll([
-        _user('u1', UserRole.superAdmin),
-        _user('u2', UserRole.admin, aptId: 'apt1'),
-        _user('u3', UserRole.user, aptId: 'apt1'),
-        _user('u4', UserRole.user, aptId: 'apt1'),
+        _user('u1', UserRole.admin),
+        _user('u2', UserRole.president, aptId: 'apt1'),
+        _user('u3', UserRole.resident, aptId: 'apt1'),
+        _user('u4', UserRole.resident, aptId: 'apt1'),
       ]);
 
       // 1 paid bill + 1 overdue bill
@@ -144,11 +144,11 @@ void main() {
   group('DashboardProvider.adminStats', () {
     setUp(() {
       MockUsers.replaceAll([
-        _user('u1', UserRole.superAdmin),
-        _user('u2', UserRole.admin, aptId: 'apt1'),
-        _user('u3', UserRole.user, aptId: 'apt1'),
-        _user('u4', UserRole.user, aptId: 'apt1'),
-        _user('u5', UserRole.user, aptId: 'apt1'),
+        _user('u1', UserRole.admin),
+        _user('u2', UserRole.president, aptId: 'apt1'),
+        _user('u3', UserRole.resident, aptId: 'apt1'),
+        _user('u4', UserRole.resident, aptId: 'apt1'),
+        _user('u5', UserRole.resident, aptId: 'apt1'),
       ]);
 
       // b1: 2 paid, 1 pending (partial)
@@ -206,7 +206,7 @@ void main() {
     });
 
     test('collectionRate returns 1.0 via collectionRate() helper', () {
-      MockUsers.replaceAll([_user('u3', UserRole.user, aptId: 'apt1')]);
+      MockUsers.replaceAll([_user('u3', UserRole.resident, aptId: 'apt1')]);
       final bill = _bill('b1', totalAmount: 1000, totalFlats: 1);
       final payment = BillPayment(
         id: 'p1', billId: 'b1', userId: 'u3', unitNumber: '101',

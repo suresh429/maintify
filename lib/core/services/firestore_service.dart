@@ -165,7 +165,7 @@ class FirestoreService {
     final snap = await _db
         .collection('users')
         .where('apartmentId', isEqualTo: aptId)
-        .where('role', isEqualTo: 'admin')
+        .where('role', isEqualTo: 'president')
         .limit(1)
         .get();
     if (snap.docs.isEmpty) return null;
@@ -183,13 +183,13 @@ class FirestoreService {
     final batch = _db.batch();
 
     batch.update(_db.collection('users').doc(newPresidentId), {
-      'role': 'admin',
+      'role': 'president',
       'apartmentId': newPresidentApartmentId,
     });
 
     if (oldPresidentId != null && oldPresidentId != newPresidentId) {
       batch.update(_db.collection('users').doc(oldPresidentId), {
-        'role': 'user',
+        'role': 'resident',
       });
     }
 
@@ -393,7 +393,7 @@ class FirestoreService {
   Future<void> cleanupLegacyNotifications() async {
     final snap = await _db
         .collection('notifications')
-        .where('targetRole', whereIn: ['user', 'admin', 'superAdmin'])
+        .where('targetRole', whereIn: ['resident', 'president', 'admin'])
         .limit(200)
         .get();
 
@@ -471,7 +471,7 @@ class FirestoreService {
       'name':           invitation.presidentName,
       'email':          invitation.presidentEmail,
       'phone':          invitation.mobileNumber,
-      'role':           'admin',
+      'role':           'president',
       'apartmentId':    invitation.apartmentId,
       'unit':           invitation.presidentFlatNumber,
       'avatarInitials': initials.isEmpty
