@@ -17,6 +17,7 @@ import 'providers/complaint_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/meeting_provider.dart';
 import 'providers/registration_provider.dart';
+import 'providers/version_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/auth/registration_screen.dart';
@@ -83,6 +84,7 @@ class MaintifyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => MeetingProvider()),
         ChangeNotifierProvider(create: (_) => RegistrationProvider()),
+        ChangeNotifierProvider(create: (_) => VersionProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

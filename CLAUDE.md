@@ -239,17 +239,25 @@ Node.js v2 functions in `functions/index.js`. Deploy with `firebase deploy --onl
 |---|---|---|
 | `onApartmentCreated` | `apartments/{aptId}` onCreate | Gmail SMTP welcome email to designated president with apartment code |
 | `onPresidentRegistered` | `apartments/{aptId}` onUpdate | FCM to all superAdmins when status changes `waiting_for_president` → `active` |
+| `onPresidentInvitationCreated` | `presidentInvitations/{id}` onCreate | Gmail SMTP invitation email to president (includes tower info if gated community) |
+| `onWelcomeEmailReady` | `apartments/{aptId}` onUpdate | Gmail SMTP welcome email when `welcomeEmailReady=true` flag is set |
 | `onResidentApproved` | `users/{userId}` onCreate (role=`user`) | Gmail SMTP approval email to resident |
 | `onPresidentTransferred` | `apartments/{aptId}` onUpdate | FCM to old + new president when `presidentId` changes between two real UIDs |
 | `onBillCreated` | `bills/{billId}` onCreate | FCM to all residents in the apartment |
+| `onBillUpdated` | `bills/{billId}` onUpdate | FCM to all residents when bill is edited |
+| `onBillDeleted` | `bills/{billId}` onDelete | FCM to all residents when bill is deleted |
 | `onMeetingCreated` | `meetings/{meetingId}` onCreate | FCM to all residents |
+| `onMeetingUpdated` | `meetings/{meetingId}` onUpdate | FCM to all residents when meeting is edited or cancelled |
 | `onComplaintCreated` | `complaints/{complaintId}` onCreate | FCM to apartment admin |
 | `onComplaintMessage` | `complaints/{id}/messages/{msgId}` onCreate | FCM to the other party (admin reply → resident; resident message → admin) |
+| `onComplaintUpdated` | `complaints/{complaintId}` onUpdate | FCM when complaint is closed/resolved |
 | `onPaymentUpdated` | `payments/{paymentId}` onUpdate | Case A: resident submits → FCM + in-app notification to admin. Case B: admin verifies → FCM + in-app notification to resident |
 
 ### Email Service
 
-`functions/services/mailService.js` — exports `sendEmail({ to, subject, html })` using Nodemailer with Gmail SMTP. HTML templates in `functions/templates/welcome_email.js` and `functions/templates/resident_approved_email.js`. Both email functions in `index.js` use idempotency guards (`welcomeEmailSentAt`, `approvalEmailSentAt`) written back to Firestore to prevent duplicate sends on function retry. The Nodemailer transporter is created lazily inside `sendEmail()` — secrets are unavailable at module init time.
+`functions/services/mailService.js` — exports `sendEmail({ to, subject, html })` using Nodemailer with Gmail SMTP. HTML templates in `functions/templates/`: `welcome_email.js`, `resident_approved_email.js`, `president_invitation_email.js`. Email functions use idempotency guards (e.g. `welcomeEmailSentAt`, `approvalEmailSentAt`) written back to Firestore to prevent duplicate sends on function retry. The Nodemailer transporter is created lazily inside `sendEmail()` — secrets are unavailable at module init time.
+
+`functions/services/notificationService.js` — exports FCM helpers used by all trigger functions: `sendToUser(uid, title, body, data)`, `sendToUsers(uids, ...)`, `sendToApartment(aptId, role, ...)`, `sendToRole(role, ...)`. All FCM sending is delegated here — trigger functions never call `admin.messaging()` directly.
 
 ### Firebase Secrets (Gmail SMTP credentials)
 
