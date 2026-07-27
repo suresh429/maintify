@@ -130,7 +130,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
             ),
             padding: EdgeInsets.fromLTRB(
               28, 20, 28,
-              MediaQuery.of(ctx).viewInsets.bottom + 36,
+              MediaQuery.of(ctx).viewPadding.bottom + 28,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -329,7 +329,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                 const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           padding: EdgeInsets.fromLTRB(
-              28, 20, 28, MediaQuery.of(ctx).viewInsets.bottom + 36),
+              28, 20, 28, MediaQuery.of(ctx).viewPadding.bottom + 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

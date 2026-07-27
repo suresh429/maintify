@@ -168,7 +168,8 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                 Flexible(
                   child: ListView.builder(
                     controller: scrollCtrl,
-                    padding: const EdgeInsets.only(bottom: 24),
+                    padding: EdgeInsets.only(
+                      bottom: 24 + MediaQuery.of(ctx).viewPadding.bottom),
                     itemCount: months.length,
                     itemBuilder: (_, i) {
                       final month = months[i];

@@ -123,6 +123,7 @@ class UserMonthlySummary {
   String get status {
     if (isFullyPaid) return BillStatus.paid;
     if (isPartiallyPaid) return BillStatus.partiallyPaid;
+    if (views.any((v) => v.payment.isPendingApproval)) return BillStatus.pendingApproval;
     if (views.any((v) => v.payment.isOverdue)) return BillStatus.overdue;
     return BillStatus.pending;
   }
@@ -424,6 +425,9 @@ class BillProvider extends ChangeNotifier {
     }
   }
 
+  /// Returns the month string for a given bill id, or null if not found.
+  String? monthForBill(String billId) => rawBillById(billId)?.month;
+
   // ── Monthly grouping ──────────────────────────────────────────────────────
 
   static DateTime _parseMonthYear(String month) {
@@ -517,31 +521,227 @@ class BillProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> userReportPaid(String billId, String userId,
-      {String? transactionId}) async {
+  // ── Resident submit payment for approval ──────────────────────────────────
+
+  /// Resident submits all pending bills in a month for president approval.
+  /// Sets status → [BillStatus.pendingApproval] and notifies the president.
+  Future<void> residentSubmitPaymentForMonth({
+    required String month,
+    required String aptId,
+    required String userId,
+    required String presidentId,
+    required String unitNumber,
+  }) async {
     _isLoading = true;
     notifyListeners();
 
-    final paymentId = '${billId}_$userId';
-    final txnId =
-        transactionId ?? 'SELF_${DateTime.now().millisecondsSinceEpoch}';
+    final now = DateTime.now();
+    bool submitted = false;
 
-    await _fs.updatePayment(paymentId, {
-      'transactionId': txnId,
-      'adminVerified': false,
-    });
+    final monthBills = _bills
+        .where((b) => b.apartmentId == aptId && b.month == month)
+        .toList();
 
-    final i =
-        _payments.indexWhere((p) => p.billId == billId && p.userId == userId);
-    if (i != -1) {
-      _payments[i] = _payments[i].copyWith(
-        transactionId: txnId,
-        adminVerified: false,
-      );
+    for (final bill in monthBills) {
+      final payment = userPaymentForBill(bill.id, userId);
+      // Guard: only submit if currently pending or overdue (not already in pendingApproval)
+      if (payment != null && !payment.isPaid && !payment.isPendingApproval) {
+        await _fs.updatePayment('${bill.id}_$userId', {
+          'status':      BillStatus.pendingApproval,
+          'submittedAt': Timestamp.fromDate(now),
+          'submittedBy': userId,
+          // Clear any prior rejection
+          'rejectedAt':  null,
+          'rejectedBy':  null,
+        });
+        final idx = _payments
+            .indexWhere((p) => p.billId == bill.id && p.userId == userId);
+        if (idx != -1) {
+          _payments[idx] = _payments[idx].copyWith(
+            status:      BillStatus.pendingApproval,
+            submittedAt: now,
+            submittedBy: userId,
+          );
+        }
+        submitted = true;
+      }
     }
+
+    if (submitted) {
+      try {
+        await _fs.addNotification({
+          'userId':      presidentId,
+          'senderId':    userId,
+          'apartmentId': aptId,
+          'title':       'New Payment Request',
+          'body':        'Flat $unitNumber has submitted a payment for approval.',
+          'type':        NotificationType.paymentReceived,
+          'createdAt':   FieldValue.serverTimestamp(),
+          'isRead':      false,
+        });
+      } catch (e) {
+        debugPrint('[BillProvider] Submit notification failed: $e');
+      }
+    }
+
     MockBillData.replaceAll(_bills, _payments);
     _isLoading = false;
     notifyListeners();
+  }
+
+  // ── President approve / reject ────────────────────────────────────────────
+
+  /// President approves a resident's pending payment request.
+  /// Sets status → [BillStatus.paid] and notifies the resident.
+  Future<void> presidentApprovePaymentForFlat({
+    required String month,
+    required String aptId,
+    required String userId,
+    required String presidentId,
+    required String unitNumber,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final now = DateTime.now();
+
+    final monthBills = _bills
+        .where((b) => b.apartmentId == aptId && b.month == month)
+        .toList();
+
+    for (final bill in monthBills) {
+      final payment = userPaymentForBill(bill.id, userId);
+      if (payment != null && payment.isPendingApproval) {
+        await _fs.updatePayment('${bill.id}_$userId', {
+          'status':        BillStatus.paid,
+          'paidDate':      Timestamp.fromDate(now),
+          'approvedAt':    Timestamp.fromDate(now),
+          'approvedBy':    presidentId,
+          'adminVerified': true,
+        });
+        final idx = _payments
+            .indexWhere((p) => p.billId == bill.id && p.userId == userId);
+        if (idx != -1) {
+          _payments[idx] = _payments[idx].copyWith(
+            status:        BillStatus.paid,
+            paidDate:      now,
+            approvedAt:    now,
+            approvedBy:    presidentId,
+            adminVerified: true,
+          );
+        }
+      }
+    }
+
+    try {
+      await _fs.addNotification({
+        'userId':      userId,
+        'senderId':    presidentId,
+        'apartmentId': aptId,
+        'title':       'Payment Approved',
+        'body':        'Your maintenance payment has been approved by the President.',
+        'type':        NotificationType.paymentApproved,
+        'createdAt':   FieldValue.serverTimestamp(),
+        'isRead':      false,
+      });
+    } catch (e) {
+      debugPrint('[BillProvider] Approve notification failed: $e');
+    }
+
+    MockBillData.replaceAll(_bills, _payments);
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// President rejects a resident's pending payment request.
+  /// Resets status → [BillStatus.pending] so resident can resubmit.
+  Future<void> presidentRejectPaymentForFlat({
+    required String month,
+    required String aptId,
+    required String userId,
+    required String presidentId,
+    required String unitNumber,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final now = DateTime.now();
+
+    final monthBills = _bills
+        .where((b) => b.apartmentId == aptId && b.month == month)
+        .toList();
+
+    for (final bill in monthBills) {
+      final payment = userPaymentForBill(bill.id, userId);
+      if (payment != null && payment.isPendingApproval) {
+        await _fs.updatePayment('${bill.id}_$userId', {
+          'status':      BillStatus.pending,
+          'rejectedAt':  Timestamp.fromDate(now),
+          'rejectedBy':  presidentId,
+          // Clear submission fields
+          'submittedAt': null,
+          'submittedBy': null,
+        });
+        // Build a fresh object so nullable fields can be cleared
+        final idx = _payments
+            .indexWhere((p) => p.billId == bill.id && p.userId == userId);
+        if (idx != -1) {
+          final old = _payments[idx];
+          _payments[idx] = BillPayment(
+            id:            old.id,
+            billId:        old.billId,
+            userId:        old.userId,
+            unitNumber:    old.unitNumber,
+            amount:        old.amount,
+            status:        BillStatus.pending,
+            paidDate:      old.paidDate,
+            transactionId: old.transactionId,
+            adminVerified: old.adminVerified,
+            submittedAt:   null,
+            submittedBy:   null,
+            approvedAt:    old.approvedAt,
+            approvedBy:    old.approvedBy,
+            rejectedAt:    now,
+            rejectedBy:    presidentId,
+          );
+        }
+      }
+    }
+
+    try {
+      await _fs.addNotification({
+        'userId':      userId,
+        'senderId':    presidentId,
+        'apartmentId': aptId,
+        'title':       'Payment Rejected',
+        'body':        'Your payment request was rejected by the President. Please contact them for clarification.',
+        'type':        NotificationType.paymentRejected,
+        'createdAt':   FieldValue.serverTimestamp(),
+        'isRead':      false,
+      });
+    } catch (e) {
+      debugPrint('[BillProvider] Reject notification failed: $e');
+    }
+
+    MockBillData.replaceAll(_bills, _payments);
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  // ── Pending approval query ────────────────────────────────────────────────
+
+  /// All payment records awaiting president approval for a given apartment.
+  List<BillPayment> pendingApprovalPaymentsForApartment(String aptId) =>
+      _payments
+          .where((p) =>
+              p.isPendingApproval &&
+              _bills.any((b) => b.id == p.billId && b.apartmentId == aptId))
+          .toList();
+
+  @Deprecated('Use residentSubmitPaymentForMonth instead')
+  Future<void> userReportPaid(String billId, String userId,
+      {String? transactionId}) async {
+    // No-op — replaced by residentSubmitPaymentForMonth.
   }
 
   /// Creates ONE Firestore bill document with embedded [categories] for [month].
@@ -730,42 +930,10 @@ class BillProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  @Deprecated('Use residentSubmitPaymentForMonth instead — direct mark-paid bypasses approval flow.')
   Future<void> userPayMonthlyBill(
       String month, String aptId, String userId) async {
-    _isLoading = true;
-    notifyListeners();
-
-    final monthBills = _bills
-        .where((b) => b.apartmentId == aptId && b.month == month)
-        .toList();
-
-    for (final bill in monthBills) {
-      final payment = userPaymentForBill(bill.id, userId);
-      if (payment != null && !payment.isPaid) {
-        final paymentId = '${bill.id}_$userId';
-        final now = DateTime.now();
-        final txn = 'PAY${now.millisecondsSinceEpoch}';
-        await _fs.updatePayment(paymentId, {
-          'status': BillStatus.paid,
-          'paidDate': Timestamp.fromDate(now),
-          'transactionId': txn,
-          'adminVerified': false,
-        });
-        final idx = _payments
-            .indexWhere((p) => p.billId == bill.id && p.userId == userId);
-        if (idx != -1) {
-          _payments[idx] = _payments[idx].copyWith(
-            status: BillStatus.paid,
-            paidDate: now,
-            transactionId: txn,
-            adminVerified: false,
-          );
-        }
-      }
-    }
-    MockBillData.replaceAll(_bills, _payments);
-    _isLoading = false;
-    notifyListeners();
+    // Retained for compatibility; all new code should call residentSubmitPaymentForMonth.
   }
 }
 

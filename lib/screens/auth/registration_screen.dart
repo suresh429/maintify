@@ -244,7 +244,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
               ),
               padding: EdgeInsets.fromLTRB(
                 28, 20, 28,
-                MediaQuery.of(ctx).viewInsets.bottom + 36,
+                MediaQuery.of(ctx).viewPadding.bottom + 28,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -440,7 +440,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
           ),
           padding: EdgeInsets.fromLTRB(
             28, 20, 28,
-            MediaQuery.of(ctx).viewInsets.bottom + 36,
+            MediaQuery.of(ctx).viewPadding.bottom + 28,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -617,7 +617,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
           ),
           padding: EdgeInsets.fromLTRB(
             28, 20, 28,
-            MediaQuery.of(ctx).viewInsets.bottom + 36,
+            MediaQuery.of(ctx).viewPadding.bottom + 28,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

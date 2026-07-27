@@ -14,6 +14,8 @@ class StatusChip extends StatelessWidget {
         return AppColors.paid.withOpacity(0.12);
       case BillStatus.overdue:
         return AppColors.overdue.withOpacity(0.12);
+      case BillStatus.pendingApproval:
+        return const Color(0xFFF59E0B).withOpacity(0.13);
       default:
         return AppColors.pending.withOpacity(0.12);
     }
@@ -25,6 +27,8 @@ class StatusChip extends StatelessWidget {
         return AppColors.paid;
       case BillStatus.overdue:
         return AppColors.overdue;
+      case BillStatus.pendingApproval:
+        return const Color(0xFFD97706);
       default:
         return AppColors.pending;
     }
@@ -36,9 +40,16 @@ class StatusChip extends StatelessWidget {
         return Icons.check_circle_outline;
       case BillStatus.overdue:
         return Icons.error_outline;
+      case BillStatus.pendingApproval:
+        return Icons.hourglass_top_rounded;
       default:
         return Icons.schedule_outlined;
     }
+  }
+
+  String get _label {
+    if (status == BillStatus.pendingApproval) return 'Awaiting Approval';
+    return status;
   }
 
   @override
@@ -55,7 +66,7 @@ class StatusChip extends StatelessWidget {
           Icon(_icon, color: _textColor, size: 13),
           const SizedBox(width: 4),
           Text(
-            status,
+            _label,
             style: AppTextStyles.caption(color: _textColor)
                 .copyWith(fontWeight: FontWeight.w600),
           ),

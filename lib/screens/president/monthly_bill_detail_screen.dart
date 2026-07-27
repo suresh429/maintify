@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/bill_model.dart';
 import '../../models/user_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/bill_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../core/theme/app_colors.dart';
@@ -134,9 +135,18 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                 final paidDate = fresh.userPaidDate(flat.userId);
                 final userName = ctx.read<UserProvider>().findById(flat.userId)?.name;
 
+                // Check if any payment for this user is pending approval
+                final userPayments = fresh.allPayments
+                    .where((p) => p.userId == flat.userId)
+                    .toList();
+                final isPendingApproval =
+                    userPayments.any((p) => p.isPendingApproval);
+                final submittedAt = userPayments
+                    .where((p) => p.isPendingApproval)
+                    .map((p) => p.submittedAt)
+                    .firstWhere((d) => d != null, orElse: () => null);
+
                 // Use the stored payment amount — single source of truth.
-                // Avoids re-computing splits and correctly handles hybrid /
-                // individual categories and excluded residents.
                 final billById = {for (final b in fresh.bills) b.id: b};
                 final userAmount = fresh.allPayments
                     .where((p) => p.userId == flat.userId)
@@ -145,6 +155,12 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                       (sum, p) => sum + (p.amount ?? (billById[p.billId]?.perFlatShare ?? 0.0)),
                     );
 
+                final presidentId = ctx
+                        .read<AuthProvider>()
+                        .currentUser
+                        ?.id ??
+                    '';
+
                 return Padding(
                   padding: EdgeInsets.fromLTRB(
                       16, 0, 16, i == flats.length - 1 ? 100 : 10),
@@ -152,11 +168,51 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                     unitNumber: flat.unitNumber,
                     userName: userName,
                     isPaid: isPaid,
+                    isPendingApproval: isPendingApproval,
+                    submittedAt: submittedAt,
                     paidDate: paidDate,
                     amount: userAmount,
                     theme: theme,
                     isLoading: billProvider.isLoading,
-                    onMarkPaid: isPaid
+                    onApprove: isPendingApproval
+                        ? () async {
+                            await context
+                                .read<BillProvider>()
+                                .presidentApprovePaymentForFlat(
+                                  month: summary.month,
+                                  aptId: aptId,
+                                  userId: flat.userId,
+                                  presidentId: presidentId,
+                                  unitNumber: flat.unitNumber,
+                                );
+                            if (!ctx.mounted) return;
+                            AppUtils.showSnackBar(
+                              ctx,
+                              '${flat.unitNumber} payment approved!',
+                              color: AppColors.paid,
+                            );
+                          }
+                        : null,
+                    onReject: isPendingApproval
+                        ? () async {
+                            await context
+                                .read<BillProvider>()
+                                .presidentRejectPaymentForFlat(
+                                  month: summary.month,
+                                  aptId: aptId,
+                                  userId: flat.userId,
+                                  presidentId: presidentId,
+                                  unitNumber: flat.unitNumber,
+                                );
+                            if (!ctx.mounted) return;
+                            AppUtils.showSnackBar(
+                              ctx,
+                              '${flat.unitNumber} payment rejected.',
+                              isError: true,
+                            );
+                          }
+                        : null,
+                    onMarkPaid: (isPaid || isPendingApproval)
                         ? null
                         : () async {
                             await context
@@ -865,21 +921,29 @@ class _FlatPaymentCard extends StatelessWidget {
   final String unitNumber;
   final String? userName;
   final bool isPaid;
+  final bool isPendingApproval;
+  final DateTime? submittedAt;
   final DateTime? paidDate;
   final double amount;
   final RoleTheme theme;
   final bool isLoading;
   final VoidCallback? onMarkPaid;
+  final VoidCallback? onApprove;
+  final VoidCallback? onReject;
 
   const _FlatPaymentCard({
     required this.unitNumber,
     this.userName,
     required this.isPaid,
+    required this.isPendingApproval,
+    this.submittedAt,
     this.paidDate,
     required this.amount,
     required this.theme,
     required this.isLoading,
     this.onMarkPaid,
+    this.onApprove,
+    this.onReject,
   });
 
   @override
@@ -887,14 +951,19 @@ class _FlatPaymentCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final adminAccent = theme.effectivePrimary(context);
+
+    Border? border;
+    if (isPaid) {
+      border = Border.all(color: AppColors.paid.withOpacity(0.25));
+    } else if (isPendingApproval) {
+      border = Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4));
+    }
+
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(14),
-        border: isPaid
-            ? Border.all(color: AppColors.paid.withOpacity(0.25))
-            : null,
+        border: border,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
@@ -903,100 +972,175 @@ class _FlatPaymentCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Unit badge
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: adminAccent.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              unitNumber,
-              style: AppTextStyles.label(color: adminAccent)
-                  .copyWith(fontWeight: FontWeight.w700),
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // Name + share + status
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // Top row
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
               children: [
-                if (userName != null)
-                  Text(
-                    userName!,
-                    style: AppTextStyles.bodyMedium(
-                            color: cs.onSurface)
-                        .copyWith(fontWeight: FontWeight.w500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                // Unit badge
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: adminAccent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                Row(
-                  children: [
-                    // Per-flat share badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: adminAccent.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        AppUtils.formatCurrency(amount),
-                        style: AppTextStyles.caption(color: adminAccent)
-                            .copyWith(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: isPaid && paidDate != null
-                          ? Text(
-                              'Paid ${AppUtils.formatDateTime(paidDate!)}',
-                              style: AppTextStyles.caption(
-                                  color: AppColors.paid),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            )
-                          : Text(
-                              'Pending',
-                              style: AppTextStyles.caption(
-                                  color: cs.onSurfaceVariant),
-                            ),
-                    ),
-                  ],
+                  child: Text(
+                    unitNumber,
+                    style: AppTextStyles.label(color: adminAccent)
+                        .copyWith(fontWeight: FontWeight.w700),
+                  ),
                 ),
+                const SizedBox(width: 12),
+
+                // Name + share + status
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (userName != null)
+                        Text(
+                          userName!,
+                          style: AppTextStyles.bodyMedium(color: cs.onSurface)
+                              .copyWith(fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: adminAccent.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              AppUtils.formatCurrency(amount),
+                              style:
+                                  AppTextStyles.caption(color: adminAccent)
+                                      .copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: isPaid && paidDate != null
+                                ? Text(
+                                    'Paid ${AppUtils.formatDateTime(paidDate!)}',
+                                    style: AppTextStyles.caption(
+                                        color: AppColors.paid),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  )
+                                : isPendingApproval
+                                    ? Text(
+                                        submittedAt != null
+                                            ? 'Submitted ${AppUtils.formatDateTime(submittedAt!)}'
+                                            : 'Awaiting Approval',
+                                        style: AppTextStyles.caption(
+                                            color: const Color(0xFFD97706)),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      )
+                                    : Text(
+                                        'Pending',
+                                        style: AppTextStyles.caption(
+                                            color: cs.onSurfaceVariant),
+                                      ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Action for paid / plain pending
+                if (isPaid)
+                  const Icon(Icons.check_circle_rounded,
+                      color: AppColors.paid, size: 26)
+                else if (!isPendingApproval)
+                  GestureDetector(
+                    onTap: isLoading ? null : onMarkPaid,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: theme.gradient),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Mark Paid',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  const Icon(Icons.hourglass_top_rounded,
+                      color: Color(0xFFD97706), size: 22),
               ],
             ),
           ),
-          const SizedBox(width: 8),
 
-          // Action
-          if (isPaid)
-            const Icon(Icons.check_circle_rounded,
-                color: AppColors.paid, size: 26)
-          else
-            GestureDetector(
-              onTap: isLoading ? null : onMarkPaid,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: theme.gradient),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'Mark Paid',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+          // Approve / Reject strip — only when pendingApproval
+          if (isPendingApproval)
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withOpacity(0.06),
+                borderRadius:
+                    const BorderRadius.vertical(bottom: Radius.circular(14)),
+              ),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: isLoading ? null : onReject,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.overdue,
+                        side: BorderSide(
+                            color: AppColors.overdue.withOpacity(0.4)),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      label: Text('Reject',
+                          style: AppTextStyles.caption(
+                                  color: AppColors.overdue)
+                              .copyWith(fontWeight: FontWeight.w600)),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: isLoading ? null : onApprove,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.paid,
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.check_rounded,
+                          size: 16, color: Colors.white),
+                      label: Text('Approve',
+                          style: AppTextStyles.caption(
+                                  color: Colors.white)
+                              .copyWith(fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ],
               ),
             ),
         ],

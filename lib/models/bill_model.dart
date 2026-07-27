@@ -66,10 +66,12 @@ class BillCategory {
 }
 
 class BillStatus {
-  static const String paid = 'Paid';
-  static const String pending = 'Pending';
-  static const String overdue = 'Overdue';
-  static const String partiallyPaid = 'Partial';
+  static const String paid            = 'Paid';
+  static const String pending         = 'Pending';
+  static const String overdue         = 'Overdue';
+  static const String partiallyPaid   = 'Partial';
+  /// Resident submitted payment; awaiting president approval.
+  static const String pendingApproval = 'Pending Approval';
 }
 
 /// One bill for the entire apartment.
@@ -222,6 +224,14 @@ class BillPayment {
   bool adminVerified;
   final double? amount; // explicit per-user amount (individual bills only)
 
+  // ── Approval-flow fields ───────────────────────────────────────────────────
+  DateTime? submittedAt;  // when resident submitted payment request
+  String?   submittedBy;  // resident uid
+  DateTime? approvedAt;   // when president approved
+  String?   approvedBy;   // president uid
+  DateTime? rejectedAt;   // when president rejected
+  String?   rejectedBy;   // president uid
+
   BillPayment({
     required this.id,
     required this.billId,
@@ -232,55 +242,93 @@ class BillPayment {
     this.transactionId,
     this.adminVerified = false,
     this.amount,
+    this.submittedAt,
+    this.submittedBy,
+    this.approvedAt,
+    this.approvedBy,
+    this.rejectedAt,
+    this.rejectedBy,
   });
 
-  bool get isPaid => status == BillStatus.paid;
-  bool get isPending => status == BillStatus.pending;
-  bool get isOverdue => status == BillStatus.overdue;
+  bool get isPaid            => status == BillStatus.paid;
+  bool get isPending         => status == BillStatus.pending || status == BillStatus.overdue;
+  bool get isOverdue         => status == BillStatus.overdue;
+  bool get isPendingApproval => status == BillStatus.pendingApproval;
+  /// True when status is pending AND was previously rejected (lets UI show a note).
+  bool get wasRejected       => status == BillStatus.pending && rejectedAt != null;
 
   factory BillPayment.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
+    // Support both 'unitNumber' (new) and 'flatNumber' (legacy seeder field)
+    final unit = d['unitNumber'] as String?
+        ?? d['flatNumber'] as String?
+        ?? '';
     return BillPayment(
-      id: doc.id,
-      billId: d['billId'] as String? ?? '',
-      userId: d['userId'] as String? ?? '',
-      unitNumber: d['unitNumber'] as String? ?? '',
-      status: d['status'] as String? ?? BillStatus.pending,
-      paidDate: (d['paidDate'] as Timestamp?)?.toDate(),
+      id:            doc.id,
+      billId:        d['billId']        as String? ?? '',
+      userId:        d['userId']        as String? ?? '',
+      unitNumber:    unit,
+      status:        d['status']        as String? ?? BillStatus.pending,
+      paidDate:      (d['paidDate']     as Timestamp?)?.toDate()
+                  ?? (d['paidAt']       as Timestamp?)?.toDate(),
       transactionId: d['transactionId'] as String?,
-      adminVerified: d['adminVerified'] as bool? ?? false,
-      amount: (d['amount'] as num?)?.toDouble(),
+      adminVerified: d['adminVerified'] as bool?   ?? false,
+      amount:        (d['amount']       as num?)?.toDouble(),
+      submittedAt:   (d['submittedAt']  as Timestamp?)?.toDate(),
+      submittedBy:   d['submittedBy']   as String?,
+      approvedAt:    (d['approvedAt']   as Timestamp?)?.toDate(),
+      approvedBy:    d['approvedBy']    as String?,
+      rejectedAt:    (d['rejectedAt']   as Timestamp?)?.toDate(),
+      rejectedBy:    d['rejectedBy']    as String?,
     );
   }
 
   Map<String, dynamic> toMap({String? apartmentId}) => {
-        'billId': billId,
-        'userId': userId,
-        'unitNumber': unitNumber,
-        'status': status,
-        'paidDate': paidDate != null ? Timestamp.fromDate(paidDate!) : null,
+        'billId':        billId,
+        'userId':        userId,
+        'unitNumber':    unitNumber,
+        'status':        status,
+        'paidDate':      paidDate     != null ? Timestamp.fromDate(paidDate!)    : null,
         'transactionId': transactionId,
         'adminVerified': adminVerified,
-        if (amount != null) 'amount': amount,
+        if (amount      != null) 'amount':      amount,
         if (apartmentId != null) 'apartmentId': apartmentId,
+        'submittedAt':   submittedAt  != null ? Timestamp.fromDate(submittedAt!) : null,
+        'submittedBy':   submittedBy,
+        'approvedAt':    approvedAt   != null ? Timestamp.fromDate(approvedAt!)  : null,
+        'approvedBy':    approvedBy,
+        'rejectedAt':    rejectedAt   != null ? Timestamp.fromDate(rejectedAt!)  : null,
+        'rejectedBy':    rejectedBy,
       };
 
   BillPayment copyWith({
-    String? status,
+    String?   status,
     DateTime? paidDate,
-    String? transactionId,
-    bool? adminVerified,
+    String?   transactionId,
+    bool?     adminVerified,
+    DateTime? submittedAt,
+    String?   submittedBy,
+    DateTime? approvedAt,
+    String?   approvedBy,
+    DateTime? rejectedAt,
+    String?   rejectedBy,
   }) {
     return BillPayment(
-      id: id,
-      billId: billId,
-      userId: userId,
-      unitNumber: unitNumber,
-      status: status ?? this.status,
-      paidDate: paidDate ?? this.paidDate,
+      id:            id,
+      billId:        billId,
+      userId:        userId,
+      unitNumber:    unitNumber,
+      amount:        amount,
+      status:        status        ?? this.status,
+      paidDate:      paidDate      ?? this.paidDate,
       transactionId: transactionId ?? this.transactionId,
       adminVerified: adminVerified ?? this.adminVerified,
-      amount: amount,
+      submittedAt:   submittedAt,   // nullable — explicit null clears the field
+      submittedBy:   submittedBy,
+      approvedAt:    approvedAt    ?? this.approvedAt,
+      approvedBy:    approvedBy    ?? this.approvedBy,
+      rejectedAt:    rejectedAt    ?? this.rejectedAt,
+      rejectedBy:    rejectedBy    ?? this.rejectedBy,
     );
   }
 }

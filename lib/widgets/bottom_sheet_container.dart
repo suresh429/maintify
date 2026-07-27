@@ -30,58 +30,63 @@ class BottomSheetContainer extends StatelessWidget {
         color: cs.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag handle
-          if (showDragHandle)
-            Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 4),
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: cs.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
+      // SafeArea(top: false) ensures content never overlaps the iPhone home
+      // indicator or Android gesture navigation bar.
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            if (showDragHandle)
+              Padding(
+                padding: const EdgeInsets.only(top: 12, bottom: 4),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
+              ),
+
+            // Header
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                showDragHandle ? 8 : 20,
+                12,
+                0,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: AppTextStyles.heading3(color: cs.onSurface),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  headerTrailing ??
+                      IconButton(
+                        icon: Icon(Icons.close_rounded,
+                            color: cs.onSurfaceVariant),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                ],
               ),
             ),
 
-          // Header
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              showDragHandle ? 8 : 20,
-              12,
-              0,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: AppTextStyles.heading3(color: cs.onSurface),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                headerTrailing ??
-                    IconButton(
-                      icon: Icon(Icons.close_rounded,
-                          color: cs.onSurfaceVariant),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-              ],
-            ),
-          ),
+            Divider(height: 16, color: cs.outline.withOpacity(0.3)),
 
-          Divider(height: 16, color: cs.outline.withOpacity(0.3)),
-
-          // Content
-          Padding(
-            padding: contentPadding,
-            child: child,
-          ),
-        ],
+            // Content
+            Padding(
+              padding: contentPadding,
+              child: child,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -103,6 +108,7 @@ class ScrollableBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       minChildSize: 0.4,
@@ -150,7 +156,9 @@ class ScrollableBottomSheet extends StatelessWidget {
               Expanded(
                 child: SingleChildScrollView(
                   controller: controller,
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  // bottomInset ensures the last item is visible above
+                  // the iPhone home indicator / Android gesture bar.
+                  padding: EdgeInsets.fromLTRB(20, 0, 20, 24 + bottomInset),
                   child: child,
                 ),
               ),

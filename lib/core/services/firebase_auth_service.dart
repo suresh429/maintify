@@ -9,6 +9,15 @@ class FirebaseAuthService {
   final FirebaseAuth      _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db   = FirebaseFirestore.instance;
 
+  /// Predefined demo accounts for Google Play review and demonstrations.
+  /// These accounts bypass email verification to allow immediate login.
+  /// All other users must complete Firebase email verification before logging in.
+  static const _demoEmails = {
+    'support.maintify@gmail.com',
+    'president@maintify.demo',
+    'resident@maintify.demo',
+  };
+
   User? get firebaseUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
@@ -33,8 +42,12 @@ class FirebaseAuthService {
         return (user: null, error: 'Account data not found. Contact support.');
       }
 
-      // SuperAdmin bypasses email verification — all other roles must verify
-      if (!cred.user!.emailVerified && user.role.name != 'admin') {
+      // SuperAdmin and predefined demo accounts bypass email verification.
+      // All other roles must have a verified email before accessing the app.
+      final isDemoAccount = _demoEmails.contains(email.trim().toLowerCase());
+      if (!cred.user!.emailVerified &&
+          user.role.name != 'admin' &&
+          !isDemoAccount) {
         await _auth.signOut();
         return (user: null, error: 'EMAIL_NOT_VERIFIED');
       }

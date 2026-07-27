@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/bill_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/bill_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
-import '../../widgets/common_button.dart';
 
 class ResidentMonthlyBillDetailScreen extends StatelessWidget {
   final UserMonthlySummary summary;
@@ -510,6 +510,40 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
+          ] else if (fresh.status == BillStatus.pendingApproval) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: const Color(0xFFF59E0B).withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.hourglass_top_rounded,
+                      color: Color(0xFFD97706), size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Awaiting Approval',
+                            style: AppTextStyles.bodyMedium(
+                                    color: const Color(0xFFD97706))
+                                .copyWith(fontWeight: FontWeight.w600)),
+                        Text(
+                          'Your payment has been submitted. The president will verify it.',
+                          style: AppTextStyles.caption(
+                              color: const Color(0xFFD97706)
+                                  .withOpacity(0.8)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ] else ...[
             Container(
               padding: const EdgeInsets.all(14),
@@ -543,23 +577,6 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            Consumer<BillProvider>(
-              builder: (_, bp, __) => CommonButton(
-                text:
-                    'Mark as Paid  ${AppUtils.formatCurrency(fresh.totalAmount)}',
-                gradient: theme.gradient,
-                icon: Icons.check_circle_outline_rounded,
-                isLoading: bp.isLoading,
-                onPressed: () async {
-                  await bp.userPayMonthlyBill(
-                      summary.month, aptId, userId);
-                  if (!context.mounted) return;
-                  AppUtils.showSnackBar(context, 'Marked as paid!',
-                      color: AppColors.paid);
-                },
-              ),
-            ),
           ],
         ],
       ),
@@ -578,19 +595,21 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
 
   Color _statusColor(String status) {
     switch (status) {
-      case 'Paid':    return AppColors.paid;
-      case 'Partial': return AppColors.pending;
-      case 'Overdue': return AppColors.overdue;
-      default:        return AppColors.overdue;
+      case BillStatus.paid:            return AppColors.paid;
+      case BillStatus.partiallyPaid:   return AppColors.pending;
+      case BillStatus.overdue:         return AppColors.overdue;
+      case BillStatus.pendingApproval: return const Color(0xFFD97706);
+      default:                         return AppColors.pending;
     }
   }
 
   String _statusLabel(String status) {
     switch (status) {
-      case 'Paid':    return 'Paid';
-      case 'Partial': return 'Partially Paid';
-      case 'Overdue': return 'Overdue';
-      default:        return 'Pending';
+      case BillStatus.paid:            return 'Paid';
+      case BillStatus.partiallyPaid:   return 'Partially Paid';
+      case BillStatus.overdue:         return 'Overdue';
+      case BillStatus.pendingApproval: return 'Awaiting Approval';
+      default:                         return 'Pending';
     }
   }
 

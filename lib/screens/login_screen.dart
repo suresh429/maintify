@@ -97,7 +97,8 @@ class _LoginScreenState extends State<LoginScreen>
                 color: Theme.of(ctx).colorScheme.surface,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+              padding: EdgeInsets.fromLTRB(
+                24, 16, 24, 32 + MediaQuery.of(ctx).viewPadding.bottom),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -188,7 +189,8 @@ class _LoginScreenState extends State<LoginScreen>
             color: Theme.of(ctx).colorScheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+          padding: EdgeInsets.fromLTRB(
+            24, 16, 24, 28 + MediaQuery.of(ctx).viewPadding.bottom),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -131,7 +131,8 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
             color: sheetCs.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+          padding: EdgeInsets.fromLTRB(
+            24, 20, 24, 28 + MediaQuery.of(ctx).viewPadding.bottom),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
