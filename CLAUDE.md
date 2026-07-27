@@ -39,16 +39,18 @@ cd functions && npm install
 
 ### Role System
 
-Three roles drive the entire app structure: `superAdmin`, `admin` (apartment president), and `user` (resident). `UserRole` is defined in `lib/core/theme/role_theme.dart` — **not** in `user_model.dart`. Role is determined at login via `AuthProvider`. `DashboardRouter` (`lib/screens/dashboard_router.dart`) watches `AuthProvider` and routes accordingly.
+Three roles drive the entire app structure: `admin` (super admin), `president` (apartment president), and `resident`. `UserRole` is defined in `lib/core/theme/role_theme.dart` — **not** in `user_model.dart`. Role is determined at login via `AuthProvider`. `DashboardRouter` (`lib/screens/dashboard_router.dart`) watches `AuthProvider` and routes accordingly.
 
-**Test credentials** (seeded via `DbSeeder` on first launch):
-- `superadmin@test.com` / `super@123` → SuperAdmin (only seeded account — no mock apartments/users/bills)
+**Test credentials** (seeded via `DbSeeder` on first launch, guarded by `_meta/seeded_v4`):
+- `support.maintify@gmail.com` / `maintify@0606` → Admin (super admin)
+- `president@maintify.demo` / `Maintify@123` → President (demo apartment)
+- `resident@maintify.demo` / `Maintify@123` → Resident (demo apartment)
 
 **First-login flow:** New users have `isFirstLogin: true` and an auto-generated password. `DashboardRouter` wraps their dashboard in `_FirstLoginWrapper`, which opens a non-dismissible `showChangePasswordSheet(isFirstLogin: true)` via `addPostFrameCallback`. After password change, `isFirstLogin` becomes false in both Firebase Auth and the Firestore user doc.
 
 ### Provider Stack
 
-All 10 providers registered at root in `main.dart`. Provider files live in `lib/` root (e.g. `lib/auth_provider.dart`) except `ThemeProvider` which is at `lib/providers/theme_provider.dart`:
+All 11 providers registered at root in `main.dart`. All provider files live in `lib/providers/`:
 
 | Provider | Responsibility |
 |---|---|
@@ -62,6 +64,7 @@ All 10 providers registered at root in `main.dart`. Provider files live in `lib/
 | `NotificationProvider` | In-app notifications, Firestore-backed, `startListening(role)` |
 | `RegistrationProvider` | Self-registration: president self-creates apartment or activates super-admin-created one; resident direct signup with email verification |
 | `ThemeProvider` | Dark/light mode toggle; persists `isDarkMode` flag to Hive `'session'` box under key `isDarkMode` |
+| `VersionProvider` | Checks Firebase Remote Config for app version; exposes `UpdateStatus` (`upToDate`, `softUpdate`, `forceUpdate`) |
 
 Providers that use Firestore streams call `startListening(...)` from `DashboardRouter` after login. They cache data locally and call `notifyListeners()` on stream updates.
 
@@ -75,7 +78,7 @@ All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `
 - `users/` — real Firebase Auth UID as document ID
 - `apartments/`, `bills/`, `payments/`, `complaints/`, `meetings/`, `notifications/`
 - `flats/` — individual flat docs, auto-generated at apartment creation. Doc ID: `${aptId}_${flatNumber}`. Fields: `flatNumber`, `tower` (null for non-gated), `status` (`available`|`occupied`), `residentId`, `residentType` (`President`|`Resident`|null), `apartmentId`.
-- `_meta/seeded` — guards `DbSeeder` from re-running
+- `_meta/seeded_v4` — guards `DbSeeder` from re-running
 
 **`DashboardProvider` important note:** Its stats getters read from `MockXxx` statics only. This is intentional — it's kept accurate because `UserProvider`, `ApartmentProvider`, and `BillProvider` all call `replaceAll()` in their stream listeners.
 
@@ -93,7 +96,7 @@ All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `
 
 `BillCategory.amountForUser(userId, eligibleCount)` returns the computed amount for a resident. Predefined category names: Maintenance, Water, Lift, Security, Parking, Amenities, Garbage, Other.
 
-**Bill editing:** `showEditBillSheet(context, bill, residents)` opens a `DraggableScrollableSheet` (initial size 0.92) from `lib/screens/admin/edit_bill_sheet.dart`. Admins can modify items, split types, per-resident overrides, excluded residents, and due date. On save, only **unpaid** `BillPayment` records are updated — paid records remain untouched. Entry point: edit button in `monthly_bill_detail_screen.dart`.
+**Bill editing:** `showEditBillSheet(context, bill, residents)` opens a `DraggableScrollableSheet` (initial size 0.92) from `lib/screens/president/edit_bill_sheet.dart`. Admins can modify items, split types, per-resident overrides, excluded residents, and due date. On save, only **unpaid** `BillPayment` records are updated — paid records remain untouched. Entry point: edit button in `monthly_bill_detail_screen.dart`.
 
 **`BillProvider` key methods:** `adminEditBill(billId, categories, dueDate, residents, excludedUserIds)`, `adminDeleteBill(billId)`.
 
@@ -142,7 +145,7 @@ apartments/{id}:
 | `FirestoreService` | Singleton — all collection reads/writes. Providers never import `FirebaseFirestore` directly. Includes `updateBill`, `updatePayment`, `deleteBill`, `deleteAllPaymentsForBill`. |
 | `FirebaseAuthService` | Wraps `FirebaseAuth`. Handles sign-in, password change, reset email, `registerPresident`, `registerResident`. |
 | `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). Uses `flutter_local_notifications` to display foreground messages. Uses `navigatorKey` for out-of-tree navigation on notification tap. |
-| `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded`. |
+| `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded_v4`. Creates admin, demo president, demo resident, and a demo apartment. |
 
 **`AppUtils`** (`lib/core/utils/app_utils.dart`): Static helpers — `formatCurrency`, `formatDate`, `formatMonthYear`, `formatDateTime`, `timeAgo`, `showSnackBar` (accepts optional `color` override), `displayFirstName`, `showConfirmDialog`. `showConfirmDialog` renders a bottom-sheet style confirmation with customizable `confirmColor`.
 
@@ -160,12 +163,12 @@ screens/
 ├── auth/
 │   ├── registration_screen.dart   ← Unified signup: segmented button switches President / Resident form fields; handles email verification bottom sheet + success sheet
 │   └── president_signup_screen.dart ← Activation-only path for super-admin-created apartments (apartment code + email validation)
-├── admin/                         ← 9 screens: dashboard, create-bill, edit-bill-sheet, complaints,
+├── admin/                         ← 6 screens: dashboard, apartments, reports, assign-admin,
+│                                    assign-president, create-apartment (super-admin role)
+├── president/                     ← 9 screens: dashboard, create-bill, edit-bill-sheet, complaints,
 │                                    manage-users, mark-paid, monthly-bill-detail, transfer-president,
-│                                    admin-profile
-├── super_admin/                   ← 6 screens: dashboard, apartments, reports, assign-admin,
-│                                    assign-president, create-apartment
-├── user/                          ← 7 screens: dashboard, bills, monthly-bill-detail,
+│                                    president-profile
+├── resident/                      ← 7 screens: dashboard, bills, monthly-bill-detail,
 │                                    payment-history, i-paid, complaints, profile
 └── shared/
     ├── chat_screen.dart           ← Complaint message threads
@@ -179,7 +182,7 @@ screens/
 - **Colors:** `lib/core/theme/app_colors.dart`
   - `AppColors.paid` = `#22C55E` — green, **status indicators only** (paid bills, success snackbars)
   - `AppColors.green` = `#C39A51` — golden/amber, **not for payment status**
-  - Role gradients: `superAdminGradient` (violet), `adminGradient` (blue), `userGradient` (gold → dark navy)
+  - Role gradients: `superAdminGradient` (violet, for `UserRole.admin`), `adminGradient` (blue, for `UserRole.president`), `userGradient` (gold → dark navy, for `UserRole.resident`)
   - Dark mode palette: `darkBackground` (`#0F172A`), `darkSurface` (`#1E293B`), `darkSurfaceVariant` (`#263045`), `darkBorder` (`#334155`), `darkTextPrimary` (`#F1F5F9`), `darkTextSecondary` (`#94A3B8`)
 - **Role theming:** `RoleTheme.of(UserRole.x)` → `.gradient`, `.primary`, `.secondary`
 - **Text styles:** `AppTextStyles` in `lib/core/theme/app_text_styles.dart` — use `AppTextStyles.heading1/2/3()`, `.subheading()`, `.bodyLarge/Medium/Small()`, `.label()`, `.caption()`, `.amount()`, `.buttonText()`. All accept an optional `color` override.
@@ -207,6 +210,7 @@ Always check before building a new component:
 | `ScheduleMeetingSheet` | Bottom sheet for scheduling meetings |
 | `LogoutSheet` | Confirmation bottom sheet for logout |
 | `EmptyState` | Empty-state placeholder with icon, title, subtitle, and optional action button |
+| `UpdateDialog` | Force/soft update dialog driven by `VersionProvider`; shown from `SplashScreen` |
 
 ### Bottom Sheet Rules
 
@@ -225,8 +229,8 @@ Use `Column(mainAxisSize: MainAxisSize.min)` to avoid full-height expansion.
 
 ### Change Password Entry Points
 
-- **Admin:** AppBar settings icon (`Icons.settings_outlined`) → `showChangePasswordSheet(context)`
-- **User:** Profile screen "More" menu → "Change Password" tile → `showChangePasswordSheet(context)`
+- **President:** AppBar settings icon (`Icons.settings_outlined`) → `showChangePasswordSheet(context)`
+- **Resident:** Profile screen "More" menu → "Change Password" tile → `showChangePasswordSheet(context)`
 - **First login:** `_FirstLoginWrapper` in `DashboardRouter` opens automatically with `isFirstLogin: true`
 
 ## Backend: Firebase Cloud Functions (`functions/`)
@@ -238,10 +242,10 @@ Node.js v2 functions in `functions/index.js`. Deploy with `firebase deploy --onl
 | Function | Trigger | Action |
 |---|---|---|
 | `onApartmentCreated` | `apartments/{aptId}` onCreate | Gmail SMTP welcome email to designated president with apartment code |
-| `onPresidentRegistered` | `apartments/{aptId}` onUpdate | FCM to all superAdmins when status changes `waiting_for_president` → `active` |
+| `onPresidentRegistered` | `apartments/{aptId}` onUpdate | FCM to all admins (role=`admin`) when status changes `waiting_for_president` → `active` |
 | `onPresidentInvitationCreated` | `presidentInvitations/{id}` onCreate | Gmail SMTP invitation email to president (includes tower info if gated community) |
 | `onWelcomeEmailReady` | `apartments/{aptId}` onUpdate | Gmail SMTP welcome email when `welcomeEmailReady=true` flag is set |
-| `onResidentApproved` | `users/{userId}` onCreate (role=`user`) | Gmail SMTP approval email to resident |
+| `onResidentApproved` | `users/{userId}` onCreate (role=`resident`) | Gmail SMTP approval email to resident |
 | `onPresidentTransferred` | `apartments/{aptId}` onUpdate | FCM to old + new president when `presidentId` changes between two real UIDs |
 | `onBillCreated` | `bills/{billId}` onCreate | FCM to all residents in the apartment |
 | `onBillUpdated` | `bills/{billId}` onUpdate | FCM to all residents when bill is edited |

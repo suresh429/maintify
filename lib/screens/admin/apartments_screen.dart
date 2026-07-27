@@ -132,7 +132,7 @@ class _SummaryChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -175,7 +175,7 @@ class _ApartmentDetailCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -189,8 +189,8 @@ class _ApartmentDetailCard extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  accent.withOpacity(0.08),
-                  AppColors.blue.withOpacity(0.04),
+                  accent.withValues(alpha: 0.08),
+                  AppColors.blue.withValues(alpha: 0.04),
                 ],
               ),
               borderRadius:
@@ -201,7 +201,7 @@ class _ApartmentDetailCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: accent.withOpacity(0.12),
+                    color: accent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(Icons.apartment_rounded,
@@ -225,8 +225,8 @@ class _ApartmentDetailCard extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: apt.hasPresident
-                        ? AppColors.green.withOpacity(0.1)
-                        : AppColors.overdue.withOpacity(0.1),
+                        ? AppColors.green.withValues(alpha: 0.1)
+                        : AppColors.overdue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(

@@ -56,7 +56,7 @@ class PaymentHistoryScreen extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: accent.withOpacity(0.08),
+                    color: accent.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -133,7 +133,7 @@ class _SummaryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: theme.primary.withOpacity(0.28),
+            color: theme.primary.withValues(alpha: 0.28),
             blurRadius: 16,
             offset: const Offset(0, 7),
           ),
@@ -148,7 +148,7 @@ class _SummaryCard extends StatelessWidget {
                 Text(
                   'Total Paid',
                   style: AppTextStyles.caption(
-                      color: Colors.white.withOpacity(0.8)),
+                      color: Colors.white.withValues(alpha: 0.8)),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -168,7 +168,7 @@ class _SummaryCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -199,7 +199,7 @@ class _SummaryCard extends StatelessWidget {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(18),
             ),
             child: const Icon(Icons.account_balance_wallet_outlined,
@@ -272,7 +272,7 @@ class _PaymentCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -289,7 +289,7 @@ class _PaymentCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.paid.withOpacity(0.1),
+                    color: AppColors.paid.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(_categoryIcon,
@@ -332,7 +332,7 @@ class _PaymentCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppColors.paid.withOpacity(0.1),
+                        color: AppColors.paid.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Text(

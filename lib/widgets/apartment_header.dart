@@ -29,10 +29,10 @@ class ApartmentHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent.withOpacity(0.2)),
+        border: Border.all(color: accent.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -43,7 +43,7 @@ class ApartmentHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: accent.withOpacity(isDark ? 0.15 : 0.1),
+              color: accent.withValues(alpha: isDark ? 0.15 : 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.apartment_outlined, color: accent, size: 22),
@@ -98,7 +98,7 @@ class _RoleChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: accent.withOpacity(isDark ? 0.18 : 0.12),
+        color: accent.withValues(alpha: isDark ? 0.18 : 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

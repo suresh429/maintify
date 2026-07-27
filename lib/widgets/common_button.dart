@@ -55,7 +55,7 @@ class CommonButton extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: isLoading
-                  ? gradient!.map((c) => c.withOpacity(0.6)).toList()
+                  ? gradient!.map((c) => c.withValues(alpha: 0.6)).toList()
                   : gradient!,
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
@@ -63,7 +63,7 @@ class CommonButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: gradient!.first.withOpacity(0.35),
+                color: gradient!.first.withValues(alpha: 0.35),
                 blurRadius: 12,
                 offset: const Offset(0, 5),
               ),

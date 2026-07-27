@@ -56,7 +56,7 @@ class AppTextField extends StatelessWidget {
     final activeBorderColor = isDark ? Colors.white : (focusColor ?? AppColors.blue);
     // Floating label is always white in dark mode for maximum readability
     final floatingLabelColor = isDark ? Colors.white : (focusColor ?? AppColors.blue);
-    final borderColor = isDark ? Colors.white.withOpacity(0.35) : cs.outline;
+    final borderColor = isDark ? Colors.white.withValues(alpha: 0.35) : cs.outline;
     final fillColor = cs.surface;
 
     return TextFormField(
@@ -77,7 +77,7 @@ class AppTextField extends StatelessWidget {
         labelText: label,
         hintText: hint,
         hintStyle: AppTextStyles.bodyMedium(
-            color: cs.onSurfaceVariant.withOpacity(0.6)),
+            color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
         labelStyle: TextStyle(
           fontFamily: 'Poppins',
           fontSize: 14,

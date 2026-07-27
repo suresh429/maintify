@@ -182,15 +182,15 @@ class _NotificationTile extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isUnread
-            ? accent.withOpacity(0.04)
+            ? accent.withValues(alpha: 0.04)
             : cs.surface,
         borderRadius: BorderRadius.circular(14),
         border: isUnread
-            ? Border.all(color: accent.withOpacity(0.15))
+            ? Border.all(color: accent.withValues(alpha: 0.15))
             : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -202,7 +202,7 @@ class _NotificationTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: typeColor.withOpacity(0.1),
+              color: typeColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(_iconForType(notification.type),

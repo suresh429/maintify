@@ -58,14 +58,14 @@ class _LogoutSheet extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 colors: [
-                  iconAccent.withOpacity(0.18),
-                  iconAccent.withOpacity(0.09),
+                  iconAccent.withValues(alpha: 0.18),
+                  iconAccent.withValues(alpha: 0.09),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               border: Border.all(
-                color: iconAccent.withOpacity(0.30),
+                color: iconAccent.withValues(alpha: 0.30),
                 width: 1.5,
               ),
             ),
@@ -132,7 +132,7 @@ class _LogoutSheet extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: [
                         BoxShadow(
-                          color: theme.primary.withOpacity(0.32),
+                          color: theme.primary.withValues(alpha: 0.32),
                           blurRadius: 14,
                           offset: const Offset(0, 5),
                         ),

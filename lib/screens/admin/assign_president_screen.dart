@@ -130,7 +130,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                       Text(
                           'Select an apartment and choose an eligible resident',
                           style: AppTextStyles.caption(
-                              color: Colors.white.withOpacity(0.8))),
+                              color: Colors.white.withValues(alpha: 0.8))),
                     ],
                   ),
                 ),
@@ -160,7 +160,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? accent.withOpacity(0.08)
+                      ? accent.withValues(alpha: 0.08)
                       : cs.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
@@ -170,7 +170,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -182,7 +182,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? accent.withOpacity(0.12)
+                            ? accent.withValues(alpha: 0.12)
                             : cs.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -289,7 +289,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? accent.withOpacity(0.08)
+                          ? accent.withValues(alpha: 0.08)
                           : cs.surface,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
@@ -300,7 +300,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
@@ -366,7 +366,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
                 : null,
             backgroundColor: _selectedAptId != null && _selectedUserId != null
                 ? null
-                : AppColors.textSecondary.withOpacity(0.3),
+                : AppColors.textSecondary.withValues(alpha: 0.3),
             icon: isTransfer ? Icons.swap_horiz_rounded : Icons.link_rounded,
             isLoading: _isAssigning,
             onPressed: _selectedAptId != null && _selectedUserId != null

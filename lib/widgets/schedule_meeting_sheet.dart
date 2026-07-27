@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../core/theme/app_colors.dart';
 import '../core/theme/app_text_styles.dart';
 import '../core/theme/role_theme.dart';
 import '../providers/auth_provider.dart';
@@ -272,10 +271,10 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: theme.primary.withOpacity(0.06),
+                  color: theme.primary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(10),
                   border:
-                      Border.all(color: theme.primary.withOpacity(0.15)),
+                      Border.all(color: theme.primary.withValues(alpha: 0.15)),
                 ),
                 child: Row(
                   children: [
@@ -308,7 +307,7 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: theme.primary.withOpacity(0.32),
+                        color: theme.primary.withValues(alpha: 0.32),
                         blurRadius: 14,
                         offset: const Offset(0, 5),
                       ),
@@ -395,9 +394,9 @@ class _PickerTile extends StatelessWidget {
         padding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
-          color: effectiveColor.withOpacity(isDark ? 0.08 : 0.06),
+          color: effectiveColor.withValues(alpha: isDark ? 0.08 : 0.06),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: effectiveColor.withOpacity(isDark ? 0.35 : 0.2)),
+          border: Border.all(color: effectiveColor.withValues(alpha: isDark ? 0.35 : 0.2)),
         ),
         child: Row(
           children: [

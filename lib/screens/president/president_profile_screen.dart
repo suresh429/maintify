@@ -69,9 +69,9 @@ class PresidentProfileScreen extends StatelessWidget {
                         height: 90,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           border: Border.all(
-                              color: Colors.white.withOpacity(0.8), width: 2.5),
+                              color: Colors.white.withValues(alpha: 0.8), width: 2.5),
                         ),
                         child: Center(
                           child: Text(
@@ -96,10 +96,10 @@ class PresidentProfileScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.18),
+                          color: Colors.white.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                              color: Colors.white.withOpacity(0.5), width: 1),
+                              color: Colors.white.withValues(alpha: 0.5), width: 1),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -208,11 +208,14 @@ class PresidentProfileScreen extends StatelessWidget {
                               ? Icons.light_mode_outlined
                               : Icons.dark_mode_outlined,
                           label: 'Dark Mode',
-                          iconColor: const Color(0xFF8B6CE8),
+                          iconColor: tp.isDarkMode
+                              ? const Color(0xFF60A5FA)
+                              : AppColors.blue,
                           trailing: Switch.adaptive(
                             value: tp.isDarkMode,
                             onChanged: (_) => tp.toggle(),
-                            activeColor: theme.primary,
+                            activeThumbColor: theme.effectivePrimary(context),
+                            activeTrackColor: theme.effectivePrimary(context).withValues(alpha: 0.4),
                           ),
                           showChevron: false,
                           onTap: () => tp.toggle(),
@@ -326,7 +329,7 @@ class _SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -338,7 +341,7 @@ class _SectionCard extends StatelessWidget {
 }
 
 class _Divider extends StatelessWidget {
-  const _Divider({super.key});
+  const _Divider();
 
   @override
   Widget build(BuildContext context) {
@@ -346,7 +349,7 @@ class _Divider extends StatelessWidget {
     return Divider(
       height: 1,
       thickness: 1,
-      color: cs.outline.withOpacity(0.5),
+      color: cs.outline.withValues(alpha: 0.5),
       indent: 16,
       endIndent: 16,
     );
@@ -378,7 +381,7 @@ class _InfoTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 18, color: iconColor),
@@ -439,7 +442,7 @@ class _MenuTile extends StatelessWidget {
       leading: Container(
         padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
-          color: iconColor.withOpacity(0.1),
+          color: iconColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, size: 18, color: iconColor),

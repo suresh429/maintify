@@ -78,7 +78,7 @@ class BottomSheetContainer extends StatelessWidget {
               ),
             ),
 
-            Divider(height: 16, color: cs.outline.withOpacity(0.3)),
+            Divider(height: 16, color: cs.outline.withValues(alpha: 0.3)),
 
             // Content
             Padding(
@@ -152,7 +152,7 @@ class ScrollableBottomSheet extends StatelessWidget {
                   ],
                 ),
               ),
-              Divider(height: 16, color: cs.outline.withOpacity(0.3)),
+              Divider(height: 16, color: cs.outline.withValues(alpha: 0.3)),
               Expanded(
                 child: SingleChildScrollView(
                   controller: controller,

@@ -37,7 +37,7 @@ class DashboardCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: gradient.first.withOpacity(0.3),
+              color: gradient.first.withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -53,7 +53,7 @@ class DashboardCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: Colors.white, size: 22),
@@ -77,7 +77,7 @@ class DashboardCard extends StatelessWidget {
             Text(
               title,
               style: AppTextStyles.bodySmall(
-                  color: Colors.white.withOpacity(0.85)),
+                  color: Colors.white.withValues(alpha: 0.85)),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -86,7 +86,7 @@ class DashboardCard extends StatelessWidget {
               Text(
                 subtitle!,
                 style: AppTextStyles.caption(
-                    color: Colors.white.withOpacity(0.7)),
+                    color: Colors.white.withValues(alpha: 0.7)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -128,7 +128,7 @@ class StatCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -142,7 +142,7 @@ class StatCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: color, size: 16),

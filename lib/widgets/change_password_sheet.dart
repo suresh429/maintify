@@ -256,7 +256,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                               : () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                                color: cs.onSurfaceVariant.withOpacity(0.4)),
+                                color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
                             padding:
@@ -300,7 +300,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                                   borderRadius: BorderRadius.circular(12),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: theme.primary.withOpacity(0.3),
+                                      color: theme.primary.withValues(alpha: 0.3),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),

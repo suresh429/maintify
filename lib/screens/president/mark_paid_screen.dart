@@ -166,7 +166,7 @@ class _MonthlyCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -180,8 +180,8 @@ class _MonthlyCard extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    accent.withOpacity(0.07),
-                    accent.withOpacity(0.01),
+                    accent.withValues(alpha: 0.07),
+                    accent.withValues(alpha: 0.01),
                   ],
                 ),
                 borderRadius:
@@ -192,7 +192,7 @@ class _MonthlyCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: accent.withOpacity(0.1),
+                      color: accent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(Icons.calendar_month_rounded,
@@ -220,7 +220,7 @@ class _MonthlyCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
+                          color: statusColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -364,10 +364,10 @@ class _PendingApprovalCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
+        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.22 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.05),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -383,7 +383,7 @@ class _PendingApprovalCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF59E0B).withOpacity(0.12),
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -433,7 +433,7 @@ class _PendingApprovalCard extends StatelessWidget {
           // Approve / Reject strip
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF59E0B).withOpacity(0.06),
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.06),
               borderRadius:
                   const BorderRadius.vertical(bottom: Radius.circular(14)),
             ),
@@ -465,7 +465,7 @@ class _PendingApprovalCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.overdue,
                       side: BorderSide(
-                          color: AppColors.overdue.withOpacity(0.4)),
+                          color: AppColors.overdue.withValues(alpha: 0.4)),
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8)),

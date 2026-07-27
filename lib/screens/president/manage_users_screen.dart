@@ -79,13 +79,13 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: isFull
-                  ? AppColors.overdue.withOpacity(0.07)
-                  : AppColors.paid.withOpacity(0.07),
+                  ? AppColors.overdue.withValues(alpha: 0.07)
+                  : AppColors.paid.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isFull
-                    ? AppColors.overdue.withOpacity(0.25)
-                    : AppColors.paid.withOpacity(0.25),
+                    ? AppColors.overdue.withValues(alpha: 0.25)
+                    : AppColors.paid.withValues(alpha: 0.25),
               ),
             ),
             child: Row(
@@ -190,12 +190,12 @@ class _MemberCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: isPresident
             ? Border.all(
-                color: adminAccent.withOpacity(0.35),
+                color: adminAccent.withValues(alpha: 0.35),
                 width: 1.5)
             : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -245,7 +245,7 @@ class _MemberCard extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(
-                                color: adminAccent.withOpacity(0.15),
+                                color: adminAccent.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text('President',
@@ -264,7 +264,7 @@ class _MemberCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: adminAccent.withOpacity(0.15),
+                              color: adminAccent.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text('Flat ${user.unit}',
@@ -365,7 +365,7 @@ class _MemberCard extends StatelessWidget {
   Widget _divider() => Container(
         width: 1,
         height: 24,
-        color: AppColors.lightGray.withOpacity(0.5),
+        color: AppColors.lightGray.withValues(alpha: 0.5),
       );
 }
 

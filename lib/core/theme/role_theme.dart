@@ -62,6 +62,6 @@ class RoleTheme {
     return Theme.of(context).brightness == Brightness.dark ? darkPrimary : primary;
   }
 
-  Color get chipColor => primary.withOpacity(0.12);
+  Color get chipColor => primary.withValues(alpha: 0.12);
   Color get chipTextColor => primary;
 }

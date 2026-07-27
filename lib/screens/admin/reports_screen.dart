@@ -49,7 +49,7 @@ class ReportsScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: accent.withOpacity(0.25),
+                  color: accent.withValues(alpha: 0.25),
                   blurRadius: 14,
                   offset: const Offset(0, 6),
                 ),
@@ -93,7 +93,7 @@ class ReportsScreen extends StatelessWidget {
                   children: [
                     Text('Collection Rate',
                         style: AppTextStyles.bodySmall(
-                            color: Colors.white.withOpacity(0.8))),
+                            color: Colors.white.withValues(alpha: 0.8))),
                     Text(
                       '${collectionRate.toStringAsFixed(1)}%',
                       style: const TextStyle(
@@ -110,7 +110,7 @@ class ReportsScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: collectionRate / 100,
-                    backgroundColor: Colors.white.withOpacity(0.2),
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
                     valueColor: const AlwaysStoppedAnimation<Color>(
                         Colors.white),
                     minHeight: 8,
@@ -147,7 +147,7 @@ class ReportsScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+                    color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -161,7 +161,7 @@ class ReportsScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: accent.withOpacity(0.1),
+                          color: accent.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(Icons.apartment_outlined,
@@ -253,7 +253,7 @@ class ReportsScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
+                    color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -265,7 +265,7 @@ class ReportsScreen extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppColors.green.withOpacity(0.12),
+                      color: AppColors.green.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
@@ -348,7 +348,7 @@ class _ReportStat extends StatelessWidget {
             fontFamily: 'Poppins',
             fontSize: 11,
             color: light
-                ? Colors.white.withOpacity(0.75)
+                ? Colors.white.withValues(alpha: 0.75)
                 : AppColors.textSecondary,
           ),
         ),

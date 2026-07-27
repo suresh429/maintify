@@ -6,7 +6,6 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/app_utils.dart';
 import '../../models/user_model.dart';
-import '../../models/apartment_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/registration_provider.dart';
 import '../../widgets/app_text_field.dart';
@@ -86,7 +85,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
     _presidentFlatCtrl.dispose();
     _aptCodeCtrl.dispose();
     _flatCtrl.dispose();
-    for (final c in _towerNameCtrls) c.dispose();
+    for (final c in _towerNameCtrls) { c.dispose(); }
     _animCtrl.dispose();
     super.dispose();
   }
@@ -255,7 +254,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: AppColors.blue.withOpacity(0.1),
+                      color: AppColors.blue.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.mark_email_unread_outlined,
@@ -277,7 +276,11 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                   const SizedBox(height: 4),
                   Text(
                     email,
-                    style: AppTextStyles.label(color: AppColors.blue),
+                    style: AppTextStyles.label(
+                      color: Theme.of(ctx).brightness == Brightness.dark
+                          ? const Color(0xFF60A5FA)   // Blue 400 — readable on dark surface
+                          : AppColors.blue,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
@@ -294,10 +297,10 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: AppColors.overdue.withOpacity(0.08),
+                        color: AppColors.overdue.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                            color: AppColors.overdue.withOpacity(0.25)),
+                            color: AppColors.overdue.withValues(alpha: 0.25)),
                       ),
                       child: Row(
                         children: [
@@ -327,13 +330,13 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                         errorMsg   = null;
                       });
                       final reg      = context.read<RegistrationProvider>();
+                      final auth     = context.read<AuthProvider>();
                       final verified = await reg.checkEmailVerified();
                       if (!ctx.mounted) return;
                       if (verified) {
                         // Trigger welcome email BEFORE session login
                         await reg.setWelcomeEmailReady(user.id);
                         if (!ctx.mounted) return;
-                        final auth = context.read<AuthProvider>();
                         await auth.loginWithUser(user);
                         if (!ctx.mounted) return;
                         Navigator.of(ctx).pop();
@@ -378,7 +381,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                               if (!ctx.mounted) return;
                               setSt(() => isSending = false);
                               AppUtils.showSnackBar(
-                                context,
+                                ctx,
                                 'Verification email sent. Check your inbox.',
                               );
                             },
@@ -394,11 +397,11 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                   TextButton(
                     onPressed: () async {
                       final reg = context.read<RegistrationProvider>();
+                      final nav = Navigator.of(context);
                       await reg.abortRegistration();
                       if (!ctx.mounted) return;
                       Navigator.of(ctx).pop();
-                      Navigator.of(context)
-                          .pushNamedAndRemoveUntil('/login', (_) => false);
+                      nav.pushNamedAndRemoveUntil('/login', (_) => false);
                     },
                     child: Text(
                       'Back to Login',
@@ -451,7 +454,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: AppColors.paid.withOpacity(0.1),
+                  color: AppColors.paid.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.celebration_rounded,
@@ -473,7 +476,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: cs.surfaceVariant.withOpacity(0.5),
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: cs.outlineVariant),
                 ),
@@ -482,6 +485,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                     if (aptName.isNotEmpty) ...[
                       _SuccessRow(
                           label: 'Apartment',
+                          highlight: true,
                           value: aptName,
                           cs: cs),
                       const SizedBox(height: 10),
@@ -504,10 +508,10 @@ class _RegistrationScreenState extends State<RegistrationScreen>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.paid.withOpacity(0.06),
+                  color: AppColors.paid.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(10),
                   border:
-                      Border.all(color: AppColors.paid.withOpacity(0.2)),
+                      Border.all(color: AppColors.paid.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,7 +632,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: AppColors.paid.withOpacity(0.1),
+                  color: AppColors.paid.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.celebration_rounded,
@@ -650,7 +654,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: cs.surfaceVariant.withOpacity(0.5),
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: cs.outlineVariant),
                 ),
@@ -659,6 +663,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                     if (aptName.isNotEmpty) ...[
                       _SuccessRow(
                           label: 'Apartment',
+                          highlight: true,
                           value: aptName,
                           cs: cs),
                       const SizedBox(height: 10),
@@ -675,10 +680,10 @@ class _RegistrationScreenState extends State<RegistrationScreen>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.paid.withOpacity(0.06),
+                  color: AppColors.paid.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(10),
                   border:
-                      Border.all(color: AppColors.paid.withOpacity(0.2)),
+                      Border.all(color: AppColors.paid.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -759,7 +764,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                             child: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.12),
+                                color: Colors.white.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Icon(Icons.arrow_back_rounded,
@@ -791,7 +796,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black
-                                  .withOpacity(isDark ? 0.4 : 0.1),
+                                  .withValues(alpha: isDark ? 0.4 : 0.1),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -834,10 +839,10 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                               }),
                               style: SegmentedButton.styleFrom(
                                 selectedBackgroundColor:
-                                    cs.primary.withOpacity(0.12),
+                                    cs.primary.withValues(alpha: 0.12),
                                 selectedForegroundColor: cs.primary,
                                 side: BorderSide(
-                                    color: cs.outline.withOpacity(0.5)),
+                                    color: cs.outline.withValues(alpha: 0.5)),
                               ),
                             ),
 
@@ -1065,7 +1070,7 @@ class _PresidentFields extends StatelessWidget {
     final isGated = aptType == 'Gated Community';
 
     final borderColor = isDark
-        ? Colors.white.withOpacity(0.35)
+        ? Colors.white.withValues(alpha: 0.35)
         : cs.outline;
     final dropdownDecoration = InputDecoration(
       filled: true,
@@ -1118,7 +1123,7 @@ class _PresidentFields extends StatelessWidget {
         const SizedBox(height: 14),
 
         DropdownButtonFormField<String>(
-          value: aptType,
+          initialValue: aptType,
           isExpanded: true,
           decoration: dropdownDecoration.copyWith(
             labelText: 'Apartment Type',
@@ -1170,7 +1175,7 @@ class _PresidentFields extends StatelessWidget {
                     _SectionLabel('Towers / Blocks'),
 
                     DropdownButtonFormField<int>(
-                      value: towerCount,
+                      initialValue: towerCount,
                       isExpanded: true,
                       decoration: dropdownDecoration.copyWith(
                         labelText: 'Number of Towers',
@@ -1364,7 +1369,7 @@ class _PasswordStrengthBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inactive =
-        Theme.of(context).colorScheme.surfaceVariant;
+        Theme.of(context).colorScheme.surfaceContainerHighest;
     return Row(
       children: [
         ...List.generate(
@@ -1452,12 +1457,14 @@ class _SuccessRow extends StatelessWidget {
   final String label;
   final String value;
   final bool isCode;
+  final bool highlight;
   final ColorScheme cs;
 
   const _SuccessRow({
     required this.label,
     required this.value,
     this.isCode = false,
+    this.highlight = false,
     required this.cs,
   });
 
@@ -1475,28 +1482,42 @@ class _SuccessRow extends StatelessWidget {
         Expanded(
           child: isCode
               ? Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.blue.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: AppColors.blue.withOpacity(0.3)),
-                  ),
-                  child: Text(
-                    value,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.blue,
-                      letterSpacing: 3,
-                    ),
-                  ),
-                )
-              : Text(value,
-                  style: AppTextStyles.bodyMedium(
-                      color: cs.onSurface)),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 4,
+            ),
+            decoration: BoxDecoration(
+              color: (cs.brightness == Brightness.dark
+                  ? const Color(0xFF60A5FA)
+                  : AppColors.blue)
+                  .withValues(alpha: 0.01),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: (cs.brightness == Brightness.dark
+                    ? const Color(0xFF60A5FA)
+                    : AppColors.blue)
+                    .withValues(alpha: 0.3),
+              ),
+            ),
+            child: Text(
+              value,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: cs.brightness == Brightness.dark
+                    ? const Color(0xFF60A5FA)
+                    : AppColors.blue,
+                letterSpacing: 3,
+              ),
+            ),
+          )
+              : Text(
+            value,
+            style: AppTextStyles.bodyMedium(
+              color: cs.onSurface,
+            ),
+          ),
         ),
       ],
     );

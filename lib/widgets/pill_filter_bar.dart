@@ -80,7 +80,7 @@ class _PillItem extends StatelessWidget {
           boxShadow: isActive
               ? [
                   BoxShadow(
-                    color: activeColor.withOpacity(0.35),
+                    color: activeColor.withValues(alpha: 0.35),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   )

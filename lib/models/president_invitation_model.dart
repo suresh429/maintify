@@ -48,7 +48,7 @@ class PresidentInvitationModel {
   /// Human-readable tower summary, e.g. "2 Towers (A, B)". Null if not gated.
   String? get towerInfo {
     if (towerCount == null || towerCount! <= 0 ||
-        towerNames == null || towerNames!.isEmpty) return null;
+        towerNames == null || towerNames!.isEmpty) { return null; }
     return '$towerCount ${towerCount == 1 ? "Tower" : "Towers"} (${towerNames!.join(", ")})';
   }
 

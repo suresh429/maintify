@@ -215,7 +215,7 @@ class _BillStatusCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.22 : 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.06),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -232,7 +232,7 @@ class _BillStatusCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: iconColor.withOpacity(0.12),
+                    color: iconColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -291,7 +291,7 @@ class _BillStatusCard extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF59E0B).withOpacity(0.08),
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
                 borderRadius: const BorderRadius.vertical(
                     bottom: Radius.circular(16)),
               ),
@@ -431,7 +431,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.paid.withOpacity(0.1),
+                    color: AppColors.paid.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -459,13 +459,13 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                   child: Row(
                     children: [
                       Icon(Icons.notifications_outlined,
-                          size: 15, color: cs.onSurface.withOpacity(0.6)),
+                          size: 15, color: cs.onSurface.withValues(alpha: 0.6)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'The president will be notified and will verify your payment.',
                           style: AppTextStyles.caption(
-                              color: cs.onSurface.withOpacity(0.7)),
+                              color: cs.onSurface.withValues(alpha: 0.7)),
                         ),
                       ),
                     ],

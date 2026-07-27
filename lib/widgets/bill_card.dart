@@ -69,11 +69,11 @@ class BillCard extends StatelessWidget {
           color: cs.surface,
           borderRadius: BorderRadius.circular(14),
           border: payment.isOverdue
-              ? Border.all(color: AppColors.overdue.withOpacity(0.25))
+              ? Border.all(color: AppColors.overdue.withValues(alpha: 0.25))
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -89,7 +89,7 @@ class BillCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: _categoryColor.withOpacity(0.1),
+                    color: _categoryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(_categoryIcon, color: _categoryColor, size: 20),

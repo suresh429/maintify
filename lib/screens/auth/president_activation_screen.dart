@@ -28,7 +28,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
 
   PresidentInvitationModel? _invitation;
   String?                   _createdUid;
-  bool                      _isVerifying = false;
+  final bool                _isVerifying = false;
 
   late AnimationController _animCtrl;
   late Animation<Offset>   _slideAnim;
@@ -141,7 +141,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: AppColors.blue.withOpacity(0.1),
+                    color: AppColors.blue.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.mark_email_unread_outlined,
@@ -177,10 +177,10 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: AppColors.overdue.withOpacity(0.08),
+                      color: AppColors.overdue.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                          color: AppColors.overdue.withOpacity(0.25)),
+                          color: AppColors.overdue.withValues(alpha: 0.25)),
                     ),
                     child: Row(
                       children: [
@@ -210,6 +210,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                       errorMsg   = null;
                     });
                     final reg      = context.read<RegistrationProvider>();
+                    final auth     = context.read<AuthProvider>();
                     final verified = await reg.checkEmailVerified();
                     if (!ctx.mounted) return;
 
@@ -230,7 +231,6 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                       }
 
                       // Establish session
-                      final auth = context.read<AuthProvider>();
                       await auth.loginWithUser(result.user!);
                       if (!ctx.mounted) return;
 
@@ -271,7 +271,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                             if (!ctx.mounted) return;
                             setSt(() => isSending = false);
                             AppUtils.showSnackBar(
-                              context,
+                              ctx,
                               'Verification email sent. Check your inbox.',
                             );
                           },
@@ -287,11 +287,11 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                 TextButton(
                   onPressed: () async {
                     final reg = context.read<RegistrationProvider>();
+                    final nav = Navigator.of(context);
                     await reg.abortRegistration();
                     if (!ctx.mounted) return;
                     Navigator.of(ctx).pop();
-                    Navigator.of(context)
-                        .pushNamedAndRemoveUntil('/login', (_) => false);
+                    nav.pushNamedAndRemoveUntil('/login', (_) => false);
                   },
                   child: Text(
                     'Back to Login',
@@ -339,7 +339,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: AppColors.paid.withOpacity(0.1),
+                  color: AppColors.paid.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.celebration_rounded,
@@ -360,7 +360,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: cs.surfaceVariant.withOpacity(0.5),
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: cs.outlineVariant),
                 ),
@@ -385,9 +385,9 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.paid.withOpacity(0.06),
+                  color: AppColors.paid.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.paid.withOpacity(0.2)),
+                  border: Border.all(color: AppColors.paid.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,7 +506,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                             child: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.12),
+                                color: Colors.white.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Icon(Icons.arrow_back_rounded,
@@ -538,7 +538,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black
-                                  .withOpacity(isDark ? 0.4 : 0.1),
+                                  .withValues(alpha: isDark ? 0.4 : 0.1),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -619,12 +619,12 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                                               horizontal: 12, vertical: 8),
                                           decoration: BoxDecoration(
                                             color:
-                                                AppColors.paid.withOpacity(0.08),
+                                                AppColors.paid.withValues(alpha: 0.08),
                                             borderRadius:
                                                 BorderRadius.circular(10),
                                             border: Border.all(
                                                 color: AppColors.paid
-                                                    .withOpacity(0.2)),
+                                                    .withValues(alpha: 0.2)),
                                           ),
                                           child: Row(
                                             children: [
@@ -780,7 +780,7 @@ class _ReadOnlyField extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: cs.surfaceVariant.withOpacity(0.4),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: cs.outlineVariant),
       ),

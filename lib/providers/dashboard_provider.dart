@@ -5,10 +5,8 @@ import '../models/user_model.dart';
 import '../models/bill_model.dart';
 
 class DashboardProvider extends ChangeNotifier {
-  bool _isLoading = false;
   bool _initialized = false;
 
-  bool get isLoading => _isLoading;
   bool get initialized => _initialized;
 
   // ── Global stats (Super Admin) ────────────────────────────────────────────

@@ -46,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _controller.forward();
-    _navigate();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _navigate());
   }
 
   /// Startup flow:
@@ -118,11 +118,11 @@ class _SplashScreenState extends State<SplashScreen>
     final taglineColor =
         isDark ? const Color(0xFFC39A51) : const Color(0xFF684505);
     final indicatorColor = isDark
-        ? const Color(0xFF60A5FA).withOpacity(0.5)
-        : const Color(0xFF2A2D3E).withOpacity(0.25);
+        ? const Color(0xFF60A5FA).withValues(alpha: 0.5)
+        : const Color(0xFF2A2D3E).withValues(alpha: 0.25);
     final versionColor = isDark
-        ? const Color(0xFF94A3B8).withOpacity(0.6)
-        : const Color(0xFF2A2D3E).withOpacity(0.3);
+        ? const Color(0xFF94A3B8).withValues(alpha: 0.6)
+        : const Color(0xFF2A2D3E).withValues(alpha: 0.3);
 
     return Scaffold(
       backgroundColor: bgColor,

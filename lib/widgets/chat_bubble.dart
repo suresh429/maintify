@@ -59,11 +59,11 @@ class ChatBubble extends StatelessWidget {
                   Builder(builder: (context) {
                     final isDark = Theme.of(context).brightness == Brightness.dark;
                     final bubbleBg = isLeft
-                        ? AppColors.blue.withOpacity(isDark ? 0.30 : 0.08)
-                        : AppColors.green.withOpacity(isDark ? 0.30 : 0.12);
+                        ? AppColors.blue.withValues(alpha: isDark ? 0.30 : 0.08)
+                        : AppColors.green.withValues(alpha: isDark ? 0.30 : 0.12);
                     final bubbleBorder = isLeft
-                        ? AppColors.blue.withOpacity(isDark ? 0.50 : 0.15)
-                        : AppColors.green.withOpacity(isDark ? 0.60 : 0.25);
+                        ? AppColors.blue.withValues(alpha: isDark ? 0.50 : 0.15)
+                        : AppColors.green.withValues(alpha: isDark ? 0.60 : 0.25);
                     final msgColor = isDark
                         ? AppColors.darkTextPrimary
                         : AppColors.textPrimary;
@@ -149,8 +149,8 @@ class _Avatar extends StatelessWidget {
         height: 30,
         decoration: BoxDecoration(
           color: isAdmin
-              ? AppColors.blue.withOpacity(isDark ? 0.40 : 0.15)
-              : AppColors.green.withOpacity(isDark ? 0.40 : 0.15),
+              ? AppColors.blue.withValues(alpha: isDark ? 0.40 : 0.15)
+              : AppColors.green.withValues(alpha: isDark ? 0.40 : 0.15),
           shape: BoxShape.circle,
         ),
         child: Center(

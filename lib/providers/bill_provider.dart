@@ -344,7 +344,7 @@ class BillProvider extends ChangeNotifier {
               categories: const [],
               excludedUserIds: bill.excludedUserIds,
             );
-            result.add(_UserBillView(
+            result.add(UserBillView(
               bill: synthetic,
               payment: payment,
               precomputedAmount: bill.excludedUserIds.contains(userId)
@@ -353,7 +353,7 @@ class BillProvider extends ChangeNotifier {
             ));
           }
         } else {
-          result.add(_UserBillView(bill: bill, payment: payment));
+          result.add(UserBillView(bill: bill, payment: payment));
         }
       } catch (_) {
         debugPrint('[REALTIME] userBillViews: payment ${payment.billId} has no matching bill in cache (${_bills.length} bills loaded)');
@@ -937,13 +937,12 @@ class BillProvider extends ChangeNotifier {
   }
 }
 
-/// Convenience wrapper — unchanged public typedef.
-class _UserBillView {
+class UserBillView {
   final BillModel bill;
   final BillPayment payment;
   final double? _precomputedAmount;
 
-  const _UserBillView({
+  const UserBillView({
     required this.bill,
     required this.payment,
     double? precomputedAmount,
@@ -954,5 +953,3 @@ class _UserBillView {
   /// Common (legacy) bills: falls back to bill.perFlatShare.
   double get userAmount => _precomputedAmount ?? payment.amount ?? bill.perFlatShare;
 }
-
-typedef UserBillView = _UserBillView;

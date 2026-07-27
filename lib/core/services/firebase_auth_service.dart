@@ -253,10 +253,16 @@ class FirebaseAuthService {
         'isActive':       true,
         'joinedAt':       Timestamp.fromDate(now),
       });
-      batch.update(_db.collection('flats').doc(flatId), {
+      // set() creates the flat doc if it doesn't exist yet (on-demand flat creation),
+      // or overwrites it if it was pre-created as available.
+      batch.set(_db.collection('flats').doc(flatId), {
+        'flatNumber':   flatNumber,
+        'tower':        null,
         'status':       'occupied',
         'residentId':   uid,
         'residentType': 'Resident',
+        'apartmentId':  apartmentId,
+        'createdAt':    Timestamp.fromDate(now),
         'updatedAt':    Timestamp.fromDate(now),
       });
       batch.update(_db.collection('apartments').doc(apartmentId), {

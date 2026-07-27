@@ -124,10 +124,10 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.pending.withOpacity(0.1),
+                color: AppColors.pending.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                    color: AppColors.pending.withOpacity(0.4), width: 1),
+                    color: AppColors.pending.withValues(alpha: 0.4), width: 1),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,7 +163,7 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
                 child: Column(
                   children: [
                     Icon(Icons.people_outline,
-                        size: 40, color: cs.onSurfaceVariant.withOpacity(0.4)),
+                        size: 40, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
                     const SizedBox(height: 10),
                     Text('No eligible residents',
                         style: AppTextStyles.subheading(color: cs.onSurface)),
@@ -184,7 +184,7 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? accent.withOpacity(0.07)
+                          ? accent.withValues(alpha: 0.07)
                           : cs.surface,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
@@ -194,7 +194,7 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
@@ -255,7 +255,7 @@ class _TransferPresidentScreenState extends State<TransferPresidentScreen> {
               gradient: _selectedUserId != null ? AppColors.adminGradient : null,
               backgroundColor: _selectedUserId != null
                   ? null
-                  : AppColors.textSecondary.withOpacity(0.3),
+                  : AppColors.textSecondary.withValues(alpha: 0.3),
               icon: Icons.swap_horiz_rounded,
               isLoading: _isTransferring,
               onPressed: _selectedUserId != null ? _transfer : null,

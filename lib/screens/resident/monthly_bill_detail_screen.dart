@@ -101,7 +101,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: theme.primary.withOpacity(0.35),
+            color: theme.primary.withValues(alpha: 0.35),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -117,16 +117,16 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
               Text(
                 fresh.month,
                 style: AppTextStyles.caption(
-                    color: Colors.white.withOpacity(0.8)),
+                    color: Colors.white.withValues(alpha: 0.8)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: Colors.white.withOpacity(0.3), width: 1),
+                      color: Colors.white.withValues(alpha: 0.3), width: 1),
                 ),
                 child: Text(
                   statusLabel,
@@ -153,7 +153,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
                     Text(
                       'Your Share',
                       style: AppTextStyles.bodySmall(
-                          color: Colors.white.withOpacity(0.8)),
+                          color: Colors.white.withValues(alpha: 0.8)),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -172,7 +172,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(13),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(
@@ -188,7 +188,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 11),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
+              color: Colors.white.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(13),
             ),
             child: Row(
@@ -240,7 +240,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 9,
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
             ),
@@ -249,7 +249,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
       );
 
   Widget _divider() =>
-      Container(width: 1, height: 28, color: Colors.white.withOpacity(0.2));
+      Container(width: 1, height: 28, color: Colors.white.withValues(alpha: 0.2));
 
   // ── Category Breakdown Card ─────────────────────────────────────────────────
 
@@ -267,7 +267,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -319,7 +319,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: catColor.withOpacity(0.1),
+                          color: catColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(_categoryIcon(v.bill.category),
@@ -451,7 +451,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -474,9 +474,9 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.paid.withOpacity(0.08),
+                color: AppColors.paid.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.paid.withOpacity(0.3)),
+                border: Border.all(color: AppColors.paid.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -514,10 +514,10 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF59E0B).withOpacity(0.08),
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                    color: const Color(0xFFF59E0B).withOpacity(0.3)),
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -536,7 +536,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
                           'Your payment has been submitted. The president will verify it.',
                           style: AppTextStyles.caption(
                               color: const Color(0xFFD97706)
-                                  .withOpacity(0.8)),
+                                  .withValues(alpha: 0.8)),
                         ),
                       ],
                     ),
@@ -548,10 +548,10 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.pending.withOpacity(0.07),
+                color: AppColors.pending.withValues(alpha: 0.07),
                 borderRadius: BorderRadius.circular(12),
                 border:
-                    Border.all(color: AppColors.pending.withOpacity(0.3)),
+                    Border.all(color: AppColors.pending.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [

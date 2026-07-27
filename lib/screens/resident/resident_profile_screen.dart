@@ -48,7 +48,7 @@ class ResidentProfileScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: theme.primary.withOpacity(0.3),
+                  color: theme.primary.withValues(alpha: 0.3),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -60,10 +60,10 @@ class ResidentProfileScreen extends StatelessWidget {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                     border: Border.all(
-                        color: Colors.white.withOpacity(0.5), width: 2),
+                        color: Colors.white.withValues(alpha: 0.5), width: 2),
                   ),
                   child: Center(
                     child: Text(
@@ -83,7 +83,7 @@ class ResidentProfileScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(user.email,
                     style: AppTextStyles.caption(
-                        color: Colors.white.withOpacity(0.8))),
+                        color: Colors.white.withValues(alpha: 0.8))),
                 const SizedBox(height: 18),
                 // Stats row
                 Row(
@@ -153,7 +153,7 @@ class ResidentProfileScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -176,7 +176,7 @@ class ResidentProfileScreen extends StatelessWidget {
                 Divider(
                     height: 1,
                     indent: 56,
-                    color: cs.outline.withOpacity(0.5)),
+                    color: cs.outline.withValues(alpha: 0.5)),
                 // Change Password
                 _MenuTile(
                   icon: Icons.lock_reset_rounded,
@@ -188,7 +188,7 @@ class ResidentProfileScreen extends StatelessWidget {
                 Divider(
                     height: 1,
                     indent: 56,
-                    color: cs.outline.withOpacity(0.5)),
+                    color: cs.outline.withValues(alpha: 0.5)),
                 // Dark Mode toggle
                 Consumer<ThemeProvider>(
                   builder: (context, tp, _) => _MenuTile(
@@ -203,7 +203,8 @@ class ResidentProfileScreen extends StatelessWidget {
                     trailing: Switch.adaptive(
                       value: tp.isDarkMode,
                       onChanged: (_) => tp.toggle(),
-                      activeColor: theme.primary,
+                      activeThumbColor: theme.effectivePrimary(context),
+                      activeTrackColor: theme.effectivePrimary(context).withValues(alpha: 0.4),
                     ),
                     onTap: () => tp.toggle(),
                   ),
@@ -211,7 +212,7 @@ class ResidentProfileScreen extends StatelessWidget {
                 Divider(
                     height: 1,
                     indent: 56,
-                    color: cs.outline.withOpacity(0.5)),
+                    color: cs.outline.withValues(alpha: 0.5)),
                 // Role badge
                 _MenuTile(
                   icon: Icons.verified_outlined,
@@ -224,7 +225,7 @@ class ResidentProfileScreen extends StatelessWidget {
                 Divider(
                     height: 1,
                     indent: 56,
-                    color: cs.outline.withOpacity(0.5)),
+                    color: cs.outline.withValues(alpha: 0.5)),
                 // Phone
                 _MenuTile(
                   icon: Icons.phone_outlined,
@@ -236,7 +237,7 @@ class ResidentProfileScreen extends StatelessWidget {
                 Divider(
                     height: 1,
                     indent: 56,
-                    color: cs.outline.withOpacity(0.5)),
+                    color: cs.outline.withValues(alpha: 0.5)),
                 // Privacy Policy
                 _MenuTile(
                   icon: Icons.privacy_tip_outlined,
@@ -248,7 +249,7 @@ class ResidentProfileScreen extends StatelessWidget {
                 Divider(
                     height: 1,
                     indent: 56,
-                    color: cs.outline.withOpacity(0.5)),
+                    color: cs.outline.withValues(alpha: 0.5)),
                 // Logout
                 _MenuTile(
                   icon: Icons.logout_rounded,
@@ -300,7 +301,7 @@ class _ProfileStat extends StatelessWidget {
           style: TextStyle(
             fontFamily: 'Poppins',
             fontSize: 11,
-            color: Colors.white.withOpacity(0.75),
+            color: Colors.white.withValues(alpha: 0.75),
           ),
         ),
       ],
@@ -312,7 +313,7 @@ class _VerticalDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-        width: 1, height: 32, color: Colors.white.withOpacity(0.25));
+        width: 1, height: 32, color: Colors.white.withValues(alpha: 0.25));
   }
 }
 
@@ -359,7 +360,7 @@ class _SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -377,7 +378,7 @@ class _SectionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Divider(height: 1, color: cs.outline.withOpacity(0.5)),
+          Divider(height: 1, color: cs.outline.withValues(alpha: 0.5)),
           const SizedBox(height: 6),
           ...children,
         ],
@@ -439,7 +440,7 @@ class _ActionTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -450,7 +451,7 @@ class _ActionTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withOpacity(isDark ? 0.1 : 0.1),
+                color: color.withValues(alpha: isDark ? 0.1 : 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color, size: 22),
@@ -511,7 +512,7 @@ class _MenuTile extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
+                color: iconColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: iconColor, size: 18),

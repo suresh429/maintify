@@ -80,18 +80,33 @@ class RegistrationProvider extends ChangeNotifier {
         return _fail(result.error!);
       }
 
-      // 4. Auto-generate all flats (with president flat reserved + UID set)
-      final uid   = result.user!.id;
-      final flats = generateFlatsForApartment(
-        apartmentId:         aptId,
-        totalFlats:          totalFlats,
-        isGated:             apartmentType == 'Gated Community',
-        towerCount:          towerCount,
-        towerNames:          towerNames,
-        presidentFlatNumber: presidentFlat.trim(),
-        presidentUid:        uid,
-      );
-      await _fs.createFlats(flats);
+      // 4. Create only the president's flat — residents create their own flat on signup
+      final uid     = result.user!.id;
+      final flatNum = presidentFlat.trim();
+      final flatId  = '${aptId}_${flatNum.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_')}';
+      // For gated communities, extract tower from flat number prefix (e.g. "A-101" → "A")
+      String? tower;
+      if (apartmentType == 'Gated Community') {
+        final parts = flatNum.split('-');
+        if (parts.length >= 2 &&
+            towerNames.map((t) => t.toUpperCase()).contains(parts[0].toUpperCase())) {
+          tower = parts[0].toUpperCase();
+        }
+      }
+      final now = DateTime.now();
+      await _fs.createFlats([
+        FlatModel(
+          id:           flatId,
+          flatNumber:   flatNum,
+          tower:        tower,
+          status:       'occupied',
+          residentId:   uid,
+          residentType: 'President',
+          apartmentId:  aptId,
+          createdAt:    now,
+          updatedAt:    now,
+        ),
+      ]);
 
       _isLoading = false;
       notifyListeners();
@@ -208,16 +223,15 @@ class RegistrationProvider extends ChangeNotifier {
             'This apartment is not yet active. Please contact the president.');
       }
 
-      // 2. Find flat → must exist and be available
-      final flat = await _fs.getFlatByNumber(apt.id, flatNumber.trim());
-      if (flat == null) {
+      // 2. If flat already exists, reject if occupied; new flats are created on-demand
+      final flatNum    = flatNumber.trim();
+      final existingFlat = await _fs.getFlatByNumber(apt.id, flatNum);
+      if (existingFlat != null && !existingFlat.isAvailable) {
         return _failApt(
-            'Flat "$flatNumber" was not found in this apartment. Please check the flat number.');
+            'Flat "$flatNum" is already occupied. Please contact your president.');
       }
-      if (!flat.isAvailable) {
-        return _failApt(
-            'Flat "$flatNumber" is already occupied. Please contact your president.');
-      }
+      // Build the flat doc ID (same formula used everywhere in the app)
+      final flatId = '${apt.id}_${flatNum.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_')}';
 
       final emailTrimmed = email.trim().toLowerCase();
       final phoneTrimmed = phone.trim();
@@ -234,15 +248,15 @@ class RegistrationProvider extends ChangeNotifier {
         return _failApt('This mobile number is already registered.');
       }
 
-      // 5. Create Auth account + users doc + reserve flat (atomic)
+      // 5. Create Auth account + users doc + create/reserve flat (atomic)
       final authResult = await _authService.registerResident(
         name:        name.trim(),
         email:       emailTrimmed,
         phone:       phoneTrimmed,
         password:    password,
         apartmentId: apt.id,
-        flatId:      flat.id,
-        flatNumber:  flat.flatNumber,
+        flatId:      flatId,
+        flatNumber:  flatNum,
       );
 
       if (authResult.error != null) {

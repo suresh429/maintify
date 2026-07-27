@@ -11,13 +11,13 @@ class StatusChip extends StatelessWidget {
   Color get _bgColor {
     switch (status) {
       case BillStatus.paid:
-        return AppColors.paid.withOpacity(0.12);
+        return AppColors.paid.withValues(alpha: 0.12);
       case BillStatus.overdue:
-        return AppColors.overdue.withOpacity(0.12);
+        return AppColors.overdue.withValues(alpha: 0.12);
       case BillStatus.pendingApproval:
-        return const Color(0xFFF59E0B).withOpacity(0.13);
+        return const Color(0xFFF59E0B).withValues(alpha: 0.13);
       default:
-        return AppColors.pending.withOpacity(0.12);
+        return AppColors.pending.withValues(alpha: 0.12);
     }
   }
 

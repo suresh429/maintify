@@ -75,13 +75,13 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: cs.surface,
-          border: Border(top: BorderSide(color: cs.outline.withOpacity(0.2), width: 1)),
+          border: Border(top: BorderSide(color: cs.outline.withValues(alpha: 0.2), width: 1)),
         ),
         child: NavigationBar(
           selectedIndex: _currentIndex,
           onDestinationSelected: (i) => setState(() => _currentIndex = i),
           backgroundColor: Colors.transparent,
-          indicatorColor: theme.secondary.withOpacity(0.12),
+          indicatorColor: theme.secondary.withValues(alpha: 0.12),
           surfaceTintColor: Colors.transparent,
           shadowColor: Colors.transparent,
           elevation: 0,
@@ -250,7 +250,7 @@ class _ResidentHome extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: theme.primary.withOpacity(0.3),
+                    color: theme.primary.withValues(alpha: 0.3),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),
@@ -267,7 +267,7 @@ class _ResidentHome extends StatelessWidget {
                           children: [
                             Text(greeting,
                                 style: AppTextStyles.bodySmall(
-                                    color: Colors.white.withOpacity(0.8))),
+                                    color: Colors.white.withValues(alpha: 0.8))),
                             Text(
                               AppUtils.displayFirstName(
                                   user?.name ?? 'Resident'),
@@ -283,7 +283,7 @@ class _ResidentHome extends StatelessWidget {
                                 Text(
                                   'Unit ${user?.unit ?? '101'}',
                                   style: AppTextStyles.bodySmall(
-                                      color: Colors.white.withOpacity(0.85)),
+                                      color: Colors.white.withValues(alpha: 0.85)),
                                 ),
                               ],
                             ),
@@ -294,7 +294,7 @@ class _ResidentHome extends StatelessWidget {
                         width: 54,
                         height: 54,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Center(
@@ -315,7 +315,7 @@ class _ResidentHome extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Row(
@@ -326,7 +326,7 @@ class _ResidentHome extends StatelessWidget {
                             children: [
                               Text('Total Due',
                                   style: AppTextStyles.caption(
-                                      color: Colors.white.withOpacity(0.8))),
+                                      color: Colors.white.withValues(alpha: 0.8))),
                               const SizedBox(height: 4),
                               Text(
                                 AppUtils.formatCurrency(totalDue),
@@ -341,7 +341,7 @@ class _ResidentHome extends StatelessWidget {
                               Text(
                                 '${pendingMonths.length} month${pendingMonths.length != 1 ? 's' : ''} pending',
                                 style: AppTextStyles.caption(
-                                    color: Colors.white.withOpacity(0.7)),
+                                    color: Colors.white.withValues(alpha: 0.7)),
                               ),
                             ],
                           ),
@@ -351,7 +351,7 @@ class _ResidentHome extends StatelessWidget {
                           children: [
                             Text('Paid',
                                 style: AppTextStyles.caption(
-                                    color: Colors.white.withOpacity(0.8))),
+                                    color: Colors.white.withValues(alpha: 0.8))),
                             const SizedBox(height: 4),
                             Text(
                               AppUtils.formatCurrency(totalPaid),
@@ -376,10 +376,10 @@ class _ResidentHome extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.overdue.withOpacity(0.08),
+                  color: AppColors.overdue.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                   border:
-                      Border.all(color: AppColors.overdue.withOpacity(0.2)),
+                      Border.all(color: AppColors.overdue.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   children: [
@@ -452,10 +452,10 @@ class _ResidentHome extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppColors.paid.withOpacity(0.08),
+                  color: AppColors.paid.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(14),
                   border:
-                      Border.all(color: AppColors.paid.withOpacity(0.2)),
+                      Border.all(color: AppColors.paid.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   children: [
@@ -506,7 +506,7 @@ class _QuickStat extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -565,10 +565,10 @@ class _PendingMonthCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: cs.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: statusColor.withOpacity(0.2)),
+          border: Border.all(color: statusColor.withValues(alpha: 0.2)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -579,7 +579,7 @@ class _PendingMonthCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
+                color: statusColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(Icons.calendar_month_outlined,
@@ -609,7 +609,7 @@ class _PendingMonthCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -679,9 +679,9 @@ class _UpcomingMeetingsBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.purple.withOpacity(0.06),
+        color: AppColors.purple.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.purple.withOpacity(0.18)),
+        border: Border.all(color: AppColors.purple.withValues(alpha: 0.18)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -700,7 +700,7 @@ class _UpcomingMeetingsBanner extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: urgencyColor.withOpacity(0.12),
+                  color: urgencyColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(

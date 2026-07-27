@@ -182,7 +182,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? sheetAccent.withOpacity(0.1)
+                                ? sheetAccent.withValues(alpha: 0.1)
                                 : sheetCs.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -394,7 +394,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                           Text(
                             'One bill per month · split across $totalFlats flats',
                             style: AppTextStyles.caption(
-                                color: Colors.white.withOpacity(0.8)),
+                                color: Colors.white.withValues(alpha: 0.8)),
                           ),
                         ],
                       ),
@@ -464,9 +464,9 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: accent.withOpacity(0.06),
+                    color: accent.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: accent.withOpacity(0.2)),
+                    border: Border.all(color: accent.withValues(alpha: 0.2)),
                   ),
                   child: Row(
                     children: [
@@ -548,7 +548,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: accent.withOpacity(0.1),
+                        color: accent.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(Icons.group_outlined,
@@ -774,7 +774,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                               width: 32,
                               height: 32,
                               decoration: BoxDecoration(
-                                color: primary.withOpacity(0.1),
+                                color: primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Center(
@@ -909,7 +909,7 @@ class _TypeChip extends StatelessWidget {
             boxShadow: isActive
                 ? [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     )
@@ -934,8 +934,8 @@ class _TypeChip extends StatelessWidget {
                   fontFamily: 'Poppins',
                   fontSize: 9,
                   color: isActive
-                      ? color.withOpacity(0.7)
-                      : Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7),
+                      ? color.withValues(alpha: 0.7)
+                      : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                 ),
               ),
             ],

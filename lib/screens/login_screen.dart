@@ -88,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        bool _isSending = false;
+        bool isSending = false;
         return StatefulBuilder(
           builder: (ctx, setSt) => Padding(
             padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
@@ -116,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen>
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
+                      color: Colors.orange.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.mark_email_unread_outlined,
@@ -140,23 +140,23 @@ class _LoginScreenState extends State<LoginScreen>
                     text: 'Resend Verification Email',
                     gradient: const [Color(0xFF1E3A8A), Color(0xFF06B6D4)],
                     icon: Icons.send_outlined,
-                    isLoading: _isSending,
+                    isLoading: isSending,
                     onPressed: () async {
-                      setSt(() => _isSending = true);
+                      setSt(() => isSending = true);
                       final auth = context.read<AuthProvider>();
                       final sent = await auth.resendEmailVerification(
                         _emailCtrl.text.trim(),
                         _passCtrl.text,
                       );
                       if (!ctx.mounted) return;
-                      Navigator.pop(ctx);
                       AppUtils.showSnackBar(
-                        context,
+                        ctx,
                         sent
                             ? 'Verification email sent. Please check your inbox.'
                             : 'Could not send email. Check your credentials.',
                         isError: !sent,
                       );
+                      Navigator.pop(ctx);
                     },
                   ),
                   const SizedBox(height: 12),
@@ -211,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Theme.of(ctx).colorScheme.primary.withOpacity(0.1),
+                      color: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(Icons.lock_reset_rounded,
@@ -252,17 +252,17 @@ class _LoginScreenState extends State<LoginScreen>
                     final auth = context.read<AuthProvider>();
                     final result = await auth.generateForgotPassword(email);
                     if (!ctx.mounted) return;
-                    Navigator.pop(ctx);
                     if (result == null) {
                       AppUtils.showSnackBar(
-                          context, 'No account found with that email.',
+                          ctx, 'No account found with that email.',
                           isError: true);
                     } else {
                       AppUtils.showSnackBar(
-                          context,
+                          ctx,
                           'Password reset email sent to $email.',
                       );
                     }
+                    Navigator.pop(ctx);
                   },
                 ),
               ),
@@ -328,7 +328,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 style: TextStyle(
                                   fontFamily: 'Poppins',
                                   fontSize: 11,
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: 0.8),
                                 ),
                               ),
                             ],
@@ -346,7 +346,7 @@ class _LoginScreenState extends State<LoginScreen>
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -455,7 +455,7 @@ class _LoginScreenState extends State<LoginScreen>
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
+                              color: Colors.black.withValues(alpha: 0.06),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -487,11 +487,11 @@ class _LoginScreenState extends State<LoginScreen>
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 12, horizontal: 8),
                                         decoration: BoxDecoration(
-                                          color: color.withOpacity(0.08),
+                                          color: color.withValues(alpha: 0.08),
                                           borderRadius:
                                               BorderRadius.circular(12),
                                           border: Border.all(
-                                            color: color.withOpacity(0.2),
+                                            color: color.withValues(alpha: 0.2),
                                           ),
                                         ),
                                         child: Column(
@@ -560,7 +560,7 @@ class _LoginScreenState extends State<LoginScreen>
                           style: OutlinedButton.styleFrom(
                             foregroundColor: cs.primary,
                             side: BorderSide(
-                                color: cs.primary.withOpacity(0.4)),
+                                color: cs.primary.withValues(alpha: 0.4)),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
                             padding: const EdgeInsets.symmetric(

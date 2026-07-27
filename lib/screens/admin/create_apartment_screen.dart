@@ -202,7 +202,7 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
                 label: const Text('Copy Code'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: accentColor,
-                  side: BorderSide(color: accentColor.withOpacity(0.4)),
+                  side: BorderSide(color: accentColor.withValues(alpha: 0.4)),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                   textStyle: const TextStyle(
@@ -221,10 +221,10 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.paid.withOpacity(0.08),
+                  color: AppColors.paid.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
                   border:
-                      Border.all(color: AppColors.paid.withOpacity(0.25)),
+                      Border.all(color: AppColors.paid.withValues(alpha: 0.25)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,7 +262,7 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
     final accent = theme.effectivePrimary(context);
 
     return Scaffold(
-      backgroundColor: cs.background,
+      backgroundColor: cs.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -315,7 +315,7 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
                           Text(
                             'A unique code is generated and emailed to the president automatically.',
                             style: AppTextStyles.caption(
-                                color: Colors.white.withOpacity(0.8)),
+                                color: Colors.white.withValues(alpha: 0.8)),
                           ),
                         ],
                       ),
@@ -346,7 +346,7 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
               const SizedBox(height: 14),
 
               DropdownButtonFormField<String>(
-                value: _aptType,
+                initialValue: _aptType,
                 decoration: InputDecoration(
                   labelText: 'Apartment Type',
                   prefixIcon: const Icon(Icons.category_outlined, size: 20),
@@ -455,9 +455,9 @@ class _CreateApartmentScreenState extends State<CreateApartmentScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: accent.withOpacity(0.08),
+                  color: accent.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: accent.withOpacity(0.2)),
+                  border: Border.all(color: accent.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -566,7 +566,7 @@ class _SectionHeader extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: accent.withOpacity(0.12),
+            color: accent.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 18, color: accent),

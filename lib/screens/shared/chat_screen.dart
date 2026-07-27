@@ -97,7 +97,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ? '${complaint.userName} · ${complaint.unit}'
                   : complaint.category,
               style: AppTextStyles.caption(
-                      color: Colors.white.withOpacity(0.8))
+                      color: Colors.white.withValues(alpha: 0.8))
                   .copyWith(fontSize: 11),
             ),
           ],
@@ -132,7 +132,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.chat_bubble_outline,
-                            size: 48, color: _primary.withOpacity(0.3)),
+                            size: 48, color: _primary.withValues(alpha: 0.3)),
                         const SizedBox(height: 12),
                         Text('No messages yet',
                             style: AppTextStyles.bodyMedium(
@@ -258,14 +258,14 @@ class _ChatScreenState extends State<ChatScreen> {
                 _statusIcon(s),
                 color: isAllowed || isCurrent
                     ? _statusColor(s)
-                    : cs.onSurface.withOpacity(0.3),
+                    : cs.onSurface.withValues(alpha: 0.3),
               ),
               title: Text(
                 s,
                 style: AppTextStyles.bodyMedium(
                   color: isAllowed
                       ? cs.onSurface
-                      : cs.onSurface.withOpacity(isCurrent ? 1.0 : 0.35),
+                      : cs.onSurface.withValues(alpha: isCurrent ? 1.0 : 0.35),
                 ).copyWith(
                   fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
                 ),
@@ -343,9 +343,9 @@ class _StatusChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.4)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

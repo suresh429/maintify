@@ -36,10 +36,10 @@ class MaintifyLogo extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(backgroundOpacity),
+        color: Colors.white.withValues(alpha: backgroundOpacity),
         borderRadius: BorderRadius.circular(size * 0.25), // 16 px at size = 64
         border: Border.all(
-          color: Colors.white.withOpacity(0.10),
+          color: Colors.white.withValues(alpha: 0.10),
           width: 1,
         ),
       ),

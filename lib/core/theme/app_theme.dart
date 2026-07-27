@@ -55,7 +55,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         shadowColor: Colors.transparent,
         elevation: 0,
-        indicatorColor: AppColors.blue.withOpacity(0.12),
+        indicatorColor: AppColors.blue.withValues(alpha: 0.12),
       ),
     );
   }
@@ -98,7 +98,7 @@ class AppTheme {
           borderSide: const BorderSide(color: AppColors.darkTextPrimary, width: 1.5),
         ),
         labelStyle: const TextStyle(color: AppColors.darkTextSecondary),
-        hintStyle: TextStyle(color: AppColors.darkTextSecondary.withOpacity(0.6)),
+        hintStyle: TextStyle(color: AppColors.darkTextSecondary.withValues(alpha: 0.6)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -114,7 +114,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         shadowColor: Colors.transparent,
         elevation: 0,
-        indicatorColor: AppColors.blue.withOpacity(0.2),
+        indicatorColor: AppColors.blue.withValues(alpha: 0.2),
       ),
     );
   }

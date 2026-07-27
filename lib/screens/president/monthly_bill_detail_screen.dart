@@ -251,7 +251,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: theme.primary.withOpacity(0.3),
+            color: theme.primary.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -269,7 +269,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                     Text(
                       fresh.month,
                       style: AppTextStyles.caption(
-                          color: Colors.white.withOpacity(0.8)),
+                          color: Colors.white.withValues(alpha: 0.8)),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -285,7 +285,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                     Text(
                       'Apartment Total Bill',
                       style: AppTextStyles.bodySmall(
-                          color: Colors.white.withOpacity(0.85)),
+                          color: Colors.white.withValues(alpha: 0.85)),
                     ),
                   ],
                 ),
@@ -293,7 +293,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Icon(Icons.receipt_long_rounded,
@@ -307,7 +307,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
+              color: Colors.white.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
@@ -348,14 +348,14 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                 style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 9,
-                    color: Colors.white.withOpacity(0.7)),
+                    color: Colors.white.withValues(alpha: 0.7)),
                 textAlign: TextAlign.center),
           ],
         ),
       );
 
   Widget _vertDivider() =>
-      Container(width: 1, height: 32, color: Colors.white.withOpacity(0.2));
+      Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.2));
 
   String _shortDate(DateTime d) {
     const months = [
@@ -400,7 +400,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: theme.primary.withOpacity(0.08),
+                        color: theme.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(_categoryIcon(bill.category),
@@ -573,7 +573,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.07),
+        color: color.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -607,7 +607,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.07),
+        color: color.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -650,7 +650,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -777,16 +777,16 @@ Widget _billActionTile({
     child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.15)),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -844,7 +844,7 @@ void _showDeleteBillDialog(
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.overdue.withOpacity(0.1),
+                color: AppColors.overdue.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.warning_rounded,
@@ -954,9 +954,9 @@ class _FlatPaymentCard extends StatelessWidget {
 
     Border? border;
     if (isPaid) {
-      border = Border.all(color: AppColors.paid.withOpacity(0.25));
+      border = Border.all(color: AppColors.paid.withValues(alpha: 0.25));
     } else if (isPendingApproval) {
-      border = Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4));
+      border = Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4));
     }
 
     return Container(
@@ -966,7 +966,7 @@ class _FlatPaymentCard extends StatelessWidget {
         border: border,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -985,7 +985,7 @@ class _FlatPaymentCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: adminAccent.withOpacity(0.1),
+                    color: adminAccent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -1015,7 +1015,7 @@ class _FlatPaymentCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: adminAccent.withOpacity(0.12),
+                              color: adminAccent.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -1094,7 +1094,7 @@ class _FlatPaymentCard extends StatelessWidget {
           if (isPendingApproval)
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xFFF59E0B).withOpacity(0.06),
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.06),
                 borderRadius:
                     const BorderRadius.vertical(bottom: Radius.circular(14)),
               ),
@@ -1108,7 +1108,7 @@ class _FlatPaymentCard extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.overdue,
                         side: BorderSide(
-                            color: AppColors.overdue.withOpacity(0.4)),
+                            color: AppColors.overdue.withValues(alpha: 0.4)),
                         padding:
                             const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(

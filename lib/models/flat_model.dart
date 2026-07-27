@@ -77,16 +77,16 @@ List<FlatModel> generateFlatsForApartment({
   final flats = <FlatModel>[];
   final presidentKey = presidentFlatNumber.trim().toUpperCase();
 
-  String _id(String flatNum) =>
+  String flatId(String flatNum) =>
       '${apartmentId}_${flatNum.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_')}';
 
-  bool _isPresident(String flatNum) =>
+  bool isPresidentFlat(String flatNum) =>
       flatNum.trim().toUpperCase() == presidentKey;
 
-  FlatModel _make(String flatNum, String? tower) {
-    final pres = _isPresident(flatNum);
+  FlatModel makeFlatModel(String flatNum, String? tower) {
+    final pres = isPresidentFlat(flatNum);
     return FlatModel(
-      id:           _id(flatNum),
+      id:           flatId(flatNum),
       flatNumber:   flatNum,
       tower:        tower,
       status:       pres ? 'occupied' : 'available',
@@ -109,13 +109,13 @@ List<FlatModel> generateFlatsForApartment({
       if (remainder > 0) remainder--;
 
       for (int f = 0; f < count && generated < totalFlats; f++) {
-        flats.add(_make('$tower-${101 + f}', tower));
+        flats.add(makeFlatModel('$tower-${101 + f}', tower));
         generated++;
       }
     }
   } else {
     for (int i = 0; i < totalFlats; i++) {
-      flats.add(_make('${101 + i}', null));
+      flats.add(makeFlatModel('${101 + i}', null));
     }
   }
 

@@ -137,11 +137,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
             icon: const Icon(Icons.logout_rounded, color: Colors.white),
             tooltip: 'Logout',
             onPressed: () async {
+              final nav = Navigator.of(context);
               final confirm =
                   await showLogoutSheet(context, UserRole.admin);
               if (confirm == true && mounted) {
                 auth.logout();
-                Navigator.pushReplacementNamed(context, '/login');
+                nav.pushReplacementNamed('/login');
               }
             },
           ),
@@ -161,13 +162,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: cs.surface,
-          border: Border(top: BorderSide(color: cs.outline.withOpacity(0.2), width: 1)),
+          border: Border(top: BorderSide(color: cs.outline.withValues(alpha: 0.2), width: 1)),
         ),
         child: NavigationBar(
           selectedIndex: _currentIndex,
           onDestinationSelected: (i) => setState(() => _currentIndex = i),
           backgroundColor: Colors.transparent,
-          indicatorColor: theme.effectivePrimary(context).withOpacity(0.15),
+          indicatorColor: theme.effectivePrimary(context).withValues(alpha: 0.15),
           surfaceTintColor: Colors.transparent,
           shadowColor: Colors.transparent,
           elevation: 0,
@@ -243,7 +244,7 @@ class _DashboardHome extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: accent.withOpacity(0.25),
+                    color: accent.withValues(alpha: 0.25),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),
@@ -257,7 +258,7 @@ class _DashboardHome extends StatelessWidget {
                       children: [
                         Text(greeting,
                             style: AppTextStyles.caption(
-                                color: Colors.white.withOpacity(0.8))),
+                                color: Colors.white.withValues(alpha: 0.8))),
                         Text(
                           AppUtils.displayFirstName(
                               auth.currentUser?.name ?? 'Admin'),
@@ -267,7 +268,7 @@ class _DashboardHome extends StatelessWidget {
                         const SizedBox(height: 8),
                         Text('Global Overview',
                             style: AppTextStyles.caption(
-                                color: Colors.white.withOpacity(0.8))),
+                                color: Colors.white.withValues(alpha: 0.8))),
                         const SizedBox(height: 6),
                         Text(
                           AppUtils.formatCurrency(dashboard.totalRevenue),
@@ -281,7 +282,7 @@ class _DashboardHome extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text('Total Collected Revenue',
                             style: AppTextStyles.bodySmall(
-                                color: Colors.white.withOpacity(0.85))),
+                                color: Colors.white.withValues(alpha: 0.85))),
                         const SizedBox(height: 12),
                         Row(
                           children: [
@@ -301,7 +302,7 @@ class _DashboardHome extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Icon(Icons.shield_outlined,
@@ -404,7 +405,7 @@ class _DashboardHome extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'Poppins',
               fontSize: 10,
-              color: Colors.white.withOpacity(0.75),
+              color: Colors.white.withValues(alpha: 0.75),
             )),
       ],
     );
@@ -430,7 +431,7 @@ class _ApartmentCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -444,7 +445,7 @@ class _ApartmentCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: accent.withOpacity(0.12),
+                  color: accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(Icons.apartment_outlined,
@@ -468,8 +469,8 @@ class _ApartmentCard extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: apt.hasPresident
-                      ? AppColors.green.withOpacity(0.1)
-                      : AppColors.overdue.withOpacity(0.1),
+                      ? AppColors.green.withValues(alpha: 0.1)
+                      : AppColors.overdue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(

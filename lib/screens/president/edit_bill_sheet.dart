@@ -47,7 +47,7 @@ class _EditBillPage extends StatelessWidget {
             Text(
               bill.month,
               style: AppTextStyles.caption(
-                  color: Colors.white.withOpacity(0.8)),
+                  color: Colors.white.withValues(alpha: 0.8)),
             ),
           ],
         ),
@@ -396,7 +396,7 @@ class _EditBillContentState extends State<_EditBillContent> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -412,7 +412,7 @@ class _EditBillContentState extends State<_EditBillContent> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: accent.withOpacity(0.1),
+                  color: accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -435,7 +435,7 @@ class _EditBillContentState extends State<_EditBillContent> {
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: AppColors.overdue.withOpacity(0.08),
+                      color: AppColors.overdue.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
@@ -659,7 +659,7 @@ class _EditBillContentState extends State<_EditBillContent> {
                             width: 28,
                             height: 28,
                             decoration: BoxDecoration(
-                              color: accent.withOpacity(0.1),
+                              color: accent.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(7),
                             ),
                             child: Center(
@@ -766,7 +766,7 @@ class _EditBillContentState extends State<_EditBillContent> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -787,7 +787,7 @@ class _EditBillContentState extends State<_EditBillContent> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppColors.overdue.withOpacity(0.1),
+                    color: AppColors.overdue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -825,12 +825,12 @@ class _EditBillContentState extends State<_EditBillContent> {
                       horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: isExcluded
-                        ? AppColors.overdue.withOpacity(0.08)
+                        ? AppColors.overdue.withValues(alpha: 0.08)
                         : cs.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isExcluded
-                          ? AppColors.overdue.withOpacity(0.3)
+                          ? AppColors.overdue.withValues(alpha: 0.3)
                           : cs.outlineVariant,
                     ),
                   ),
@@ -860,7 +860,7 @@ class _EditBillContentState extends State<_EditBillContent> {
                           fontFamily: 'Poppins',
                           fontSize: 10,
                           color: isExcluded
-                              ? AppColors.overdue.withOpacity(0.6)
+                              ? AppColors.overdue.withValues(alpha: 0.6)
                               : cs.onSurfaceVariant,
                         ),
                       ),
@@ -947,7 +947,7 @@ class _EditBillContentState extends State<_EditBillContent> {
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 9,
-                color: Colors.white.withOpacity(0.75),
+                color: Colors.white.withValues(alpha: 0.75),
               ),
               textAlign: TextAlign.center,
             ),
@@ -958,7 +958,7 @@ class _EditBillContentState extends State<_EditBillContent> {
   Widget _summaryDivider() => Container(
         width: 1,
         height: 28,
-        color: Colors.white.withOpacity(0.25),
+        color: Colors.white.withValues(alpha: 0.25),
       );
 
   // ── Due date row ────────────────────────────────────────────────────────
@@ -973,7 +973,7 @@ class _EditBillContentState extends State<_EditBillContent> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -984,7 +984,7 @@ class _EditBillContentState extends State<_EditBillContent> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: accent.withOpacity(0.1),
+                color: accent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(Icons.calendar_today_outlined,
@@ -1079,7 +1079,7 @@ class _EditBillContentState extends State<_EditBillContent> {
             boxShadow: isActive
                 ? [
                     BoxShadow(
-                      color: accent.withOpacity(0.25),
+                      color: accent.withValues(alpha: 0.25),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     )
@@ -1114,7 +1114,7 @@ class _EditBillContentState extends State<_EditBillContent> {
                       fontFamily: 'Poppins',
                       fontSize: 9,
                       color: isActive
-                          ? Colors.white.withOpacity(0.8)
+                          ? Colors.white.withValues(alpha: 0.8)
                           : cs.onSurfaceVariant,
                     ),
                   ),

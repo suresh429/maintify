@@ -56,7 +56,7 @@ class _PresidentComplaintsScreenState extends State<PresidentComplaintsScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: RoleTheme.of(UserRole.president).effectivePrimary(context).withOpacity(0.1),
+                        color: RoleTheme.of(UserRole.president).effectivePrimary(context).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(Icons.apartment_rounded,
@@ -104,7 +104,7 @@ class _PresidentComplaintsScreenState extends State<PresidentComplaintsScreen> {
                                 color: (Theme.of(context).brightness == Brightness.dark
                                         ? const Color(0xFF60A5FA)
                                         : AppColors.blue)
-                                    .withOpacity(0.4)),
+                                    .withValues(alpha: 0.4)),
                             const SizedBox(height: 12),
                             Text('No complaints',
                                 style: AppTextStyles.subheading(color: cs.onSurface)),
@@ -201,11 +201,11 @@ class _AdminComplaintTile extends StatelessWidget {
           color: cs.surface,
           borderRadius: BorderRadius.circular(16),
           border: unread
-              ? Border.all(color: accent.withOpacity(0.3))
+              ? Border.all(color: accent.withValues(alpha: 0.3))
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -218,7 +218,7 @@ class _AdminComplaintTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: accent.withOpacity(0.1),
+                color: accent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child:
@@ -326,7 +326,7 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -353,8 +353,8 @@ class _CountBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: count > 0
-            ? AppColors.pending.withOpacity(0.1)
-            : AppColors.paid.withOpacity(0.1),
+            ? AppColors.pending.withValues(alpha: 0.1)
+            : AppColors.paid.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(

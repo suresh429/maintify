@@ -60,7 +60,7 @@ class _BillsScreenState extends State<BillsScreen> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 6,
                         ),
                       ],
@@ -184,11 +184,11 @@ class _UserMonthlyCard extends StatelessWidget {
           color: cs.surface,
           borderRadius: BorderRadius.circular(16),
           border: summary.status != 'Paid'
-              ? Border.all(color: statusColor.withOpacity(0.2))
+              ? Border.all(color: statusColor.withValues(alpha: 0.2))
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -199,7 +199,7 @@ class _UserMonthlyCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(11),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
+                color: statusColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(statusIcon, color: statusColor, size: 24),
@@ -242,7 +242,7 @@ class _UserMonthlyCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(

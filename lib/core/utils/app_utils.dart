@@ -124,7 +124,7 @@ class AppUtils {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: effectiveConfirmColor.withOpacity(0.12),
+                  color: effectiveConfirmColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
