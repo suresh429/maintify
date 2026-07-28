@@ -10,7 +10,6 @@ import '../../providers/auth_provider.dart';
 import '../../providers/registration_provider.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/common_button.dart';
-import '../../widgets/maintify_logo.dart';
 
 class PresidentActivationScreen extends StatefulWidget {
   const PresidentActivationScreen({super.key});
@@ -470,20 +469,31 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
 
   @override
   Widget build(BuildContext context) {
-    final cs     = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0F1E),
       body: Stack(
         children: [
-          Container(
-            height: MediaQuery.of(context).size.height * 0.30,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF141E30), Color(0xFF243B55)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+          // Top portion: apartment image fading into dark scaffold background
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.40,
+            width: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset('assets/background.png', fit: BoxFit.cover),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0.3, 1.0],
+                      colors: [Colors.transparent, Color(0xFF0A0F1E)],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           SafeArea(
@@ -514,7 +524,29 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                             ),
                           ),
                           const SizedBox(width: 14),
-                          const MaintifyLogo(size: 56),
+                          Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0D1B3E),
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Image.asset(
+                                'assets/app_logo.png',
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
                           const SizedBox(width: 10),
                           Text(
                             AppConstants.appName,
@@ -534,13 +566,14 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
                           color: cs.surface,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.08)),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.4 : 0.1),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
+                              color: Colors.black.withValues(alpha: 0.45),
+                              blurRadius: 32,
+                              offset: const Offset(0, 14),
                             ),
                           ],
                         ),
@@ -742,7 +775,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                       Center(
                         child: Text(
                           '© 2026 Maintify · All rights reserved',
-                          style: AppTextStyles.caption(),
+                          style: AppTextStyles.caption(color: Colors.white54),
                         ),
                       ),
                       const SizedBox(height: 24),

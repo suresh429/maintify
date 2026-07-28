@@ -5,12 +5,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Run the app
-flutter run
+# Run the app (DEV flavor — connects to maintify-dev Firebase project)
+flutter run -t lib/main_dev.dart --flavor dev
 
-# Build
-flutter build apk
-flutter build ios
+# Run the app (PROD flavor — connects to maintify-ff8c4 Firebase project)
+flutter run -t lib/main_prod.dart --flavor prod
+
+# Build (specify flavor)
+flutter build apk --flavor dev -t lib/main_dev.dart
+flutter build apk --flavor prod -t lib/main_prod.dart
+flutter build ios --flavor dev -t lib/main_dev.dart
+flutter build ios --flavor prod -t lib/main_prod.dart
 
 # Lint
 flutter analyze
@@ -37,11 +42,32 @@ cd functions && npm install
 
 **Maintify** is a Flutter apartment maintenance management app backed by **Firebase (Firestore + Auth)**. Uses Provider + ChangeNotifier for state management, portrait-only orientation.
 
+### Flutter Flavors (Environments)
+
+Two flavors — `dev` and `prod` — each with its own Firebase project and entry point:
+
+| | Dev | Prod |
+|---|---|---|
+| Entry point | `lib/main_dev.dart` | `lib/main_prod.dart` |
+| Firebase options | `lib/firebase_options_dev.dart` | `lib/firebase_options_prod.dart` |
+| Firebase project | `maintify-dev` | `maintify-ff8c4` |
+| App name | `Maintify Dev` | `Maintify` |
+| Debug banner | shown | hidden |
+| DbSeeder | runs | runs (guarded by `_meta/seeded_v4`) |
+
+Both entry points call `bootstrap(FirebaseOptions, AppEnvironment)` in `main.dart`, which initializes Hive, Firebase, and optionally runs `DbSeeder`.
+
+**`AppConfig`** (`lib/core/config/app_config.dart`): Singleton set once at startup. Read `AppConfig.isDevelopment` / `AppConfig.isProduction` anywhere in the app — never pass environment flags through constructors.
+
+**iOS:** `ios/copy_google_services.sh` is a Xcode Run Script phase that copies the correct `GoogleService-Info.plist` from `ios/config/dev/` or `ios/config/prod/` based on the active build configuration. It must run before "Copy Bundle Resources".
+
+**Android:** `android/app/build.gradle.kts` defines `dev` and `prod` product flavors with separate `google-services.json` files under `android/app/src/dev/` and `android/app/src/prod/`.
+
 ### Role System
 
 Three roles drive the entire app structure: `admin` (super admin), `president` (apartment president), and `resident`. `UserRole` is defined in `lib/core/theme/role_theme.dart` — **not** in `user_model.dart`. Role is determined at login via `AuthProvider`. `DashboardRouter` (`lib/screens/dashboard_router.dart`) watches `AuthProvider` and routes accordingly.
 
-**Test credentials** (seeded via `DbSeeder` on first launch, guarded by `_meta/seeded_v4`):
+**Test credentials** (seeded via `DbSeeder` — DEV flavor only, guarded by `_meta/seeded_v4`):
 - `support.maintify@gmail.com` / `maintify@0606` → Admin (super admin)
 - `president@maintify.demo` / `Maintify@123` → President (demo apartment)
 - `resident@maintify.demo` / `Maintify@123` → Resident (demo apartment)
@@ -114,7 +140,7 @@ Login goes through `FirebaseAuthService.signIn()` → standard Firebase Auth. On
 
 - **President — self-creation (primary path):** New president creates the apartment themselves. Form collects personal info + apartment details (name, type, address, total flats, flat number). Types: `Apartment`, `Villa`, `Gated Community`. Gated Community additionally captures tower count and names (A–Z). On submit: `RegistrationProvider.selfRegisterPresident()` → checks for duplicate apartment → generates collision-safe 8-char code (4 letters from apartment name + 4 random digits) → calls `FirebaseAuthService.selfRegisterPresident()` (creates Auth account + apartment doc + user doc atomically) → auto-generates all `flats/` docs via `generateFlatsForApartment()` (president flat marked `occupied`). Then shows email verification bottom sheet — after verification resolves, shows success sheet with apartment code.
 
-- **President — activation (secondary path):** For apartments pre-created by a super admin (`status: 'waiting_for_president'`). President enters apartment code + their email (must match `apt.presidentEmail`) via `president_signup_screen.dart`. Calls `RegistrationProvider.registerPresident()` → activates apartment → updates president flat's `residentId` in `flats/` → notifies superAdmins.
+- **President — activation (secondary path):** For apartments pre-created by a super admin (`status: 'waiting_for_president'`). President enters apartment code + their email (must match `apt.presidentEmail`) via `president_activation_screen.dart` (also `president_signup_screen.dart` — both exist). Calls `RegistrationProvider.registerPresident()` → activates apartment → updates president flat's `residentId` in `flats/` → notifies superAdmins.
 
 - **Resident — direct registration:** Resident enters apartment code + flat number. `RegistrationProvider.registerResident()` → validates apartment is `active` → looks up flat in `flats/` collection (must exist and be `available`) → checks email + phone uniqueness → calls `FirebaseAuthService.registerResident()` (creates Auth account + users doc + marks flat `occupied` atomically) → shows email verification bottom sheet → on verify, logs in and shows success sheet. **No pending queue** — residents get immediate access after email verification.
 
@@ -145,7 +171,7 @@ apartments/{id}:
 | `FirestoreService` | Singleton — all collection reads/writes. Providers never import `FirebaseFirestore` directly. Includes `updateBill`, `updatePayment`, `deleteBill`, `deleteAllPaymentsForBill`. |
 | `FirebaseAuthService` | Wraps `FirebaseAuth`. Handles sign-in, password change, reset email, `registerPresident`, `registerResident`. |
 | `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). Uses `flutter_local_notifications` to display foreground messages. Uses `navigatorKey` for out-of-tree navigation on notification tap. |
-| `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded_v4`. Creates admin, demo president, demo resident, and a demo apartment. |
+| `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded_v4`. **DEV flavor only** — `bootstrap()` skips seeding when `AppConfig.isProduction`. Creates admin, demo president, demo resident, and a demo apartment. |
 
 **`AppUtils`** (`lib/core/utils/app_utils.dart`): Static helpers — `formatCurrency`, `formatDate`, `formatMonthYear`, `formatDateTime`, `timeAgo`, `showSnackBar` (accepts optional `color` override), `displayFirstName`, `showConfirmDialog`. `showConfirmDialog` renders a bottom-sheet style confirmation with customizable `confirmColor`.
 
@@ -162,7 +188,8 @@ screens/
 ├── splash_screen.dart
 ├── auth/
 │   ├── registration_screen.dart   ← Unified signup: segmented button switches President / Resident form fields; handles email verification bottom sheet + success sheet
-│   └── president_signup_screen.dart ← Activation-only path for super-admin-created apartments (apartment code + email validation)
+│   ├── president_signup_screen.dart ← Legacy activation path (apartment code + email validation)
+│   └── president_activation_screen.dart ← Current activation path for super-admin-created apartments (imported by main.dart)
 ├── admin/                         ← 6 screens: dashboard, apartments, reports, assign-admin,
 │                                    assign-president, create-apartment (super-admin role)
 ├── president/                     ← 9 screens: dashboard, create-bill, edit-bill-sheet, complaints,
@@ -235,7 +262,7 @@ Use `Column(mainAxisSize: MainAxisSize.min)` to avoid full-height expansion.
 
 ## Backend: Firebase Cloud Functions (`functions/`)
 
-Node.js v2 functions in `functions/index.js`. Deploy with `firebase deploy --only functions`. Firebase project: `tivastraapp` (see `.firebaserc`).
+Node.js v2 functions in `functions/index.js`. Deploy with `firebase deploy --only functions`. Firebase projects: `maintify-dev` (dev alias) and `maintify-ff8c4` (prod alias) — see `.firebaserc`.
 
 ### Cloud Function Triggers
 

@@ -16,7 +16,6 @@ class NotificationProvider extends ChangeNotifier {
   /// Starts a real-time stream scoped to this specific user's notifications.
   /// Each notification doc has `userId == currentUser.id`.
   void startListening(String userId) {
-    debugPrint('[DEBUG] NotificationProvider.startListening — userId: $userId');
     // Remove any legacy docs (targetRole only, no userId) so they don't pollute
     // future queries. Runs on every login; no-op when there is nothing to clean.
     _fs.cleanupLegacyNotifications()

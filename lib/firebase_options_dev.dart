@@ -1,16 +1,15 @@
-// Legacy default Firebase options — not used by flavored builds.
-// main_dev.dart uses firebase_options_dev.dart
-// main_prod.dart uses firebase_options_prod.dart
-// This file is kept for reference; it mirrors the DEV project configuration.
-// ignore_for_file: lines_longer_than_80_chars, avoid_classes_with_only_static_members
+// DEV Firebase project: maintify-dev
+// Android app: com.maintify.app.dev
+// iOS app:     com.maintify.app.dev
+// ignore_for_file: lines_longer_than_80_chars
 
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
-class DefaultFirebaseOptions {
+class FirebaseOptionsDev {
   static FirebaseOptions get currentPlatform {
-    if (kIsWeb) throw UnsupportedError('Web not configured.');
+    if (kIsWeb) throw UnsupportedError('Web not configured for Dev.');
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
@@ -18,7 +17,7 @@ class DefaultFirebaseOptions {
         return ios;
       default:
         throw UnsupportedError(
-            'DefaultFirebaseOptions not supported for $defaultTargetPlatform');
+            'FirebaseOptionsDev not supported for $defaultTargetPlatform');
     }
   }
 

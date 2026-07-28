@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'firebase_options.dart';
+import 'core/config/app_config.dart';
 import 'core/navigation_key.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/theme_provider.dart';
+import 'providers/connectivity_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/apartment_provider.dart';
 import 'providers/dashboard_provider.dart';
@@ -24,34 +24,28 @@ import 'screens/auth/registration_screen.dart';
 import 'screens/auth/president_activation_screen.dart';
 import 'screens/dashboard_router.dart';
 import 'core/services/db_seeder.dart';
+import 'widgets/global_connectivity_overlay.dart';
 
-/// Top-level background message handler — must be a free function annotated
-/// with @pragma('vm:entry-point') so it survives tree-shaking on release builds.
-/// Firebase calls this in a separate Dart isolate when the app is in the
-/// background or terminated.
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // In-app notifications are driven by the Firestore stream in NotificationProvider,
-  // so no additional processing is required here.
-}
-
-Future<void> main() async {
+/// Shared bootstrap called by both main_dev.dart and main_prod.dart.
+/// [options] — environment-specific FirebaseOptions.
+/// [env]     — set before any widget/provider reads AppConfig.
+Future<void> bootstrap(
+  FirebaseOptions options,
+  AppEnvironment env,
+) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  AppConfig.init(env);
 
   // ── Hive (local session storage) ──────────────────────────────────────────
   await Hive.initFlutter();
   await Hive.openBox<String>('session');
 
   // ── Firebase ──────────────────────────────────────────────────────────────
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: options);
 
-  // Register background/terminated FCM handler before runApp
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  // Seed Firestore with test data on first launch (no-op if already seeded)
+  // ── Seed Firestore with demo data (dev + prod for Play Store review) ────────
+  // Guarded by _meta/seeded_v4 — runs once per Firebase project, never again.
   await DbSeeder.seedIfNeeded();
 
   // ── Device orientation ────────────────────────────────────────────────────
@@ -75,6 +69,9 @@ class MaintifyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        // ConnectivityProvider is registered early so GlobalConnectivityOverlay
+        // (injected via MaterialApp.builder) can access it immediately.
+        ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ApartmentProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
@@ -89,12 +86,17 @@ class MaintifyApp extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
           return MaterialApp(
-            title: 'Maintify',
-            debugShowCheckedModeBanner: false,
+            title: AppConfig.appName,
+            debugShowCheckedModeBanner: AppConfig.isDevelopment,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
             navigatorKey: navigatorKey,
+            // GlobalConnectivityOverlay wraps the entire Navigator so every
+            // route, dialog, and bottom sheet automatically inherits the banner.
+            builder: (context, child) => GlobalConnectivityOverlay(
+              child: child ?? const SizedBox(),
+            ),
             initialRoute: '/',
             routes: {
               '/': (_) => const SplashScreen(),

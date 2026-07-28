@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../core/theme/app_colors.dart';
 import '../core/theme/app_text_styles.dart';
 import '../core/constants/app_constants.dart';
 import '../core/utils/app_utils.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/common_button.dart';
-import '../widgets/maintify_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -277,20 +275,28 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0F1E),
       body: Stack(
         children: [
-          // Gradient header (Professional Dark Navy)
-          Container(
-            height: MediaQuery.of(context).size.height * 0.38,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF141E30), // top (dark navy)
-                  Color(0xFF243B55), // bottom (slightly lighter navy)
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+          // Top portion: apartment image fading into dark scaffold background
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.50,
+            width: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset('assets/background.png', fit: BoxFit.cover),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0.3, 1.0],
+                      colors: [Colors.transparent, Color(0xFF0A0F1E)],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -309,8 +315,30 @@ class _LoginScreenState extends State<LoginScreen>
                       // Brand
                       Row(
                         children: [
-                          const MaintifyLogo(size: 64),
-                          const SizedBox(width: 12),
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0D1B3E),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.35),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Image.asset(
+                                'assets/app_logo.png',
+                                width: 58,
+                                height: 58,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -318,7 +346,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 AppConstants.appName,
                                 style: TextStyle(
                                   fontFamily: 'Poppins',
-                                  fontSize: 26,
+                                  fontSize: 30,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
@@ -327,8 +355,8 @@ class _LoginScreenState extends State<LoginScreen>
                                 AppConstants.tagline,
                                 style: TextStyle(
                                   fontFamily: 'Poppins',
-                                  fontSize: 11,
-                                  color: Colors.white.withValues(alpha: 0.8),
+                                  fontSize: 12,
+                                  color: Colors.white.withValues(alpha: 0.85),
                                 ),
                               ),
                             ],
@@ -343,12 +371,14 @@ class _LoginScreenState extends State<LoginScreen>
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
                           color: cs.surface,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.08)),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
+                              color: Colors.black.withValues(alpha: 0.45),
+                              blurRadius: 32,
+                              offset: const Offset(0, 14),
                             ),
                           ],
                         ),
@@ -528,7 +558,7 @@ class _LoginScreenState extends State<LoginScreen>
                           Text(
                             'New to Maintify?',
                             style: AppTextStyles.caption(
-                                color: AppColors.textSecondary),
+                                color: Colors.white70),
                           ),
                           TextButton(
                             onPressed: () =>
@@ -542,7 +572,7 @@ class _LoginScreenState extends State<LoginScreen>
                             child: Text(
                               'Sign Up',
                               style: AppTextStyles.caption(
-                                      color: cs.primary)
+                                      color: const Color(0xFF60A5FA))
                                   .copyWith(fontWeight: FontWeight.w700),
                             ),
                           ),
@@ -558,9 +588,9 @@ class _LoginScreenState extends State<LoginScreen>
                           onPressed: () =>
                               Navigator.pushNamed(context, '/activate'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: cs.primary,
-                            side: BorderSide(
-                                color: cs.primary.withValues(alpha: 0.4)),
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(
+                                color: Colors.white38),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
                             padding: const EdgeInsets.symmetric(
@@ -575,7 +605,7 @@ class _LoginScreenState extends State<LoginScreen>
                         child: Text(
                           '© 2026 Maintify · All rights reserved',
                           style: AppTextStyles.caption(
-                              color: cs.onSurfaceVariant),
+                              color: Colors.white54),
                         ),
                       ),
                     ],

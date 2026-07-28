@@ -33,14 +33,27 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.maintify.app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    // ── Flavors ────────────────────────────────────────────────────────────────
+    flavorDimensions += "env"
+    productFlavors {
+        create("dev") {
+            dimension = "env"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            // App launcher label shown on home screen
+            manifestPlaceholders["appLabel"] = "Maintify Dev"
+        }
+        create("prod") {
+            dimension = "env"
+            manifestPlaceholders["appLabel"] = "Maintify"
+        }
     }
 
     signingConfigs {
@@ -56,11 +69,10 @@ android {
         release {
             signingConfig = signingConfigs.getByName("release")
 
-            // R8 is enabled to generate mapping.txt for Play Console deobfuscation.
-            // ProGuard rules in proguard-rules.pro disable all shrinking,
-            // optimization, and obfuscation — no code is modified at runtime.
+            // Full R8 optimization: shrinking, obfuscation, resource shrinking.
+            // Keep rules in proguard-rules.pro protect Flutter, Firebase, and plugins.
             isMinifyEnabled = true
-            isShrinkResources = false
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

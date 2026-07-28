@@ -94,10 +94,19 @@ class DbSeeder {
       return;
     }
 
-    // 2. Admin user doc
+    // 2. Sign in as admin so all subsequent Firestore writes satisfy isSuperAdmin().
+    //    After creating 3 accounts sequentially, the last signed-in user is the
+    //    resident; we need admin auth for apartment/bill/meeting writes.
+    await _auth.signInWithEmailAndPassword(
+      email: _adminEmail,
+      password: _adminPassword,
+    );
+
+    // 3. Admin user doc (must exist in Firestore before batch so isSuperAdmin()
+    //    rule can resolve the role via get()).
     if (adminId != null) await _writeAdminDoc(adminId);
 
-    // 3. Apartment + President user doc + Resident user doc (single batch)
+    // 4. Apartment + President user doc + Resident user doc (single batch)
     final batch = _db.batch();
 
     batch.set(_db.collection('apartments').doc(_aptId), {
