@@ -732,16 +732,28 @@ class _RegistrationScreenState extends State<RegistrationScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0F1E),
       body: Stack(
         children: [
-          Container(
-            height: MediaQuery.of(context).size.height * 0.30,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF141E30), Color(0xFF243B55)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+          // Top portion: apartment image fading into dark scaffold background
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.40,
+            width: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset('assets/background.png', fit: BoxFit.cover),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0.3, 1.0],
+                      colors: [Colors.transparent, Color(0xFF0A0F1E)],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -772,7 +784,29 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                             ),
                           ),
                           const SizedBox(width: 14),
-                          const MaintifyLogo(size: 56),
+                          Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0D1B3E),
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Image.asset(
+                                'assets/app_logo.png',
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
                           const SizedBox(width: 10),
                           Text(
                             AppConstants.appName,
@@ -792,13 +826,14 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
                           color: cs.surface,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.08)),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.4 : 0.1),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
+                              color: Colors.black.withValues(alpha: 0.45),
+                              blurRadius: 32,
+                              offset: const Offset(0, 14),
                             ),
                           ],
                         ),
@@ -815,35 +850,53 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                             const SizedBox(height: 20),
 
                             // ── Role segmented button ─────────────────
-                            SegmentedButton<String>(
-                              segments: const [
-                                ButtonSegment(
-                                  value: 'president',
-                                  icon: Icon(
-                                      Icons.manage_accounts_outlined,
-                                      size: 18),
-                                  label: Text('President'),
-                                ),
-                                ButtonSegment(
-                                  value: 'resident',
-                                  icon: Icon(
-                                      Icons.person_outline_rounded,
-                                      size: 18),
-                                  label: Text('Resident'),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SegmentedButton<String>(
+                                  segments: const [
+                                    ButtonSegment(
+                                      value: 'president',
+                                      icon: Icon(
+                                          Icons.manage_accounts_outlined,
+                                          size: 18),
+                                      label: Text('President'),
+                                    ),
+                                    ButtonSegment(
+                                      value: 'resident',
+                                      icon: Icon(
+                                          Icons.person_outline_rounded,
+                                          size: 18),
+                                      label: Text('Resident'),
+                                    ),
+                                  ],
+                                  selected: {_selectedRole},
+                                  onSelectionChanged: (set) => setState(() {
+                                    _selectedRole = set.first;
+                                    _formKey.currentState?.reset();
+                                  }),
+                                  style: SegmentedButton.styleFrom(
+                                    selectedBackgroundColor: isDark
+                                        ? const Color(0xFF3B82F6).withValues(alpha: 0.22)
+                                        : cs.primary.withValues(alpha: 0.12),
+                                    selectedForegroundColor: isDark
+                                        ? const Color(0xFF93C5FD)  // Blue 300 — bright on dark
+                                        : cs.primary,
+                                    backgroundColor: isDark
+                                        ? AppColors.darkSurfaceVariant
+                                        : null,
+                                    foregroundColor: isDark
+                                        ? AppColors.darkTextSecondary
+                                        : cs.onSurfaceVariant,
+                                    side: BorderSide(
+                                      color: isDark
+                                          ? AppColors.darkBorder
+                                          : cs.outline.withValues(alpha: 0.5),
+                                      width: isDark ? 1.5 : 1.0,
+                                    ),
+                                  ),
                                 ),
                               ],
-                              selected: {_selectedRole},
-                              onSelectionChanged: (set) => setState(() {
-                                _selectedRole = set.first;
-                                _formKey.currentState?.reset();
-                              }),
-                              style: SegmentedButton.styleFrom(
-                                selectedBackgroundColor:
-                                    cs.primary.withValues(alpha: 0.12),
-                                selectedForegroundColor: cs.primary,
-                                side: BorderSide(
-                                    color: cs.outline.withValues(alpha: 0.5)),
-                              ),
                             ),
 
                             const SizedBox(height: 24),

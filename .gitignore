@@ -44,3 +44,15 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 functions/node_modules/
+
+# Firebase credential files — contain API keys, never commit to public repos
+# These are environment-specific and should be obtained from Firebase Console
+android/app/google-services.json
+android/app/src/dev/google-services.json
+android/app/src/prod/google-services.json
+ios/Runner/GoogleService-Info.plist
+ios/config/dev/GoogleService-Info.plist
+ios/config/prod/GoogleService-Info.plist
+lib/firebase_options.dart
+lib/firebase_options_dev.dart
+lib/firebase_options_prod.dart

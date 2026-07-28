@@ -1,5 +1,7 @@
-// File generated from GoogleService-Info.plist and google-services.json
-// Do NOT commit to public repos — contains API keys.
+// Legacy default Firebase options — not used by flavored builds.
+// main_dev.dart uses firebase_options_dev.dart
+// main_prod.dart uses firebase_options_prod.dart
+// This file is kept for reference; it mirrors the DEV project configuration.
 // ignore_for_file: lines_longer_than_80_chars, avoid_classes_with_only_static_members
 
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
@@ -21,23 +23,19 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAr9BzFyOvBSUX1GDlsJ7_7SqCHlGfs3OY',
-    appId: '1:54805482872:android:9ae61e1e77905946a7cc8d',
-    messagingSenderId: '54805482872',
-    projectId: 'tivastraapp',
-    storageBucket: 'tivastraapp.firebasestorage.app',
-    databaseURL: 'https://tivastraapp-default-rtdb.firebaseio.com',
+    apiKey: 'AIzaSyDzrgp9mt9lj05vusTWNgyARiMOlch8Hmk',
+    appId: '1:624223948810:android:989d6e847f4295b3280ff3',
+    messagingSenderId: '624223948810',
+    projectId: 'maintify-dev',
+    storageBucket: 'maintify-dev.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCJEypTjWDjcmN4_RvDiKMlNSfXe2LCB7M',
-    appId: '1:54805482872:ios:7ec9b0aeb981b295a7cc8d',
-    messagingSenderId: '54805482872',
-    projectId: 'tivastraapp',
-    storageBucket: 'tivastraapp.firebasestorage.app',
-    iosClientId:
-        '54805482872-b7afvcib6g76cprk1qg7hr35c1ak4al6.apps.googleusercontent.com',
-    iosBundleId: 'com.maintify.app',
-    databaseURL: 'https://tivastraapp-default-rtdb.firebaseio.com',
+    apiKey: 'AIzaSyBRKoC60wMbX3yovTis7CMhZGerulJTLBo',
+    appId: '1:624223948810:ios:751df77d68f105e8280ff3',
+    messagingSenderId: '624223948810',
+    projectId: 'maintify-dev',
+    storageBucket: 'maintify-dev.firebasestorage.app',
+    iosBundleId: 'com.maintify.app.dev',
   );
 }

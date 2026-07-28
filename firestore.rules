@@ -8,14 +8,16 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Super admin — role stored as 'admin' in Firestore (UserRole.admin)
     function isSuperAdmin() {
       return isSignedIn() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superAdmin';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Apartment admin / president — role stored as 'president' in Firestore (UserRole.president)
     function isAdmin() {
       return isSignedIn() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'president';
     }
 
     function isAdminForApartment(aptId) {
@@ -61,30 +63,59 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── Flats ────────────────────────────────────────────────────────────────
+    // Read is open: unauthenticated signup flow looks up flat availability.
+    // Create: super admin, apartment president, OR a signed-in user claiming
+    //         the flat for themselves (resident on-demand flat creation).
+    // Update: super admin, president, or any signed-in user (resident claiming flat on registration).
+    match /flats/{flatId} {
+      allow read: if true;
+      allow create: if isSuperAdmin() ||
+                       isAdminForApartment(request.resource.data.apartmentId) ||
+                       (isSignedIn() && request.resource.data.residentId == request.auth.uid);
+      allow update: if isSuperAdmin() || isAdminForApartment(resource.data.apartmentId) || isSignedIn();
+      allow delete: if isSuperAdmin();
+    }
+
     // ── Apartments ───────────────────────────────────────────────────────────
     // Read is open to allow apartment code lookup during unauthenticated signup.
+    // create: super admin, OR a signed-in user self-registering as president
+    //         (presidentId must equal their own UID).
+    // update: super admin, apartment president, OR:
+    //   - a signed-in user setting themselves as president (activation flow, user
+    //     doc doesn't exist yet when the batch commits so isAdminForApartment fails)
+    //   - any signed-in user touching only occupiedFlats+updatedAt (resident signup)
     match /apartments/{aptId} {
       allow read: if true;
-      allow create: if isSuperAdmin();
-      allow update: if isSuperAdmin() || isAdminForApartment(aptId);
+      allow create: if isSuperAdmin() ||
+                       (isSignedIn() && request.resource.data.presidentId == request.auth.uid);
+      allow update: if isSuperAdmin() ||
+                       isAdminForApartment(aptId) ||
+                       (isSignedIn() && request.resource.data.presidentId == request.auth.uid) ||
+                       (isSignedIn() &&
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['occupiedFlats', 'updatedAt']));
       allow delete: if isSuperAdmin();
     }
 
     // ── Bills ────────────────────────────────────────────────────────────────
     match /bills/{billId} {
-      allow read: if isMemberOfApartment(resource.data.apartmentId);
-      allow create, update: if isAdminForApartment(request.resource.data.apartmentId);
-      allow delete: if isAdminForApartment(resource.data.apartmentId);
+      allow read: if isMemberOfApartment(resource.data.apartmentId) || isSuperAdmin();
+      allow create, update: if isAdminForApartment(request.resource.data.apartmentId) || isSuperAdmin();
+      allow delete: if isAdminForApartment(resource.data.apartmentId) || isSuperAdmin();
     }
 
     // ── Payments ─────────────────────────────────────────────────────────────
     match /payments/{paymentId} {
       allow read: if isMemberOfApartment(resource.data.apartmentId) ||
-                     request.auth.uid == resource.data.userId;
+                     request.auth.uid == resource.data.userId ||
+                     isSuperAdmin();
       allow create: if request.auth.uid == request.resource.data.userId ||
-                       isAdminForApartment(request.resource.data.apartmentId);
+                       isAdminForApartment(request.resource.data.apartmentId) ||
+                       isSuperAdmin();
       allow update: if isAdminForApartment(resource.data.apartmentId) ||
-                       request.auth.uid == resource.data.userId;
+                       request.auth.uid == resource.data.userId ||
+                       isSuperAdmin();
       allow delete: if isSuperAdmin();
     }
 
@@ -108,9 +139,9 @@ service cloud.firestore {
 
     // ── Meetings ─────────────────────────────────────────────────────────────
     match /meetings/{meetingId} {
-      allow read: if isMemberOfApartment(resource.data.apartmentId);
-      allow create, update: if isAdminForApartment(request.resource.data.apartmentId);
-      allow delete: if isAdminForApartment(resource.data.apartmentId);
+      allow read: if isMemberOfApartment(resource.data.apartmentId) || isSuperAdmin();
+      allow create, update: if isAdminForApartment(request.resource.data.apartmentId) || isSuperAdmin();
+      allow delete: if isAdminForApartment(resource.data.apartmentId) || isSuperAdmin();
     }
 
     // ── Notifications ─────────────────────────────────────────────────────────
