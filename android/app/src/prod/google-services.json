@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "709385460007",
+    "project_id": "maintify-ff8c4",
+    "storage_bucket": "maintify-ff8c4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:709385460007:android:1a72c09c63e360619b7102",
+        "android_client_info": {
+          "package_name": "com.maintify.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "709385460007-0njtrbcekrrvuep3kp5gg26haadso3rp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_Tu1xTomM3RYQVLM4Enq-vzDivHtvkLs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "709385460007-0njtrbcekrrvuep3kp5gg26haadso3rp.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
