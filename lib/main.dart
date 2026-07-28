@@ -7,6 +7,7 @@ import 'core/config/app_config.dart';
 import 'core/navigation_key.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/theme_provider.dart';
+import 'providers/connectivity_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/apartment_provider.dart';
 import 'providers/dashboard_provider.dart';
@@ -23,6 +24,7 @@ import 'screens/auth/registration_screen.dart';
 import 'screens/auth/president_activation_screen.dart';
 import 'screens/dashboard_router.dart';
 import 'core/services/db_seeder.dart';
+import 'widgets/global_connectivity_overlay.dart';
 
 /// Shared bootstrap called by both main_dev.dart and main_prod.dart.
 /// [options] — environment-specific FirebaseOptions.
@@ -67,6 +69,9 @@ class MaintifyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        // ConnectivityProvider is registered early so GlobalConnectivityOverlay
+        // (injected via MaterialApp.builder) can access it immediately.
+        ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ApartmentProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
@@ -87,6 +92,11 @@ class MaintifyApp extends StatelessWidget {
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
             navigatorKey: navigatorKey,
+            // GlobalConnectivityOverlay wraps the entire Navigator so every
+            // route, dialog, and bottom sheet automatically inherits the banner.
+            builder: (context, child) => GlobalConnectivityOverlay(
+              child: child ?? const SizedBox(),
+            ),
             initialRoute: '/',
             routes: {
               '/': (_) => const SplashScreen(),

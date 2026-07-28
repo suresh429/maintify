@@ -10,7 +10,6 @@ import '../../providers/auth_provider.dart';
 import '../../providers/registration_provider.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/common_button.dart';
-import '../../widgets/maintify_logo.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});

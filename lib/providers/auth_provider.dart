@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../models/user_model.dart';
 import '../core/theme/role_theme.dart';
+import '../core/services/connectivity_service.dart';
 import '../core/services/firebase_auth_service.dart';
 import '../core/services/firestore_service.dart';
 import '../core/services/fcm_service.dart';
@@ -45,6 +46,13 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     notifyListeners();
+
+    if (ConnectivityService.instance.isDisconnected) {
+      _isLoading = false;
+      _error = 'No internet connection. Please try again once you\'re back online.';
+      notifyListeners();
+      return false;
+    }
 
     final result = await _auth.signIn(email, password);
 
@@ -152,6 +160,12 @@ class AuthProvider extends ChangeNotifier {
     if (_currentUser == null) return false;
     _error = null;
 
+    if (ConnectivityService.instance.isDisconnected) {
+      _error = 'No internet connection. Please try again once you\'re back online.';
+      notifyListeners();
+      return false;
+    }
+
     final result = await _auth.changePassword(
       currentPassword: currentPassword,
       newPassword: newPassword,
@@ -172,6 +186,7 @@ class AuthProvider extends ChangeNotifier {
   /// Returns a message string to show the user.
   /// In production this sends a Firebase password-reset email.
   Future<String?> generateForgotPassword(String email) async {
+    if (ConnectivityService.instance.isDisconnected) return null;
     final sent = await _auth.sendPasswordResetEmail(email);
     if (!sent) return null;
     // Return a display string so the UI (which shows this in a dialog) works.

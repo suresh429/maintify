@@ -42,8 +42,11 @@ class FirebaseAuthService {
         return (user: null, error: 'Account data not found. Contact support.');
       }
 
-      // SuperAdmin and predefined demo accounts bypass email verification.
-      // All other roles must have a verified email before accessing the app.
+      // SuperAdmin bypasses email verification (no email to verify).
+      // Demo accounts (`.demo` domain) bypass verification in both flavors to
+      // allow Play Store / App Store reviewers to log in without a real inbox.
+      // These accounts are seeded by DbSeeder and cannot register via normal
+      // signup, so the bypass is scoped to known credentials only.
       final isDemoAccount = _demoEmails.contains(email.trim().toLowerCase());
       if (!cred.user!.emailVerified &&
           user.role.name != 'admin' &&
@@ -392,6 +395,8 @@ class FirebaseAuthService {
         return 'Invalid email address.';
       case 'user-disabled':
         return 'This account has been disabled.';
+      case 'network-request-failed':
+        return 'No internet connection. Please check your connection and try again.';
       case 'too-many-requests':
         return 'Too many attempts. Please try again later.';
       case 'email-already-in-use':

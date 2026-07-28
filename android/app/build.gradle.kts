@@ -69,11 +69,10 @@ android {
         release {
             signingConfig = signingConfigs.getByName("release")
 
-            // R8 is enabled to generate mapping.txt for Play Console deobfuscation.
-            // ProGuard rules in proguard-rules.pro disable all shrinking,
-            // optimization, and obfuscation — no code is modified at runtime.
+            // Full R8 optimization: shrinking, obfuscation, resource shrinking.
+            // Keep rules in proguard-rules.pro protect Flutter, Firebase, and plugins.
             isMinifyEnabled = true
-            isShrinkResources = false
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

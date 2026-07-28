@@ -10,7 +10,6 @@ import '../../providers/auth_provider.dart';
 import '../../providers/registration_provider.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/common_button.dart';
-import '../../widgets/maintify_logo.dart';
 
 class PresidentActivationScreen extends StatefulWidget {
   const PresidentActivationScreen({super.key});
@@ -470,8 +469,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
 
   @override
   Widget build(BuildContext context) {
-    final cs     = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0F1E),

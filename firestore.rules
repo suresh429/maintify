@@ -31,9 +31,12 @@ service cloud.firestore {
     }
 
     // ── _meta (seeder flag) ──────────────────────────────────────────────────
-    // Restrict to server-side only in production; currently open for DbSeeder.
+    // Read is open so DbSeeder can check the guard before seeding.
+    // Write is restricted to super admin so only a real admin can delete/reset
+    // the guard — prevents anyone from wiping seeded_v4 to re-trigger the seed.
     match /_meta/{doc} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isSuperAdmin();
     }
 
     // ── Users ────────────────────────────────────────────────────────────────

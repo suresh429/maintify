@@ -5,6 +5,7 @@ import '../models/apartment_model.dart';
 import '../models/flat_model.dart';
 import '../models/president_invitation_model.dart';
 import '../core/theme/role_theme.dart';
+import '../core/services/connectivity_service.dart';
 import '../core/services/firestore_service.dart';
 import '../core/services/firebase_auth_service.dart';
 import 'notification_provider.dart';
@@ -43,6 +44,10 @@ class RegistrationProvider extends ChangeNotifier {
     _isLoading = true;
     _error     = null;
     notifyListeners();
+
+    if (ConnectivityService.instance.isDisconnected) {
+      return _fail('No internet connection. Please try again once you\'re back online.');
+    }
 
     try {
       // 1. Duplicate apartment check (name + address + type)
@@ -130,6 +135,10 @@ class RegistrationProvider extends ChangeNotifier {
     _error     = null;
     notifyListeners();
 
+    if (ConnectivityService.instance.isDisconnected) {
+      return _failApt('No internet connection. Please try again once you\'re back online.');
+    }
+
     final apt =
         await _fs.findApartmentByCode(apartmentCode.trim().toUpperCase());
     if (apt == null) {
@@ -210,6 +219,10 @@ class RegistrationProvider extends ChangeNotifier {
     _isLoading = true;
     _error     = null;
     notifyListeners();
+
+    if (ConnectivityService.instance.isDisconnected) {
+      return _failApt('No internet connection. Please try again once you\'re back online.');
+    }
 
     try {
       // 1. Find apartment
@@ -351,6 +364,10 @@ class RegistrationProvider extends ChangeNotifier {
     _isLoading = true;
     _error     = null;
     notifyListeners();
+
+    if (ConnectivityService.instance.isDisconnected) {
+      return _failUid('No internet connection. Please try again once you\'re back online.');
+    }
 
     // Re-validate invitation freshness before creating an Auth account
     if (invitation.isCompleted) {
