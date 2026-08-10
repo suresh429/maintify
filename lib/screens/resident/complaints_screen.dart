@@ -13,6 +13,9 @@ import '../../widgets/bottom_sheet_container.dart';
 import '../../widgets/common_button.dart';
 import '../shared/chat_screen.dart';
 
+/// Community Complaint Board — shows ALL complaints for the apartment.
+/// Own complaints show "My Complaint" badge + full chat access.
+/// Other residents' complaints show "Anonymous Resident" (no unit) + read-only view.
 class ComplaintsScreen extends StatelessWidget {
   const ComplaintsScreen({super.key});
 
@@ -21,49 +24,44 @@ class ComplaintsScreen extends StatelessWidget {
     final auth = context.read<AuthProvider>();
     final user = auth.currentUser!;
     final theme = RoleTheme.of(UserRole.resident);
+    final aptId = user.apartmentId ?? '';
 
     return Consumer<ComplaintProvider>(
       builder: (_, prov, __) {
-        final complaints = prov.complaintsForUser(user.id);
+        final complaints = prov.complaintsForApartment(aptId);
 
         return Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: Text('My Complaints',
-                style: AppTextStyles.heading3(color: Colors.white)),
-            flexibleSpace: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: theme.gradient,
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-              ),
-            ),
-          ),
+          backgroundColor: Colors.transparent,
           body: complaints.isEmpty
               ? _EmptyState(onRaise: () => _showNewComplaintSheet(context, user))
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                   itemCount: complaints.length,
-                  itemBuilder: (_, i) => _ComplaintTile(
-                    complaint: complaints[i],
-                    theme: theme,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatScreen(
-                          complaint: complaints[i],
-                          isAdminView: false,
-                        ),
-                      ),
-                    ),
-                  ),
+                  itemBuilder: (_, i) {
+                    final complaint = complaints[i];
+                    final isOwn = complaint.userId == user.id;
+                    return _ComplaintTile(
+                      complaint: complaint,
+                      theme: theme,
+                      isOwn: isOwn,
+                      onTap: () {
+                        if (isOwn) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ChatScreen(
+                                complaint: complaint,
+                                isAdminView: false,
+                                currentUserId: user.id,
+                              ),
+                            ),
+                          );
+                        } else {
+                          _showReadOnlySheet(context, complaint, theme);
+                        }
+                      },
+                    );
+                  },
                 ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => _showNewComplaintSheet(context, user),
@@ -84,6 +82,172 @@ class ComplaintsScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => _NewComplaintSheet(user: user),
     );
+  }
+
+  void _showReadOnlySheet(
+      BuildContext context, ComplaintModel complaint, RoleTheme theme) {
+    final cs = Theme.of(context).colorScheme;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: SingleChildScrollView(
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: cs.surface,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: cs.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: theme.effectivePrimary(context)
+                            .withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        _categoryIcon(complaint.category),
+                        color: theme.effectivePrimary(context),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            complaint.title,
+                            style: AppTextStyles.subheading(
+                                color: cs.onSurface),
+                          ),
+                          Text(
+                            complaint.category,
+                            style: AppTextStyles.caption(
+                                color: cs.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Status row
+                Row(
+                  children: [
+                    Text('Status: ',
+                        style: AppTextStyles.label(
+                            color: cs.onSurfaceVariant)),
+                    _StatusBadge(
+                      status: complaint.status,
+                      color: _statusColor(complaint.status),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Time
+                Row(
+                  children: [
+                    Icon(Icons.schedule_outlined,
+                        size: 14, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Reported ${AppUtils.timeAgo(complaint.createdAt)}',
+                      style: AppTextStyles.caption(
+                          color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Privacy note
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.textSecondary.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppColors.textSecondary
+                            .withValues(alpha: 0.15)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock_outline,
+                          size: 14,
+                          color: AppColors.textSecondary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Message thread is private between the resident and the president.',
+                          style: AppTextStyles.caption(
+                              color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  IconData _categoryIcon(String category) {
+    switch (category) {
+      case ComplaintCategory.maintenance:
+        return Icons.build_outlined;
+      case ComplaintCategory.billing:
+        return Icons.receipt_outlined;
+      case ComplaintCategory.noise:
+        return Icons.volume_up_outlined;
+      case ComplaintCategory.parking:
+        return Icons.local_parking_outlined;
+      case ComplaintCategory.amenities:
+        return Icons.fitness_center_outlined;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case ComplaintStatus.open:
+        return AppColors.pending;
+      case ComplaintStatus.inProgress:
+        return AppColors.teal;
+      case ComplaintStatus.resolved:
+        return AppColors.paid;
+      default:
+        return AppColors.textSecondary;
+    }
   }
 }
 
@@ -230,11 +394,13 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
 class _ComplaintTile extends StatelessWidget {
   final ComplaintModel complaint;
   final RoleTheme theme;
+  final bool isOwn;
   final VoidCallback onTap;
 
   const _ComplaintTile({
     required this.complaint,
     required this.theme,
+    required this.isOwn,
     required this.onTap,
   });
 
@@ -274,6 +440,7 @@ class _ComplaintTile extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final accent = theme.effectivePrimary(context);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -314,27 +481,48 @@ class _ComplaintTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           complaint.title,
-                          style: AppTextStyles.subheading(color: cs.onSurface),
+                          style:
+                              AppTextStyles.subheading(color: cs.onSurface),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
                         AppUtils.timeAgo(complaint.lastActivityAt),
-                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
+                        style: AppTextStyles.caption(
+                            color: cs.onSurfaceVariant),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  if (lastMsg != null)
+
+                  // Author line: "Me" for own, "Anonymous Resident" for others
+                  Row(
+                    children: [
+                      Icon(Icons.person_outline,
+                          size: 12, color: cs.onSurfaceVariant),
+                      const SizedBox(width: 4),
+                      Text(
+                        isOwn ? 'Me' : 'Anonymous Resident',
+                        style: AppTextStyles.caption(
+                            color: cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+
+                  if (isOwn && lastMsg != null) ...[
+                    const SizedBox(height: 4),
                     Text(
                       lastMsg.isFromAdmin
                           ? 'Admin: ${lastMsg.content}'
                           : lastMsg.content,
-                      style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
+                      style: AppTextStyles.bodySmall(
+                          color: cs.onSurfaceVariant),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                  ],
+
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -343,17 +531,50 @@ class _ComplaintTile extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         complaint.category,
-                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
+                        style: AppTextStyles.caption(
+                            color: cs.onSurfaceVariant),
                       ),
+                      if (isOwn) ...[
+                        const Spacer(),
+                        _MyComplaintBadge(),
+                      ],
                     ],
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            Icon(Icons.chevron_right_rounded,
-                color: cs.onSurfaceVariant, size: 20),
+            Icon(
+              isOwn
+                  ? Icons.chevron_right_rounded
+                  : Icons.lock_outline_rounded,
+              color: cs.onSurfaceVariant,
+              size: 20,
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MyComplaintBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.teal.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.teal.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        'My Complaint',
+        style: TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 9,
+          fontWeight: FontWeight.w600,
+          color: AppColors.teal,
         ),
       ),
     );
@@ -399,16 +620,18 @@ class _EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.inbox_outlined,
-                size: 64, color: AppColors.paid.withValues(alpha: 0.4)),
+                size: 64,
+                color: AppColors.paid.withValues(alpha: 0.4)),
             const SizedBox(height: 16),
             Text('No Complaints',
-                style:
-                    AppTextStyles.heading3(color: Theme.of(context).colorScheme.onSurface)),
+                style: AppTextStyles.heading3(
+                    color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 8),
             Text(
-              'You have not raised any complaints yet.\nTap below to report an issue.',
+              'No complaints from the community yet.\nTap below to report an issue.',
               textAlign: TextAlign.center,
-              style: AppTextStyles.bodySmall(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: AppTextStyles.bodySmall(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 24),
             CommonButton(

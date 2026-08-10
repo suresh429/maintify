@@ -12,13 +12,13 @@ import '../../providers/apartment_provider.dart';
 import '../../widgets/shimmer_loading.dart';
 import '../../widgets/apartment_header.dart';
 import 'bills_screen.dart';
-import 'payment_history_screen.dart';
 import 'resident_profile_screen.dart';
 import 'monthly_bill_detail_screen.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/meeting_provider.dart';
 import '../../models/meeting_model.dart';
 import '../shared/notifications_screen.dart';
+import '../shared/community_screen.dart';
 
 class ResidentDashboard extends StatefulWidget {
   final String? notificationType;
@@ -31,12 +31,12 @@ class ResidentDashboard extends StatefulWidget {
 class _ResidentDashboardState extends State<ResidentDashboard> {
   int _currentIndex = 0;
 
-  static const _titles = ['Home', 'My Bills', 'Payments', 'Profile'];
+  static const _titles = ['Home', 'My Bills', 'Community', 'Profile'];
 
   late final List<Widget> _pages;
 
   // Maps a push notification type to the correct bottom-nav tab index.
-  // bill → Bills (1); payment → Payments (2); others → Home (0).
+  // bill → Bills (1); payment → Community (2); others → Home (0).
   static int _tabForType(String? type) {
     switch (type) {
       case 'bill':
@@ -55,7 +55,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     _pages = const [
       _ResidentHome(),
       BillsScreen(),
-      PaymentHistoryScreen(),
+      CommunityScreen(),
       ResidentProfileScreen(),
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -97,9 +97,9 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
               label: 'Bills',
             ),
             NavigationDestination(
-              icon: Icon(Icons.history_outlined),
-              selectedIcon: Icon(Icons.history_rounded),
-              label: 'Payments',
+              icon: Icon(Icons.groups_outlined),
+              selectedIcon: Icon(Icons.groups_rounded),
+              label: 'Community',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline_rounded),

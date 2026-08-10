@@ -93,12 +93,12 @@ class _StreamStarterState extends State<_StreamStarter> {
           context.read<ComplaintProvider>().startListeningForApartment(aptId);
           break;
         case UserRole.resident:
-          // Pass userId so BillProvider streams only this user's payment docs,
-          // avoiding loading every resident's payment records.
-          context.read<BillProvider>().startListeningForApartment(aptId, userId: user.id);
+          // Load all apartment bills and payments so the community payment board
+          // and complaint board can display all residents' data.
+          context.read<BillProvider>().startListeningForApartment(aptId);
           context
               .read<ComplaintProvider>()
-              .startListeningForUser(user.id);
+              .startListeningForApartment(aptId);
           break;
       }
     });

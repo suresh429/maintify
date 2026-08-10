@@ -130,6 +130,7 @@ class _PresidentComplaintsScreenState extends State<PresidentComplaintsScreen> {
                               builder: (_) => ChatScreen(
                                 complaint: filtered[i],
                                 isAdminView: true,
+                                currentUserId: user.id,
                               ),
                             ),
                           ),

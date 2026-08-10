@@ -85,7 +85,7 @@ All 12 providers registered at root in `main.dart`. All provider files live in `
 | `DashboardProvider` | Aggregated stats — reads from `MockXxx` statics (kept in sync by other providers via `replaceAll()`) |
 | `BillProvider` | Bills (apartment-wide) and payments (per-flat), Firestore streams |
 | `UserProvider` | Member filtering/search (`searchUsers`, `residentsForApartment`, `membersForApartment`), `toggleUserStatus`, `updatePresidentRoles` |
-| `ComplaintProvider` | Complaint lifecycle + message threads |
+| `ComplaintProvider` | Complaint lifecycle + message threads; Firestore streams via `startListeningForApartment` (president) / `startListeningForUser` (resident); per-complaint message subcollection streamed on demand via `subscribeToMessages(complaintId)` — called from `ChatScreen.initState` |
 | `MeetingProvider` | Meeting CRUD, schedules notifications via `NotificationProvider` |
 | `NotificationProvider` | In-app notifications, Firestore-backed, `startListening(role)` |
 | `RegistrationProvider` | Self-registration: president self-creates apartment or activates super-admin-created one; resident direct signup with email verification |
@@ -95,15 +95,18 @@ All 12 providers registered at root in `main.dart`. All provider files live in `
 
 Providers that use Firestore streams call `startListening(...)` from `DashboardRouter` after login. They cache data locally and call `notifyListeners()` on stream updates.
 
+**Resident stream scope:** After the Community Board addition, residents now stream ALL apartment-level payments (`streamPaymentsForApartment`) and ALL apartment-level complaints (`startListeningForApartment`) — not just their own. This is required by the Community Payment Board and Community Complaint Board. Per-user bill views still filter by userId in query methods.
+
 ### Data Layer: Firestore + Mock Static Sync
 
-All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `MockBillData`) exist **only for `DashboardProvider`**, which cannot hold Firestore streams of its own. Every provider's stream listener calls `MockFoo.replaceAll(list)` to keep statics in sync.
+All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `MockBillData`) exist **primarily for `DashboardProvider`**, which cannot hold Firestore streams of its own — every provider's stream listener calls `MockFoo.replaceAll(list)` to keep statics in sync. `MockComplaints` is additionally used by `ComplaintProvider` for **optimistic UI updates** only (e.g. inserting a newly created complaint before the Firestore stream fires); it is not the primary data source for complaints.
 
 **Models** live in `lib/models/`. Key ones: `user_model.dart`, `bill_model.dart`, `apartment_model.dart` (now has `type`, `address`, `towerCount`, `towerNames`, `presidentFlat` fields), `flat_model.dart` (see below).
 
 **Key Firestore collections:**
 - `users/` — real Firebase Auth UID as document ID
 - `apartments/`, `bills/`, `payments/`, `complaints/`, `meetings/`, `notifications/`
+- `complaints/{id}/messages/` — message subcollection; streamed per-complaint by `ComplaintProvider.subscribeToMessages()`
 - `flats/` — individual flat docs, auto-generated at apartment creation. Doc ID: `${aptId}_${flatNumber}`. Fields: `flatNumber`, `tower` (null for non-gated), `status` (`available`|`occupied`), `residentId`, `residentType` (`President`|`Resident`|null), `apartmentId`.
 - `_meta/seeded_v4` — guards `DbSeeder` from re-running
 
@@ -172,7 +175,7 @@ apartments/{id}:
 | `FirestoreService` | Singleton — all collection reads/writes. Providers never import `FirebaseFirestore` directly. Includes `updateBill`, `updatePayment`, `deleteBill`, `deleteAllPaymentsForBill`. |
 | `FirebaseAuthService` | Wraps `FirebaseAuth`. Handles sign-in, password change, reset email, `registerPresident`, `registerResident`. |
 | `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). Uses `flutter_local_notifications` to display foreground messages. Uses `navigatorKey` for out-of-tree navigation on notification tap. |
-| `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded_v4`. **DEV flavor only** — `bootstrap()` skips seeding when `AppConfig.isProduction`. Creates admin, demo president, demo resident, and a demo apartment. |
+| `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded_v4`. **DEV flavor only** — `bootstrap()` skips seeding when `AppConfig.isProduction`. Creates admin, demo president, demo resident, demo apartment (Green Valley Residency / `GRVL1234`), one maintenance bill, one open complaint, and one scheduled meeting. On subsequent launches with the guard present, only repairs the admin user doc if accidentally deleted. |
 
 **`AppUtils`** (`lib/core/utils/app_utils.dart`): Static helpers — `formatCurrency`, `formatDate`, `formatMonthYear`, `formatDateTime`, `timeAgo`, `showSnackBar` (accepts optional `color` override), `displayFirstName`, `showConfirmDialog`. `showConfirmDialog` renders a bottom-sheet style confirmation with customizable `confirmColor`.
 
@@ -196,10 +199,12 @@ screens/
 ├── president/                     ← 9 screens: dashboard, create-bill, edit-bill-sheet, complaints,
 │                                    manage-users, mark-paid, monthly-bill-detail, transfer-president,
 │                                    president-profile
-├── resident/                      ← 7 screens: dashboard, bills, monthly-bill-detail,
-│                                    payment-history, i-paid, complaints, profile
+├── resident/                      ← 8 screens: dashboard, bills, monthly-bill-detail,
+│                                    payment-history, i-paid, complaints (community board), directory, profile
 └── shared/
-    ├── chat_screen.dart           ← Complaint message threads
+    ├── chat_screen.dart           ← Complaint message threads; `currentUserId` param enables read-only mode for non-owners
+    ├── community_screen.dart      ← 3-tab container: Payment Board | Complaints | Directory (resident Community nav tab)
+    ├── payment_board_screen.dart  ← Community Payment Board: all-apartment payment status grouped by month
     ├── notifications_screen.dart
     └── fcm_debug_screen.dart      ← Dev tool: shows device FCM token + test triggers for all 9 notification types
 ```

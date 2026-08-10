@@ -12,14 +12,18 @@ import '../../widgets/chat_input_field.dart';
 
 /// Shared chat screen used by both User and Admin.
 /// [isAdminView] controls the gradient/color theme and which side admin sees.
+/// [currentUserId] determines whether the input field is shown for non-admin,
+/// non-owner views (read-only mode when complaint.userId != currentUserId).
 class ChatScreen extends StatefulWidget {
   final ComplaintModel complaint;
   final bool isAdminView;
+  final String? currentUserId;
 
   const ChatScreen({
     super.key,
     required this.complaint,
     this.isAdminView = false,
+    this.currentUserId,
   });
 
   @override
@@ -177,43 +181,8 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          // Input field
-          if (complaint.status != ComplaintStatus.resolved)
-            ChatInputField(
-              sendGradient: _gradient,
-              onSend: (text) async {
-                await context.read<ComplaintProvider>().sendMessage(
-                      complaintId: complaint.id,
-                      senderId: user.id,
-                      senderName: user.name,
-                      isFromAdmin: widget.isAdminView,
-                      content: text,
-                      notificationProvider:
-                          context.read<NotificationProvider>(),
-                    );
-                _scrollToBottom();
-              },
-            )
-          else
-            Builder(builder: (ctx) {
-              final cs = Theme.of(ctx).colorScheme;
-              return Container(
-                padding: const EdgeInsets.all(14),
-                color: cs.surface,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.check_circle_rounded,
-                        color: AppColors.paid, size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      'This complaint has been resolved',
-                      style: AppTextStyles.caption(color: cs.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              );
-            }),
+          // Input field (or read-only note)
+          _buildBottomBar(context, complaint, user),
         ],
       ),
     );
@@ -224,6 +193,70 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
+  /// Returns true when this user is viewing someone else's complaint and is
+  /// not an admin — in that case the chat is read-only.
+  bool _isReadOnly(ComplaintModel complaint, user) {
+    if (widget.isAdminView) return false;
+    final effectiveUserId = widget.currentUserId ?? user.id;
+    return complaint.userId != effectiveUserId;
+  }
+
+  Widget _buildBottomBar(
+      BuildContext context, ComplaintModel complaint, user) {
+    final cs = Theme.of(context).colorScheme;
+
+    if (_isReadOnly(complaint, user)) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        color: cs.surface,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline, color: cs.onSurfaceVariant, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              "This is someone else's complaint",
+              style: AppTextStyles.caption(color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (complaint.status == ComplaintStatus.resolved) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        color: cs.surface,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check_circle_rounded,
+                color: AppColors.paid, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              'This complaint has been resolved',
+              style: AppTextStyles.caption(color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ChatInputField(
+      sendGradient: _gradient,
+      onSend: (text) async {
+        await context.read<ComplaintProvider>().sendMessage(
+              complaintId: complaint.id,
+              senderId: user.id,
+              senderName: user.name,
+              isFromAdmin: widget.isAdminView,
+              content: text,
+              notificationProvider: context.read<NotificationProvider>(),
+            );
+        _scrollToBottom();
+      },
+    );
+  }
 
   void _showStatusSheet() {
     const statusOrder = [
