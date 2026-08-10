@@ -70,7 +70,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: _buildAppBar(theme),
+      appBar: _currentIndex == 3 ? null : _buildAppBar(theme),
       body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
