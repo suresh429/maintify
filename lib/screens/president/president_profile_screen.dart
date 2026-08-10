@@ -108,7 +108,7 @@ class PresidentProfileScreen extends StatelessWidget {
                                 color: Colors.white, size: 13),
                             const SizedBox(width: 5),
                             Text(
-                              'Apartment President',
+                              'President',
                               style: AppTextStyles.caption(color: Colors.white)
                                   .copyWith(fontWeight: FontWeight.w600),
                             ),

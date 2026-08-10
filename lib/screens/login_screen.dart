@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../core/config/app_config.dart';
 import '../core/theme/app_text_styles.dart';
 import '../core/constants/app_constants.dart';
 import '../core/utils/app_utils.dart';
@@ -477,79 +478,17 @@ class _LoginScreenState extends State<LoginScreen>
 
                       const SizedBox(height: 24),
 
-                      // Quick Login
-                     /* Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: AppColors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                      // Quick Login — dev flavor only
+                      if (AppConfig.isDevelopment) ...[
+                        _QuickLoginPanel(
+                          onSelect: (email, password) {
+                            setState(() {
+                              _emailCtrl.text = email;
+                              _passCtrl.text = password;
+                            });
+                          },
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.flash_on_outlined,
-                                    size: 16, color: AppColors.textSecondary),
-                                const SizedBox(width: 6),
-                                Text('Quick Login (Demo)',
-                                    style: AppTextStyles.label()),
-                              ],
-                            ),
-                            const SizedBox(height: 14),
-                            Row(
-                              children: _quickLogins.map((q) {
-                                final color = _quickColor(q['color']!);
-                                return Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 4),
-                                    child: GestureDetector(
-                                      onTap: () => _quickFill(q['email']!),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 12, horizontal: 8),
-                                        decoration: BoxDecoration(
-                                          color: color.withValues(alpha: 0.08),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: color.withValues(alpha: 0.2),
-                                          ),
-                                        ),
-                                        child: Column(
-                                          children: [
-                                            Icon(_quickIcon(q['icon']!),
-                                                color: color, size: 22),
-                                            const SizedBox(height: 6),
-                                            Text(
-                                              q['label']!,
-                                              style: TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w600,
-                                                color: color,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                      ),*/
+                      ],
 
                       const SizedBox(height: 20),
                       Row(
@@ -613,6 +552,148 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Dev Quick Login panel ─────────────────────────────────────────────────────
+
+class _QuickLoginPanel extends StatefulWidget {
+  final void Function(String email, String password) onSelect;
+  const _QuickLoginPanel({required this.onSelect});
+
+  @override
+  State<_QuickLoginPanel> createState() => _QuickLoginPanelState();
+}
+
+class _QuickLoginPanelState extends State<_QuickLoginPanel> {
+  int? _selected;
+
+  static const _roles = [
+    (
+      label: 'Admin',
+      icon: Icons.admin_panel_settings_outlined,
+      color: Color(0xFF8B5CF6), // violet
+      email: 'support.maintify@gmail.com',
+      password: 'maintify@0606',
+    ),
+    (
+      label: 'President',
+      icon: Icons.manage_accounts_outlined,
+      color: Color(0xFF3B82F6), // blue
+      email: 'president@maintify.demo',
+      password: 'Maintify@123',
+    ),
+    (
+      label: 'Resident',
+      icon: Icons.person_outline_rounded,
+      color: Color(0xFFC39A51), // gold
+      email: 'resident@maintify.demo',
+      password: 'Maintify@123',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF334155)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFF94A3B8)),
+              const SizedBox(width: 5),
+              Text(
+                'Quick Login',
+                style: AppTextStyles.caption(color: const Color(0xFF94A3B8))
+                    .copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.3),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'DEV',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF8B5CF6),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: List.generate(_roles.length, (i) {
+              final role = _roles[i];
+              final isSelected = _selected == i;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: i < _roles.length - 1 ? 8 : 0),
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() => _selected = i);
+                      widget.onSelect(role.email, role.password);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? role.color.withValues(alpha: 0.15)
+                            : const Color(0xFF263045),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? role.color.withValues(alpha: 0.6)
+                              : const Color(0xFF334155),
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(role.icon,
+                              color: isSelected
+                                  ? role.color
+                                  : const Color(0xFF64748B),
+                              size: 22),
+                          const SizedBox(height: 6),
+                          Text(
+                            role.label,
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? role.color
+                                  : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
           ),
         ],
       ),

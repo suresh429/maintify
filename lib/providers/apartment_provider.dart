@@ -134,6 +134,41 @@ class ApartmentProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> editApartment(
+      String aptId, {required String name, required String address}) async {
+    await _fs.updateApartment(aptId, {
+      'name': name.trim(),
+      'address': address.trim(),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
+    // Stream will update _apartments automatically; optimistic update for mock.
+    final idx = _apartments.indexWhere((a) => a.id == aptId);
+    if (idx != -1) {
+      _apartments[idx] = _apartments[idx].copyWith(
+        name: name.trim(),
+        address: address.trim(),
+      );
+      MockApartments.replaceAll(_apartments);
+      notifyListeners();
+    }
+  }
+
+  /// Cascade-deletes: disengages all members → deletes flats → deletes apartment.
+  Future<void> deleteApartment(String aptId) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _fs.disengageUsersFromApartment(aptId);
+      await _fs.deleteFlatsForApartment(aptId);
+      await _fs.deleteApartment(aptId);
+      _apartments.removeWhere((a) => a.id == aptId);
+      MockApartments.replaceAll(_apartments);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> createApartment({
     String? id,
     required String name,

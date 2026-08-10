@@ -78,6 +78,9 @@ class FirestoreService {
   Future<void> updateUser(String uid, Map<String, dynamic> data) =>
       _db.collection('users').doc(uid).update(data);
 
+  Future<void> deleteUser(String uid) =>
+      _db.collection('users').doc(uid).delete();
+
   /// Streams only the `activeSessionId` field from a user doc.
   Stream<String?> streamUserSessionId(String uid) => _db
       .collection('users')
@@ -159,6 +162,55 @@ class FirestoreService {
 
   Future<void> updateApartment(String id, Map<String, dynamic> data) =>
       _db.collection('apartments').doc(id).update(data);
+
+  Future<void> deleteApartment(String aptId) =>
+      _db.collection('apartments').doc(aptId).delete();
+
+  /// Batch-deletes all flat documents belonging to an apartment.
+  Future<void> deleteFlatsForApartment(String aptId) async {
+    final snap = await _db
+        .collection('flats')
+        .where('apartmentId', isEqualTo: aptId)
+        .get();
+    if (snap.docs.isEmpty) return;
+    const chunkSize = 400;
+    for (int i = 0; i < snap.docs.length; i += chunkSize) {
+      final end = (i + chunkSize) < snap.docs.length
+          ? (i + chunkSize)
+          : snap.docs.length;
+      final batch = _db.batch();
+      for (final doc in snap.docs.sublist(i, end)) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+  }
+
+  /// Clears resident info from a flat (marks it available).
+  Future<void> clearFlatResident(String flatId) =>
+      _db.collection('flats').doc(flatId).update({
+        'status': 'available',
+        'residentId': null,
+        'residentType': null,
+      });
+
+  /// Soft-removes all members of an apartment: clears apartmentId + deactivates.
+  Future<void> disengageUsersFromApartment(String aptId) async {
+    final snap = await _db
+        .collection('users')
+        .where('apartmentId', isEqualTo: aptId)
+        .get();
+    if (snap.docs.isEmpty) return;
+    final batch = _db.batch();
+    for (final doc in snap.docs) {
+      batch.update(doc.reference, {
+        'apartmentId': null,
+        'unit': '',
+        'isActive': false,
+      });
+    }
+    await batch.commit();
+  }
 
   /// Finds the real admin user for an apartment (used for pending_* migration).
   Future<UserModel?> findAdminForApartment(String aptId) async {

@@ -71,6 +71,9 @@ class ComplaintProvider extends ChangeNotifier {
       notifyListeners();
     }, onError: (e) {
       debugPrint('[REALTIME] Messages stream ERROR ($complaintId): $e');
+      // Remove the dead subscription so the next subscribeToMessages call
+      // (e.g. re-entering the chat after auth recovery) can re-subscribe.
+      _messageSubs.remove(complaintId)?.cancel();
     });
   }
 

@@ -123,23 +123,23 @@ class ResidentProfileScreen extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 20),
+         // const SizedBox(height: 20),
 
-          // ── Quick action ──────────────────────────────────────────────────
-          _SectionLabel('Quick Action'),
-          const SizedBox(height: 10),
-
-          _ActionTile(
-            icon: Icons.check_circle_outline_rounded,
-            label: 'Report a Payment',
-            subtitle:
-                '$pendingCount pending bill${pendingCount != 1 ? 's' : ''} · notify admin',
-            color: isDark ? theme.darkPrimary : theme.primary,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const IPaidScreen()),
-            ),
-          ),
+          // // ── Quick action ──────────────────────────────────────────────────
+          // _SectionLabel('Quick Action'),
+          // const SizedBox(height: 10),
+          //
+          // _ActionTile(
+          //   icon: Icons.check_circle_outline_rounded,
+          //   label: 'Report a Payment',
+          //   subtitle:
+          //       '$pendingCount pending bill${pendingCount != 1 ? 's' : ''} · notify admin',
+          //   color: isDark ? theme.darkPrimary : theme.primary,
+          //   onTap: () => Navigator.push(
+          //     context,
+          //     MaterialPageRoute(builder: (_) => const IPaidScreen()),
+          //   ),
+          // ),
 
           const SizedBox(height: 20),
 
@@ -162,21 +162,21 @@ class ResidentProfileScreen extends StatelessWidget {
             child: Column(
               children: [
                 // Complaints
-                _MenuTile(
-                  icon: Icons.chat_bubble_outline_rounded,
-                  label: 'Complaints',
-                  subtitle: 'Raise or track issues',
-                  iconColor: isDark ? const Color(0xFF60A5FA) : AppColors.blue,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const ComplaintsScreen()),
-                  ),
-                ),
-                Divider(
-                    height: 1,
-                    indent: 56,
-                    color: cs.outline.withValues(alpha: 0.5)),
+                // _MenuTile(
+                //   icon: Icons.chat_bubble_outline_rounded,
+                //   label: 'Complaints',
+                //   subtitle: 'Raise or track issues',
+                //   iconColor: isDark ? const Color(0xFF60A5FA) : AppColors.blue,
+                //   onTap: () => Navigator.push(
+                //     context,
+                //     MaterialPageRoute(
+                //         builder: (_) => const ComplaintsScreen()),
+                //   ),
+                // ),
+                // Divider(
+                //     height: 1,
+                //     indent: 56,
+                //     color: cs.outline.withValues(alpha: 0.5)),
                 // Change Password
                 _MenuTile(
                   icon: Icons.lock_reset_rounded,

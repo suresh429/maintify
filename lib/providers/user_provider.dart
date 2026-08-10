@@ -112,6 +112,59 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> editUser(
+      String userId, {required String name, required String phone}) async {
+    final words = name.trim().split(RegExp(r'\s+'));
+    final initials = words
+        .where((w) => w.isNotEmpty)
+        .take(2)
+        .map((w) => w[0].toUpperCase())
+        .join();
+    await _fs.updateUser(userId, {
+      'name': name.trim(),
+      'phone': phone.trim(),
+      'avatarInitials':
+          initials.isEmpty ? name[0].toUpperCase() : initials,
+    });
+    notifyListeners();
+  }
+
+  /// Removes a user from their apartment:
+  /// clears flat, clears apartmentId + unit, deactivates account.
+  /// If the user is president, also clears the apartment's presidentId.
+  Future<void> removeUser(
+    String userId, {
+    required String aptId,
+    required bool isPresident,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final user = findById(userId);
+      if (user != null && user.unit.isNotEmpty) {
+        final flat = await _fs.getFlatByNumber(aptId, user.unit);
+        if (flat != null) {
+          await _fs.clearFlatResident(flat.id);
+        }
+      }
+      await _fs.updateUser(userId, {
+        'apartmentId': null,
+        'unit': '',
+        'isActive': false,
+        if (isPresident) 'role': 'resident',
+      });
+      if (isPresident) {
+        await _fs.updateApartment(aptId, {
+          'presidentId': null,
+          'presidentName': null,
+        });
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> toggleUserStatus(String userId) async {
     _isLoading = true;
     notifyListeners();

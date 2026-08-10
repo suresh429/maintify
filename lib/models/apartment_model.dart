@@ -86,6 +86,7 @@ class ApartmentModel {
       };
 
   ApartmentModel copyWith({
+    String? name,
     String? presidentId,
     String? presidentName,
     bool clearPresident = false,
@@ -103,7 +104,7 @@ class ApartmentModel {
   }) {
     return ApartmentModel(
       id: id,
-      name: name,
+      name: name ?? this.name,
       code: code ?? this.code,
       status: status ?? this.status,
       type: type ?? this.type,
