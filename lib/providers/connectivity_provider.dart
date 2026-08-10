@@ -10,8 +10,10 @@ import '../core/services/connectivity_service.dart';
 /// ─────────────────
 /// • Subscribe to [ConnectivityService.onStatusChange].
 /// • Cache current state as [isConnected] / [isDisconnected].
-/// • Call [notifyListeners] on every status change so
-///   [GlobalConnectivityOverlay] can update the banner.
+/// • Debounce status changes before calling [notifyListeners] to eliminate
+///   banner spam from transient network fluctuations.
+/// • Call [notifyListeners] only on real transitions so
+///   [GlobalConnectivityOverlay] updates once per event.
 ///
 /// No UI logic lives here.
 /// No screen should subscribe to this provider directly — only
@@ -23,8 +25,18 @@ class ConnectivityProvider extends ChangeNotifier {
 
   final ConnectivityService _service = ConnectivityService.instance;
   StreamSubscription<InternetStatus>? _subscription;
+  Timer? _debounce;
 
-  /// Mirrors ConnectivityService's optimistic default; corrected in [_init].
+  /// How long to wait before declaring the device offline.
+  /// A 2.5 s window absorbs Wi-Fi frequency switches, DHCP renewals, and
+  /// brief DNS timeouts without showing the banner.
+  static const _offlineDebounce = Duration(milliseconds: 2500);
+
+  /// Reconnection is confirmed quickly — 500 ms is enough to filter duplicate
+  /// "connected" events that some platforms emit on interface changes.
+  static const _onlineDebounce = Duration(milliseconds: 500);
+
+  /// Optimistic default — corrected by the first stream event.
   bool _isConnected = true;
 
   /// true  → device has verified internet access.
@@ -32,22 +44,27 @@ class ConnectivityProvider extends ChangeNotifier {
   bool get isConnected => _isConnected;
   bool get isDisconnected => !_isConnected;
 
-  Future<void> _init() async {
-    // Perform an immediate DNS probe to correct the optimistic default.
-    _isConnected = await _service.checkNow();
-    notifyListeners();
-
-    // Subscribe to all subsequent changes.
+  void _init() {
+    // Subscribe to status changes with asymmetric debounce:
+    //   • Going offline  → wait 2.5 s before reacting (avoids false positives)
+    //   • Coming online  → wait 0.5 s before reacting (filters duplicate events)
     _subscription = _service.onStatusChange.listen((status) {
       final connected = status == InternetStatus.connected;
-      if (connected == _isConnected) return; // No change — skip rebuild.
-      _isConnected = connected;
-      notifyListeners();
+      _debounce?.cancel();
+      _debounce = Timer(
+        connected ? _onlineDebounce : _offlineDebounce,
+        () {
+          if (connected == _isConnected) return; // already in this state
+          _isConnected = connected;
+          notifyListeners();
+        },
+      );
     });
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _subscription?.cancel();
     super.dispose();
   }

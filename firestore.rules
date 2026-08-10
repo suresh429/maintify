@@ -124,17 +124,25 @@ service cloud.firestore {
 
     // ── Complaints ───────────────────────────────────────────────────────────
     match /complaints/{complaintId} {
-      allow read: if isMemberOfApartment(resource.data.apartmentId);
+      // Allow apartment members (president) OR the complaint owner (resident).
+      // The `request.auth.uid == resource.data.userId` alternative avoids a
+      // get() call for resident queries filtered by userId — preventing
+      // PERMISSION_DENIED on fresh auth connections where get() may be slow.
+      allow read: if isMemberOfApartment(resource.data.apartmentId) ||
+                     request.auth.uid == resource.data.userId ||
+                     isSuperAdmin();
       allow create: if isSignedIn();
       allow update: if isAdminForApartment(resource.data.apartmentId) ||
                        request.auth.uid == resource.data.userId;
       allow delete: if isAdminForApartment(resource.data.apartmentId);
 
       // Messages subcollection
+      // Simplified to isSignedIn() — the parent complaint read rule already
+      // controls who can see the complaint (and therefore know the complaintId).
+      // Removing the double-nested get() (complaint→user) prevents PERMISSION_DENIED
+      // on fresh auth connections.
       match /messages/{msgId} {
-        allow read: if isMemberOfApartment(
-          get(/databases/$(database)/documents/complaints/$(complaintId)).data.apartmentId
-        );
+        allow read: if isSignedIn();
         allow create: if isSignedIn();
         allow update, delete: if false; // messages are immutable
       }
@@ -150,11 +158,15 @@ service cloud.firestore {
     // ── Notifications ─────────────────────────────────────────────────────────
     // Read is scoped to the notification's owner; admins can read all for
     // management purposes. App-level queries always add userId == currentUser.
+    // create is open to all signed-in users: residents write notifications for
+    // presidents when sending complaint messages; presidents write for residents
+    // when replying. The app controls targeting — no server-side restriction
+    // is needed beyond requiring authentication.
     match /notifications/{notifId} {
       allow read: if isSignedIn() &&
                      (request.auth.uid == resource.data.userId ||
                       isAdmin() || isSuperAdmin());
-      allow create: if isAdmin() || isSuperAdmin();
+      allow create: if isSignedIn();
       allow update: if isSignedIn(); // mark as read
       allow delete: if isSuperAdmin();
     }

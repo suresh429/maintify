@@ -77,6 +77,12 @@ class ComplaintModel {
   final String category;
   String status;
   final DateTime createdAt;
+
+  /// The stored lastActivityAt from Firestore.
+  /// When messages are embedded (mock data), the getter prefers the last
+  /// message timestamp so sorting stays accurate.
+  final DateTime _storedLastActivityAt;
+
   final List<ComplaintMessage> messages;
 
   ComplaintModel({
@@ -89,11 +95,15 @@ class ComplaintModel {
     required this.category,
     required this.status,
     required this.createdAt,
-    required this.messages,
-  });
+    DateTime? lastActivityAt,
+    List<ComplaintMessage>? messages,
+  })  : _storedLastActivityAt = lastActivityAt ?? createdAt,
+        messages = List<ComplaintMessage>.from(messages ?? []);
 
   factory ComplaintModel.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
+    final createdAt =
+        (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
     return ComplaintModel(
       id: doc.id,
       apartmentId: d['apartmentId'] as String? ?? '',
@@ -103,9 +113,12 @@ class ComplaintModel {
       title: d['title'] as String? ?? '',
       category: d['category'] as String? ?? '',
       status: d['status'] as String? ?? ComplaintStatus.open,
-      createdAt:
-          (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      messages: const [], // messages loaded separately from subcollection
+      createdAt: createdAt,
+      // Read the stored field so client-side sort is accurate even when
+      // messages subcollection hasn't been loaded yet.
+      lastActivityAt:
+          (d['lastActivityAt'] as Timestamp?)?.toDate() ?? createdAt,
+      messages: [], // messages loaded separately from subcollection
     );
   }
 
@@ -127,8 +140,10 @@ class ComplaintModel {
   String get lastMessagePreview =>
       lastMessage?.content ?? 'No messages yet';
 
+  /// Returns the last message timestamp when messages are loaded in-memory
+  /// (mock data), otherwise returns the Firestore-stored field.
   DateTime get lastActivityAt =>
-      lastMessage?.timestamp ?? createdAt;
+      messages.isNotEmpty ? messages.last.timestamp : _storedLastActivityAt;
 }
 
 // ── Mock Data ─────────────────────────────────────────────────────────────────

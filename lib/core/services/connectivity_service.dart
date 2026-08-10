@@ -23,7 +23,18 @@ class ConnectivityService {
 
   static final ConnectivityService instance = ConnectivityService._();
 
-  final InternetConnection _checker = InternetConnection();
+  /// Poll every 10 s using Cloudflare and Google DNS — both are highly
+  /// reliable and available worldwide.  The longer interval reduces false
+  /// positives on networks where the default 5 s checks occasionally time out
+  /// (corporate proxies, VPNs, Wi-Fi hand-offs).
+  final InternetConnection _checker = InternetConnection.createInstance(
+    checkInterval: const Duration(seconds: 10),
+    customCheckOptions: [
+      InternetCheckOption(uri: Uri.parse('https://one.one.one.one')),
+      InternetCheckOption(uri: Uri.parse('https://dns.google')),
+    ],
+    useDefaultOptions: false,
+  );
   StreamSubscription<InternetStatus>? _cacheSub;
 
   /// Optimistic default — corrected asynchronously within milliseconds.

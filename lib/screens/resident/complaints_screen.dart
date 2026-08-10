@@ -110,20 +110,25 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final prov = context.read<ComplaintProvider>();
-    await prov.createComplaint(
-      apartmentId: widget.user.apartmentId ?? '',
-      userId: widget.user.id,
-      userName: widget.user.name,
-      unit: widget.user.unit,
-      title: _titleCtrl.text.trim(),
-      category: _category,
-      notificationProvider: context.read<NotificationProvider>(),
-    );
-    if (!mounted) return;
-    Navigator.pop(context);
-    AppUtils.showSnackBar(context, 'Complaint raised successfully!',
-        color: AppColors.paid);
+    try {
+      await context.read<ComplaintProvider>().createComplaint(
+            apartmentId: widget.user.apartmentId ?? '',
+            userId: widget.user.id,
+            userName: widget.user.name,
+            unit: widget.user.unit,
+            title: _titleCtrl.text.trim(),
+            category: _category,
+            notificationProvider: context.read<NotificationProvider>(),
+          );
+      if (!mounted) return;
+      Navigator.pop(context);
+      AppUtils.showSnackBar(context, 'Complaint raised successfully!',
+          color: AppColors.paid);
+    } catch (e) {
+      if (!mounted) return;
+      AppUtils.showSnackBar(
+          context, 'Failed to submit complaint. Please try again.');
+    }
   }
 
   @override

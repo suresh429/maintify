@@ -34,9 +34,11 @@ class BillCategory {
 
   factory BillCategory.fromMap(Map<String, dynamic> m) {
     final rawOverrides = m['userOverrides'] as Map<String, dynamic>? ?? {};
+    // DbSeeder stored 'splitType'; newer bills use 'type'.
+    final type = (m['type'] as String?) ?? (m['splitType'] as String?) ?? 'common';
     return BillCategory(
       name: m['name'] as String? ?? '',
-      type: m['type'] as String? ?? 'common',
+      type: type,
       totalAmount: (m['totalAmount'] as num?)?.toDouble() ?? 0,
       defaultAmount: (m['defaultAmount'] as num?)?.toDouble() ?? 0,
       userOverrides: rawOverrides.map(
@@ -108,6 +110,15 @@ class BillModel {
     this.excludedUserIds = const [],
   });
 
+  static String _timestampToMonthString(Timestamp ts) {
+    final dt = ts.toDate();
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return '${months[dt.month - 1]} ${dt.year}';
+  }
+
   factory BillModel.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
 
@@ -132,9 +143,12 @@ class BillModel {
       createdByAdminId: d['createdByAdminId'] as String? ?? '',
       title: d['title'] as String? ?? '',
       totalAmount: totalAmount,
-      totalFlats: (d['totalFlats'] as int?) ?? 1,
+      totalFlats: (d['totalFlats'] as int?) ?? (d['eligibleCount'] as int?) ?? 1,
       category: d['category'] as String? ?? '',
-      month: d['month'] as String? ?? '',
+      // 'month' was stored as Timestamp by DbSeeder; newer bills store it as String.
+      month: d['month'] is Timestamp
+          ? _timestampToMonthString(d['month'] as Timestamp)
+          : (d['month'] as String? ?? ''),
       dueDate: (d['dueDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       billType: d['billType'] as String? ?? 'common',

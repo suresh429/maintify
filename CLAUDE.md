@@ -76,7 +76,7 @@ Three roles drive the entire app structure: `admin` (super admin), `president` (
 
 ### Provider Stack
 
-All 11 providers registered at root in `main.dart`. All provider files live in `lib/providers/`:
+All 12 providers registered at root in `main.dart`. All provider files live in `lib/providers/`:
 
 | Provider | Responsibility |
 |---|---|
@@ -91,6 +91,7 @@ All 11 providers registered at root in `main.dart`. All provider files live in `
 | `RegistrationProvider` | Self-registration: president self-creates apartment or activates super-admin-created one; resident direct signup with email verification |
 | `ThemeProvider` | Dark/light mode toggle; persists `isDarkMode` flag to Hive `'session'` box under key `isDarkMode` |
 | `VersionProvider` | Checks Firebase Remote Config for app version; exposes `UpdateStatus` (`upToDate`, `softUpdate`, `forceUpdate`) |
+| `ConnectivityProvider` | Wraps `ConnectivityService` (internet_connection_checker_plus); exposes `isConnected`/`isDisconnected`. Only `GlobalConnectivityOverlay` consumes it — no screen should subscribe directly. |
 
 Providers that use Firestore streams call `startListening(...)` from `DashboardRouter` after login. They cache data locally and call `notifyListeners()` on stream updates.
 

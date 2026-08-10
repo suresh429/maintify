@@ -11,6 +11,8 @@ class ChatBubble extends StatelessWidget {
   final DateTime timestamp;
   final bool isFromAdmin;
   final bool showSenderName;
+  /// When false, the avatar circle is hidden entirely.
+  final bool showAvatar;
 
   const ChatBubble({
     super.key,
@@ -19,6 +21,7 @@ class ChatBubble extends StatelessWidget {
     required this.timestamp,
     required this.isFromAdmin,
     this.showSenderName = false,
+    this.showAvatar = true,
   });
 
   @override
@@ -32,9 +35,11 @@ class ChatBubble extends StatelessWidget {
             isLeft ? MainAxisAlignment.start : MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (isLeft) ...[
+          if (isLeft && showAvatar) ...[
             _Avatar(name: senderName, isAdmin: true),
             const SizedBox(width: 8),
+          ] else if (isLeft) ...[
+            const SizedBox(width: 38), // reserve space so bubbles align
           ],
           Flexible(
             child: ConstrainedBox(
@@ -106,7 +111,7 @@ class ChatBubble extends StatelessWidget {
               ),
             ),
           ),
-          if (!isLeft) ...[
+          if (!isLeft && showAvatar) ...[
             const SizedBox(width: 8),
             _Avatar(name: senderName, isAdmin: false),
           ],

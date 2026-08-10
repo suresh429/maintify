@@ -264,16 +264,15 @@ class DbSeeder {
 
   static Future<void> _seedComplaint(String residentId, DateTime now) async {
     await _db.collection('complaints').doc().set({
-      'apartmentId': _aptId,
-      'userId':      residentId,
-      'userName':    'Ravi Kumar',
-      'unit':        '102',
-      'category':    'Plumbing',
-      'title':       'Water leakage in kitchen',
-      'description': 'There is water leakage from the kitchen sink pipe in flat 102.',
-      'status':      'open',
-      'createdAt':   Timestamp.fromDate(now),
-      'updatedAt':   Timestamp.fromDate(now),
+      'apartmentId':    _aptId,
+      'userId':         residentId,
+      'userName':       'Ravi Kumar',
+      'unit':           '102',
+      'category':       'Maintenance',
+      'title':          'Water leakage in kitchen',
+      'status':         'Open',           // must match ComplaintStatus.open
+      'createdAt':      Timestamp.fromDate(now),
+      'lastActivityAt': Timestamp.fromDate(now), // correct field name used by the app
     });
   }
 

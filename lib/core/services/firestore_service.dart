@@ -315,16 +315,28 @@ class FirestoreService {
       _db
           .collection('complaints')
           .where('apartmentId', isEqualTo: aptId)
-          .orderBy('lastActivityAt', descending: true)
+          // No server-side orderBy — that would require a composite index on
+          // (apartmentId, lastActivityAt) which may not exist in every
+          // environment. We sort client-side after deserialisation instead.
           .snapshots()
-          .map((s) => s.docs.map(ComplaintModel.fromFirestore).toList());
+          .map((s) {
+            final list =
+                s.docs.map(ComplaintModel.fromFirestore).toList();
+            list.sort(
+                (a, b) => b.lastActivityAt.compareTo(a.lastActivityAt));
+            return list;
+          });
 
   Stream<List<ComplaintModel>> streamComplaintsForUser(String userId) => _db
       .collection('complaints')
       .where('userId', isEqualTo: userId)
-      .orderBy('lastActivityAt', descending: true)
+      // Same reason: avoid requiring a composite index on (userId, lastActivityAt).
       .snapshots()
-      .map((s) => s.docs.map(ComplaintModel.fromFirestore).toList());
+      .map((s) {
+        final list = s.docs.map(ComplaintModel.fromFirestore).toList();
+        list.sort((a, b) => b.lastActivityAt.compareTo(a.lastActivityAt));
+        return list;
+      });
 
   Future<void> createComplaint(String id, Map<String, dynamic> data) =>
       _db.collection('complaints').doc(id).set(data);

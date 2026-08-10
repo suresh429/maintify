@@ -253,18 +253,6 @@ class _AdminComplaintTile extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Icon(Icons.person_outline,
-                          size: 13, color: cs.onSurfaceVariant),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${complaint.userName} · ${complaint.unit}',
-                        style: AppTextStyles.caption(
-                            color: cs.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
                   if (lastMsg != null) ...[
                     const SizedBox(height: 4),
                     Text(

@@ -93,9 +93,7 @@ class _ChatScreenState extends State<ChatScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             Text(
-              widget.isAdminView
-                  ? '${complaint.userName} · ${complaint.unit}'
-                  : complaint.category,
+              complaint.category,
               style: AppTextStyles.caption(
                       color: Colors.white.withValues(alpha: 0.8))
                   .copyWith(fontSize: 11),
@@ -167,7 +165,9 @@ class _ChatScreenState extends State<ChatScreen> {
                           senderName: msg.senderName,
                           timestamp: msg.timestamp,
                           isFromAdmin: msg.isFromAdmin,
-                          showSenderName: widget.isAdminView && msg.isFromAdmin == false,
+                          showSenderName: false,
+                          // In admin view, hide the resident's avatar to preserve anonymity.
+                          showAvatar: !(widget.isAdminView && !msg.isFromAdmin),
                         ),
                       ],
                     );
@@ -223,6 +223,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
 
   void _showStatusSheet() {
     const statusOrder = [
