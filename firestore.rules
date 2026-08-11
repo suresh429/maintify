@@ -134,7 +134,7 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update: if isAdminForApartment(resource.data.apartmentId) ||
                        request.auth.uid == resource.data.userId;
-      allow delete: if isAdminForApartment(resource.data.apartmentId);
+      allow delete: if isAdminForApartment(resource.data.apartmentId) || isSuperAdmin();
 
       // Messages subcollection
       // Simplified to isSignedIn() — the parent complaint read rule already
@@ -144,7 +144,8 @@ service cloud.firestore {
       match /messages/{msgId} {
         allow read: if isSignedIn();
         allow create: if isSignedIn();
-        allow update, delete: if false; // messages are immutable
+        allow update: if false; // messages are immutable
+        allow delete: if isSuperAdmin(); // only super admin can delete (apartment deletion)
       }
     }
 
@@ -168,6 +169,13 @@ service cloud.firestore {
                       isAdmin() || isSuperAdmin());
       allow create: if isSignedIn();
       allow update: if isSignedIn(); // mark as read
+      allow delete: if isSuperAdmin();
+    }
+
+    // ── President invitations ─────────────────────────────────────────────────
+    match /president_invitations/{invId} {
+      allow read: if isSuperAdmin() || isSignedIn();
+      allow create, update: if isSuperAdmin();
       allow delete: if isSuperAdmin();
     }
 

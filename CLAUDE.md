@@ -72,7 +72,6 @@ Three roles drive the entire app structure: `admin` (super admin), `president` (
 - `president@maintify.demo` / `Maintify@123` → President (demo apartment)
 - `resident@maintify.demo` / `Maintify@123` → Resident (demo apartment)
 
-**First-login flow:** New users have `isFirstLogin: true` and an auto-generated password. `DashboardRouter` wraps their dashboard in `_FirstLoginWrapper`, which opens a non-dismissible `showChangePasswordSheet(isFirstLogin: true)` via `addPostFrameCallback`. After password change, `isFirstLogin` becomes false in both Firebase Auth and the Firestore user doc.
 
 ### Provider Stack
 
@@ -101,11 +100,12 @@ Providers that use Firestore streams call `startListening(...)` from `DashboardR
 
 All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `MockBillData`) exist **primarily for `DashboardProvider`**, which cannot hold Firestore streams of its own — every provider's stream listener calls `MockFoo.replaceAll(list)` to keep statics in sync. `MockComplaints` is additionally used by `ComplaintProvider` for **optimistic UI updates** only (e.g. inserting a newly created complaint before the Firestore stream fires); it is not the primary data source for complaints.
 
-**Models** live in `lib/models/`. Key ones: `user_model.dart`, `bill_model.dart`, `apartment_model.dart` (now has `type`, `address`, `towerCount`, `towerNames`, `presidentFlat` fields), `flat_model.dart` (see below).
+**Models** live in `lib/models/`. Key ones: `user_model.dart`, `bill_model.dart`, `apartment_model.dart` (now has `type`, `address`, `towerCount`, `towerNames`, `presidentFlat` fields), `flat_model.dart` (see below), `president_invitation_model.dart` (token-based super-admin invite flow — `status`: `pending`|`completed`|`expired`, 12-char `invitationToken`, expires after set duration).
 
 **Key Firestore collections:**
 - `users/` — real Firebase Auth UID as document ID
 - `apartments/`, `bills/`, `payments/`, `complaints/`, `meetings/`, `notifications/`
+- `president_invitations/` — created by super admins; consumed by `onPresidentInvitationCreated` Cloud Function and the president activation flow
 - `complaints/{id}/messages/` — message subcollection; streamed per-complaint by `ComplaintProvider.subscribeToMessages()`
 - `flats/` — individual flat docs, auto-generated at apartment creation. Doc ID: `${aptId}_${flatNumber}`. Fields: `flatNumber`, `tower` (null for non-gated), `status` (`available`|`occupied`), `residentId`, `residentType` (`President`|`Resident`|null), `apartmentId`.
 - `_meta/seeded_v4` — guards `DbSeeder` from re-running
@@ -177,18 +177,29 @@ apartments/{id}:
 | `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). Uses `flutter_local_notifications` to display foreground messages. Uses `navigatorKey` for out-of-tree navigation on notification tap. |
 | `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded_v4`. **DEV flavor only** — `bootstrap()` skips seeding when `AppConfig.isProduction`. Creates admin, demo president, demo resident, demo apartment (Green Valley Residency / `GRVL1234`), one maintenance bill, one open complaint, and one scheduled meeting. On subsequent launches with the guard present, only repairs the admin user doc if accidentally deleted. |
 
-**`AppUtils`** (`lib/core/utils/app_utils.dart`): Static helpers — `formatCurrency`, `formatDate`, `formatMonthYear`, `formatDateTime`, `timeAgo`, `showSnackBar` (accepts optional `color` override), `displayFirstName`, `showConfirmDialog`. `showConfirmDialog` renders a bottom-sheet style confirmation with customizable `confirmColor`.
+**`AppUtils`** (`lib/core/utils/app_utils.dart`): Static helpers — `formatCurrency`, `formatDate`, `formatMonthYear`, `formatDateTime`, `timeAgo`, `showSnackBar` (accepts optional `color` override), `displayFirstName`, `showConfirmDialog`, `launchPrivacyPolicy`. `showConfirmDialog` renders a bottom-sheet style confirmation with customizable `confirmColor`. `launchPrivacyPolicy` opens the privacy policy in Chrome Custom Tabs (Android) or Safari (iOS).
+
+**`VersionCompare`** (`lib/core/utils/version_compare.dart`): Semantic version comparison used by `VersionProvider` — `compare(a, b)` returns -1/0/1; also exposes `isLessThan()`, `isGreaterThan()`, `isEqual()`.
 
 **`navigatorKey`** (`lib/core/navigation_key.dart`): App-wide `GlobalKey<NavigatorState>` registered in `main.dart`. Required for `FcmService` to navigate when no `BuildContext` is available.
 
 **Hive session persistence:** `AuthProvider` uses a Hive box named `'session'` (opened in `main.dart`) to persist `isLoggedIn`, `role`, and `session_{uid}` keys across cold starts. On login these are written; on logout they are deleted. `tryRestoreSession()` (called from `SplashScreen`) re-hydrates `_currentUser` from Firestore and re-starts the session listener.
+
+### Named Routes
+
+Defined in `main.dart` via `MaterialApp.routes`:
+- `/` → `SplashScreen`
+- `/login` → `LoginScreen`
+- `/signup` → `RegistrationScreen`
+- `/activate` → `PresidentActivationScreen`
+- `/dashboard` → `DashboardRouter`
 
 ### Screen Layout
 
 ```
 screens/
 ├── login_screen.dart              ← AppTextField + Forgot Password bottom sheet
-├── dashboard_router.dart          ← Role router + _FirstLoginWrapper + _StreamStarter (manages listener lifecycle) + provider startListening calls
+├── dashboard_router.dart          ← Role router + _StreamStarter (manages listener lifecycle) + provider startListening calls
 ├── splash_screen.dart
 ├── auth/
 │   ├── registration_screen.dart   ← Unified signup: segmented button switches President / Resident form fields; handles email verification bottom sheet + success sheet
@@ -264,7 +275,7 @@ Use `Column(mainAxisSize: MainAxisSize.min)` to avoid full-height expansion.
 
 - **President:** AppBar settings icon (`Icons.settings_outlined`) → `showChangePasswordSheet(context)`
 - **Resident:** Profile screen "More" menu → "Change Password" tile → `showChangePasswordSheet(context)`
-- **First login:** `_FirstLoginWrapper` in `DashboardRouter` opens automatically with `isFirstLogin: true`
+- **Admin:** Profile/settings flow → `showChangePasswordSheet(context)`
 
 ## Backend: Firebase Cloud Functions (`functions/`)
 

@@ -153,14 +153,16 @@ class ApartmentProvider extends ChangeNotifier {
     }
   }
 
-  /// Cascade-deletes: disengages all members → deletes flats → deletes apartment.
+  /// Hard-deletes an apartment and everything that belongs to it:
+  /// Firebase Auth accounts for all members, users, notifications, bills,
+  /// payments, complaints + messages, meetings, flats, president_invitations,
+  /// and the apartment document itself. Delegates to a Cloud Function because
+  /// deleting other users' Auth accounts requires the Admin SDK.
   Future<void> deleteApartment(String aptId) async {
     _isLoading = true;
     notifyListeners();
     try {
-      await _fs.disengageUsersFromApartment(aptId);
-      await _fs.deleteFlatsForApartment(aptId);
-      await _fs.deleteApartment(aptId);
+      await _fs.deleteApartmentFull(aptId);
       _apartments.removeWhere((a) => a.id == aptId);
       MockApartments.replaceAll(_apartments);
     } finally {

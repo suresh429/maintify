@@ -166,6 +166,94 @@ class FirestoreService {
   Future<void> deleteApartment(String aptId) =>
       _db.collection('apartments').doc(aptId).delete();
 
+  /// Hard-deletes an apartment and every Firestore document that belongs to it:
+  /// users, notifications, complaints + messages, bills, payments, meetings,
+  /// flats, president_invitations, and the apartment doc itself.
+  ///
+  /// Note: Firebase Auth accounts are NOT deleted (requires Admin SDK /
+  /// Cloud Functions with billing). Deleted members will be unable to log in
+  /// because their Firestore user doc is removed — signIn returns
+  /// "Account data not found".
+  Future<void> deleteApartmentFull(String aptId) async {
+    // 1. Collect all member UIDs
+    final usersSnap = await _db
+        .collection('users')
+        .where('apartmentId', isEqualTo: aptId)
+        .get();
+    final memberUids = usersSnap.docs.map((d) => d.id).toList();
+
+    // 2. Delete notifications for each member
+    for (final uid in memberUids) {
+      final notifSnap = await _db
+          .collection('notifications')
+          .where('userId', isEqualTo: uid)
+          .get();
+      await _batchDeleteDocs(notifSnap.docs);
+    }
+
+    // 3. Delete Firestore user docs
+    await _batchDeleteDocs(usersSnap.docs);
+
+    // 4. Delete complaints + their messages subcollection
+    final complaintsSnap = await _db
+        .collection('complaints')
+        .where('apartmentId', isEqualTo: aptId)
+        .get();
+    for (final cDoc in complaintsSnap.docs) {
+      final msgSnap = await cDoc.reference.collection('messages').get();
+      await _batchDeleteDocs(msgSnap.docs);
+    }
+    await _batchDeleteDocs(complaintsSnap.docs);
+
+    // 5. Delete bills
+    final billsSnap = await _db
+        .collection('bills')
+        .where('apartmentId', isEqualTo: aptId)
+        .get();
+    await _batchDeleteDocs(billsSnap.docs);
+
+    // 6. Delete payments
+    final paymentsSnap = await _db
+        .collection('payments')
+        .where('apartmentId', isEqualTo: aptId)
+        .get();
+    await _batchDeleteDocs(paymentsSnap.docs);
+
+    // 7. Delete meetings
+    final meetingsSnap = await _db
+        .collection('meetings')
+        .where('apartmentId', isEqualTo: aptId)
+        .get();
+    await _batchDeleteDocs(meetingsSnap.docs);
+
+    // 8. Delete flats
+    await deleteFlatsForApartment(aptId);
+
+    // 9. Delete president_invitations
+    final invSnap = await _db
+        .collection('president_invitations')
+        .where('apartmentId', isEqualTo: aptId)
+        .get();
+    await _batchDeleteDocs(invSnap.docs);
+
+    // 10. Delete the apartment doc itself
+    await deleteApartment(aptId);
+  }
+
+  /// Batch-deletes a list of Firestore docs in chunks of 400.
+  Future<void> _batchDeleteDocs(List<QueryDocumentSnapshot> docs) async {
+    if (docs.isEmpty) return;
+    const chunkSize = 400;
+    for (int i = 0; i < docs.length; i += chunkSize) {
+      final end = (i + chunkSize) < docs.length ? i + chunkSize : docs.length;
+      final batch = _db.batch();
+      for (final doc in docs.sublist(i, end)) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+  }
+
   /// Batch-deletes all flat documents belonging to an apartment.
   Future<void> deleteFlatsForApartment(String aptId) async {
     final snap = await _db

@@ -415,7 +415,7 @@ class _ApartmentDetailCard extends StatelessWidget {
       context,
       title: 'Delete Apartment',
       message:
-          'This will permanently delete "${apt.name}" and remove all its members. This cannot be undone.',
+          'This will permanently delete "${apt.name}" along with all members, bills, payments, complaints, and meetings. Member accounts will also be deleted from Firebase. This cannot be undone.',
       confirmText: 'Delete',
       confirmColor: AppColors.overdue,
     );

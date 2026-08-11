@@ -592,3 +592,4 @@ exports.onPaymentUpdated = onDocumentUpdated('payments/{paymentId}', async (even
     });
   }
 });
+
