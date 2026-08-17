@@ -30,6 +30,7 @@ class _BillsScreenState extends State<BillsScreen> {
 
     if (billProvider.isInitialLoading || billProvider.isLoading) return const ShimmerDashboard();
 
+    final isWeb = MediaQuery.sizeOf(context).width >= 600;
     final allSummaries = billProvider.userMonthlySummaries(userId);
     final displayed = _filter == 'Pending'
         ? allSummaries.where((s) => !s.isFullyPaid).toList()
@@ -41,7 +42,7 @@ class _BillsScreenState extends State<BillsScreen> {
       children: [
         // Filter tabs
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 16, isWeb ? 24.0 : 16.0, 0),
           child: Row(
             children: _filters.map((f) {
               final isActive = _filter == f;
@@ -112,13 +113,24 @@ class _BillsScreenState extends State<BillsScreen> {
                       : Icons.receipt_outlined,
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                  padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 4, isWeb ? 24.0 : 16.0, 100),
                   itemCount: displayed.length,
-                  itemBuilder: (_, i) => _UserMonthlyCard(
-                    summary: displayed.elementAt(i),
-                    aptId: aptId,
-                    theme: theme,
-                  ),
+                  itemBuilder: (_, i) {
+                    final item = _UserMonthlyCard(
+                      summary: displayed.elementAt(i),
+                      aptId: aptId,
+                      theme: theme,
+                    );
+                    return isWeb
+                        ? Align(
+                            alignment: Alignment.topCenter,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 960),
+                              child: item,
+                            ),
+                          )
+                        : item;
+                  },
                 ),
         ),
       ],

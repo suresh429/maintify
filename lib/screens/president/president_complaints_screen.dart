@@ -34,6 +34,7 @@ class _PresidentComplaintsScreenState extends State<PresidentComplaintsScreen> {
     final user = auth.currentUser!;
     final aptId = user.apartmentId ?? '';
     final apt = context.read<ApartmentProvider>().findById(aptId);
+    final isWeb = MediaQuery.sizeOf(context).width >= 600;
 
     return Consumer<ComplaintProvider>(
       builder: (_, prov, __) {
@@ -120,21 +121,32 @@ class _PresidentComplaintsScreenState extends State<PresidentComplaintsScreen> {
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                        padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 16, isWeb ? 24.0 : 16.0, 24),
                         itemCount: filtered.length,
-                        itemBuilder: (_, i) => _AdminComplaintTile(
-                          complaint: filtered[i],
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ChatScreen(
-                                complaint: filtered[i],
-                                isAdminView: true,
-                                currentUserId: user.id,
+                        itemBuilder: (_, i) {
+                          final item = _AdminComplaintTile(
+                            complaint: filtered[i],
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChatScreen(
+                                  complaint: filtered[i],
+                                  isAdminView: true,
+                                  currentUserId: user.id,
+                                ),
                               ),
                             ),
-                          ),
-                        ),
+                          );
+                          return isWeb
+                              ? Align(
+                                  alignment: Alignment.topCenter,
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(maxWidth: 960),
+                                    child: item,
+                                  ),
+                                )
+                              : item;
+                        },
                       ),
               ),
             ],
@@ -254,7 +266,15 @@ class _AdminComplaintTile extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 3),
-                  if (lastMsg != null) ...[
+                  if (complaint.content.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      complaint.content,
+                      style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ] else if (lastMsg != null) ...[
                     const SizedBox(height: 4),
                     Text(
                       lastMsg.isFromAdmin

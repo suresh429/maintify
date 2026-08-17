@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
+import '../providers/version_provider.dart';
 import '../core/config/app_config.dart';
 import '../core/theme/app_text_styles.dart';
 import '../core/constants/app_constants.dart';
 import '../core/utils/app_utils.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/common_button.dart';
+import '../widgets/web/auth_web_layout.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -274,6 +277,165 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isWebLayout = MediaQuery.sizeOf(context).width >= 600;
+    if (isWebLayout) return _buildWebLayout(context);
+    return _buildMobileLayout(context);
+  }
+
+  Widget _buildWebLayout(BuildContext context) {
+    return Scaffold(
+      body: AuthWebLayout(
+        child: _buildLoginForm(context),
+      ),
+    );
+  }
+
+  Widget _buildLoginForm(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 440),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Welcome back',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: cs.onSurface,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Sign in to your Maintify account',
+              style: AppTextStyles.bodyMedium(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: 32),
+            AppTextField(
+              label: 'Email Address',
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              prefixIcon: const Icon(Icons.email_outlined, size: 20),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Please enter email';
+                if (!v.contains('@')) return 'Enter a valid email';
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            AppTextField(
+              label: 'Password',
+              controller: _passCtrl,
+              obscureText: _obscurePass,
+              prefixIcon: const Icon(Icons.lock_outline, size: 20),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePass
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  size: 20,
+                ),
+                onPressed: () =>
+                    setState(() => _obscurePass = !_obscurePass),
+              ),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Please enter password';
+                if (v.length < 6) return 'Password must be 6+ characters';
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _showForgotPassword,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 4, vertical: 4),
+                ),
+                child: Text(
+                  'Forgot Password?',
+                  style: AppTextStyles.caption(color: cs.primary)
+                      .copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Consumer<AuthProvider>(
+              builder: (_, auth, __) => CommonButton(
+                text: 'Sign In',
+                gradient: const [Color(0xFF1E3A8A), Color(0xFF06B6D4)],
+                isLoading: auth.isLoading,
+                onPressed: _login,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "Don't have an account?",
+                  style: AppTextStyles.caption(color: cs.onSurfaceVariant),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pushNamed(context, '/signup'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    'Sign Up',
+                    style: AppTextStyles.caption(color: cs.primary)
+                        .copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.how_to_reg_outlined, size: 16),
+                label: const Text('Activate existing apartment'),
+                onPressed: () => Navigator.pushNamed(context, '/activate'),
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 18, vertical: 10),
+                  textStyle: AppTextStyles.caption()
+                      .copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            // ── Google Play badge (web only) ──────────────────────────
+            const SizedBox(height: 28),
+            _GooglePlayBadge(),
+
+            // Dev quick-login section
+            if (AppConfig.isDevelopment) ...[
+              const SizedBox(height: 20),
+              _WebQuickLoginPanel(
+                onSelect: (email, password) {
+                  setState(() {
+                    _emailCtrl.text = email;
+                    _passCtrl.text = password;
+                  });
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: const Color(0xFF0A0F1E),
@@ -539,6 +701,8 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                         ),
                       ),
+                      const SizedBox(height: 20),
+                      _GooglePlayBadge(),
                       const SizedBox(height: 12),
                       Center(
                         child: Text(
@@ -555,6 +719,228 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Google Play badge ─────────────────────────────────────────────────────────
+
+class _GooglePlayBadge extends StatelessWidget {
+  const _GooglePlayBadge();
+
+  Future<void> _openPlayStore(BuildContext context) async {
+    final versionProvider = context.read<VersionProvider>();
+    final storeUrl = versionProvider.model?.playStoreUrl;
+    final uri = Uri.tryParse(
+        storeUrl?.isNotEmpty == true ? storeUrl! : AppConstants.playStoreUrl);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: Divider(color: cs.outlineVariant)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                'Also available on',
+                style: AppTextStyles.caption(color: cs.onSurfaceVariant),
+              ),
+            ),
+            Expanded(child: Divider(color: cs.outlineVariant)),
+          ],
+        ),
+        const SizedBox(height: 14),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => _openPlayStore(context),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cs.outlineVariant),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Google Play icon — 4-color official triangle
+                  SizedBox(
+                    width: 30,
+                    height: 34,
+                    child: CustomPaint(painter: _GooglePlayIconPainter()),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'GET IT ON',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurfaceVariant,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      Text(
+                        'Google Play',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.open_in_new_rounded,
+                      size: 14, color: cs.onSurfaceVariant),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Google Play icon painter (official 4-color triangle) ─────────────────────
+
+class _GooglePlayIconPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // Vertices of the play-button triangle
+    final topLeft = Offset(0, h * 0.04);
+    final bottomLeft = Offset(0, h * 0.96);
+    final tip = Offset(w, h * 0.5);
+    final midLeft = Offset(0, h * 0.5);
+    // Center meeting point of the 4 colors (slightly left of geometric center)
+    final center = Offset(w * 0.46, h * 0.5);
+
+    void draw(List<Offset> pts, Color color) {
+      final path = Path()..moveTo(pts[0].dx, pts[0].dy);
+      for (var i = 1; i < pts.length; i++) {
+        path.lineTo(pts[i].dx, pts[i].dy);
+      }
+      path.close();
+      canvas.drawPath(path, Paint()..color = color);
+    }
+
+    // Blue — top-left quadrant
+    draw([topLeft, center, midLeft], const Color(0xFF54C5F8));
+    // Green — top-right quadrant
+    draw([topLeft, tip, center], const Color(0xFF3DDC84));
+    // Red — bottom-left quadrant
+    draw([midLeft, center, bottomLeft], const Color(0xFFE84040));
+    // Yellow — bottom-right quadrant
+    draw([center, tip, bottomLeft], const Color(0xFFFFBC0E));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ── Web Dev Quick Login panel ─────────────────────────────────────────────────
+
+class _WebQuickLoginPanel extends StatefulWidget {
+  final void Function(String email, String password) onSelect;
+  const _WebQuickLoginPanel({required this.onSelect});
+
+  @override
+  State<_WebQuickLoginPanel> createState() => _WebQuickLoginPanelState();
+}
+
+class _WebQuickLoginPanelState extends State<_WebQuickLoginPanel> {
+  static const _roles = [
+    (
+      label: 'Admin',
+      icon: Icons.admin_panel_settings_outlined,
+      color: Color(0xFF8B5CF6),
+      email: 'support.maintify@gmail.com',
+      password: 'maintify@0606',
+    ),
+    (
+      label: 'President',
+      icon: Icons.manage_accounts_outlined,
+      color: Color(0xFF3B82F6),
+      email: 'president@maintify.demo',
+      password: 'Maintify@123',
+    ),
+    (
+      label: 'Resident',
+      icon: Icons.person_outline_rounded,
+      color: Color(0xFFC39A51),
+      email: 'resident@maintify.demo',
+      password: 'Maintify@123',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ExpansionTile(
+      leading: const Icon(Icons.build_outlined, size: 18),
+      title: const Text(
+        'Developer Quick Login',
+        style: TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      collapsedShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: cs.outlineVariant)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: cs.outlineVariant)),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: _roles.map((role) {
+              return OutlinedButton.icon(
+                icon: Icon(role.icon, size: 16, color: role.color),
+                label: Text(
+                  role.label,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 13,
+                    color: role.color,
+                  ),
+                ),
+                onPressed: () => widget.onSelect(role.email, role.password),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: role.color.withValues(alpha: 0.5)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -17,6 +17,8 @@ import 'reports_screen.dart';
 import '../../providers/notification_provider.dart';
 import '../shared/notifications_screen.dart';
 import '../../widgets/logout_sheet.dart';
+import '../../widgets/web/web_app_shell.dart';
+import '../../widgets/web/web_page_container.dart';
 
 class AdminDashboard extends StatefulWidget {
   final String? notificationType;
@@ -64,23 +66,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     final theme = RoleTheme.of(UserRole.admin);
     final auth = context.read<AuthProvider>();
-
     final cs = Theme.of(context).colorScheme;
+
+    final isWebLayout = MediaQuery.sizeOf(context).width >= 600;
+    if (isWebLayout) {
+      return WebAppShell(
+        role: UserRole.admin,
+        navItems: const [
+          WebNavItem(icon: Icons.dashboard_outlined, label: 'Dashboard'),
+          WebNavItem(icon: Icons.apartment_outlined, label: 'Apartments'),
+          WebNavItem(icon: Icons.manage_accounts_outlined, label: 'Assign President'),
+          WebNavItem(icon: Icons.bar_chart_outlined, label: 'Reports'),
+        ],
+        currentIndex: _currentIndex,
+        onIndexChanged: (i) => setState(() => _currentIndex = i),
+        child: _buildBody(),
+      );
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? Colors.white : cs.onSurfaceVariant;
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        backgroundColor: isDark ? Colors.transparent : cs.surface,
+        elevation: isDark ? 0 : 1,
+        shadowColor: cs.shadow.withValues(alpha: 0.08),
+        surfaceTintColor: Colors.transparent,
         title: Text(
           _titles[_currentIndex],
-          style: AppTextStyles.heading3(color: Colors.white),
+          style: AppTextStyles.heading3(color: isDark ? Colors.white : cs.onSurface),
         ),
         actions: [
           Consumer<ThemeProvider>(
             builder: (_, tp, __) => IconButton(
               icon: Icon(
                 tp.isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                color: Colors.white,
+                color: iconColor,
               ),
               tooltip: tp.isDarkMode ? 'Light mode' : 'Dark mode',
               onPressed: tp.toggle,
@@ -96,8 +118,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   clipBehavior: Clip.none,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.notifications_outlined,
-                          color: Colors.white),
+                      icon: Icon(Icons.notifications_outlined, color: iconColor),
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -215,6 +236,7 @@ class _DashboardHome extends StatelessWidget {
     if (aptProvider.isInitialLoading) return const ShimmerDashboard();
 
     final accent = theme.effectivePrimary(context);
+    final isWeb = MediaQuery.sizeOf(context).width >= 600;
 
     final hour = DateTime.now().hour;
     final greeting = hour < 12
@@ -223,17 +245,162 @@ class _DashboardHome extends StatelessWidget {
             ? 'Good afternoon,'
             : 'Good evening,';
 
-    return RefreshIndicator(
-      color: theme.effectivePrimary(context),
-      onRefresh: () async => dashboard.refresh(),
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Hero banner
-            Container(
+    final contentColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (isWeb) ...[
+          // ── Web: compact greeting row ──────────────────────────────────
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(greeting,
+                      style: AppTextStyles.caption(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  Text(
+                    AppUtils.displayFirstName(auth.currentUser?.name ?? 'Admin'),
+                    style: AppTextStyles.heading2(
+                        color: Theme.of(context).colorScheme.onSurface),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(Icons.shield_outlined, color: accent, size: 28),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // ── Web: KPI row (4 cards) ────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: _WebKpiCard(
+                  label: 'Total Revenue',
+                  value: AppUtils.formatCurrency(dashboard.totalRevenue),
+                  icon: Icons.account_balance_wallet_outlined,
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _WebKpiCard(
+                  label: 'Properties',
+                  value: '${dashboard.totalApartments}',
+                  icon: Icons.apartment_outlined,
+                  color: const Color(0xFF3B82F6),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _WebKpiCard(
+                  label: 'Residents',
+                  value: '${dashboard.totalResidents}',
+                  icon: Icons.people_outlined,
+                  color: AppColors.pending,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _WebKpiCard(
+                  label: 'Presidents',
+                  value: '${dashboard.totalAdmins}',
+                  icon: Icons.manage_accounts_outlined,
+                  color: AppColors.green,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // ── Web: Financial row ────────────────────────────────────────
+          Text('Financial Summary',
+              style: AppTextStyles.heading3(
+                  color: Theme.of(context).colorScheme.onSurface)),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: DashboardCard(
+                  title: 'Collected',
+                  value: AppUtils.formatCurrency(dashboard.totalRevenue),
+                  icon: Icons.account_balance_wallet_outlined,
+                  gradient: [const Color(0xFF4ADE80), const Color(0xFF16A34A)],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DashboardCard(
+                  title: 'Pending',
+                  value: AppUtils.formatCurrency(dashboard.pendingRevenue),
+                  icon: Icons.pending_actions_outlined,
+                  gradient: [const Color(0xFFFBBF24), const Color(0xFFB45309)],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // ── Web: Bills Overview ───────────────────────────────────────
+          Text('Bills Overview',
+              style: AppTextStyles.heading3(
+                  color: Theme.of(context).colorScheme.onSurface)),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: StatCard(
+                  title: 'Total Bills',
+                  value: '${dashboard.totalBills}',
+                  icon: Icons.receipt_long_outlined,
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: StatCard(
+                  title: 'Fully Paid',
+                  value: '${dashboard.paidBills}',
+                  icon: Icons.check_circle_outline,
+                  color: AppColors.green,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: StatCard(
+                  title: 'Pending',
+                  value: '${dashboard.pendingBills}',
+                  icon: Icons.schedule_outlined,
+                  color: AppColors.pending,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: StatCard(
+                  title: 'Overdue',
+                  value: '${dashboard.overdueBills}',
+                  icon: Icons.error_outline,
+                  color: AppColors.overdue,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text('Properties',
+              style: AppTextStyles.heading3(
+                  color: Theme.of(context).colorScheme.onSurface)),
+          const SizedBox(height: 14),
+          ...aptProvider.apartments.map((apt) => _ApartmentCard(apt: apt)),
+        ] else ...[
+          // ── Mobile: original hero banner ───────────────────────────────
+          Container(
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -385,7 +552,20 @@ class _DashboardHome extends StatelessWidget {
 
             const SizedBox(height: 20),
           ],
-        ),
+        ],
+      );
+
+    return RefreshIndicator(
+      color: theme.effectivePrimary(context),
+      onRefresh: () async => dashboard.refresh(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: isWeb
+            ? WebPageContainer(maxWidth: 1000, child: contentColumn)
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                child: contentColumn,
+              ),
       ),
     );
   }
@@ -411,6 +591,72 @@ class _DashboardHome extends StatelessWidget {
     );
   }
 }
+
+// ── Web KPI card ─────────────────────────────────────────────────────────────
+
+class _WebKpiCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _WebKpiCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: AppTextStyles.caption(color: cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Apartment card ────────────────────────────────────────────────────────────
 
 class _ApartmentCard extends StatelessWidget {
   final ApartmentModel apt;

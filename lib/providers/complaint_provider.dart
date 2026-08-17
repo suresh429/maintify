@@ -127,6 +127,7 @@ class ComplaintProvider extends ChangeNotifier {
     required String userName,
     required String unit,
     required String title,
+    required String content,
     required String category,
     required NotificationProvider notificationProvider,
   }) async {
@@ -142,6 +143,7 @@ class ComplaintProvider extends ChangeNotifier {
         'userName': userName,
         'unit': unit,
         'title': title,
+        'content': content,
         'category': category,
         'status': ComplaintStatus.open,
         'createdAt': Timestamp.fromDate(now),
@@ -157,6 +159,7 @@ class ComplaintProvider extends ChangeNotifier {
         userName: userName,
         unit: unit,
         title: title,
+        content: content,
         category: category,
         status: ComplaintStatus.open,
         createdAt: now,
@@ -171,11 +174,20 @@ class ComplaintProvider extends ChangeNotifier {
       try {
         debugPrint(
             '[FLOW] Complaint created — triggering notification to admin (apt: $apartmentId)');
+        // Notify president
         await notificationProvider.addAndPersistNotification(
-          title: 'New Complaint Received',
-          body: '$userName (Flat $unit): $title',
+          title: 'New Complaint',
+          body: 'A new complaint has been reported in your apartment.',
           type: NotificationType.complaint,
           targetRole: UserRole.president,
+          aptId: apartmentId,
+        );
+        // Notify all residents in the apartment
+        await notificationProvider.addAndPersistNotification(
+          title: 'New Apartment Complaint',
+          body: 'A new complaint has been reported in your apartment.',
+          type: NotificationType.complaint,
+          targetRole: UserRole.resident,
           aptId: apartmentId,
         );
       } catch (notifErr) {

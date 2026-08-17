@@ -381,7 +381,7 @@ class _UpdateButton extends StatelessWidget {
               Text(
                 'Update Now',
                 style: GoogleFonts.poppins(
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),
@@ -417,7 +417,7 @@ class _LaterButton extends StatelessWidget {
         child: Text(
           'Later',
           style: GoogleFonts.poppins(
-            fontSize: 14,
+            fontSize: 12,
             fontWeight: FontWeight.w500,
             color: isDark
                 ? AppColors.darkTextSecondary

@@ -89,7 +89,7 @@ All 12 providers registered at root in `main.dart`. All provider files live in `
 | `NotificationProvider` | In-app notifications, Firestore-backed, `startListening(role)` |
 | `RegistrationProvider` | Self-registration: president self-creates apartment or activates super-admin-created one; resident direct signup with email verification |
 | `ThemeProvider` | Dark/light mode toggle; persists `isDarkMode` flag to Hive `'session'` box under key `isDarkMode` |
-| `VersionProvider` | Checks Firebase Remote Config for app version; exposes `UpdateStatus` (`upToDate`, `softUpdate`, `forceUpdate`) |
+| `VersionProvider` | Checks Firebase Remote Config for app version via `VersionService`; exposes `UpdateStatus` (`upToDate`, `optionalUpdate`, `forceUpdate`) and `AppVersionModel` |
 | `ConnectivityProvider` | Wraps `ConnectivityService` (internet_connection_checker_plus); exposes `isConnected`/`isDisconnected`. Only `GlobalConnectivityOverlay` consumes it — no screen should subscribe directly. |
 
 Providers that use Firestore streams call `startListening(...)` from `DashboardRouter` after login. They cache data locally and call `notifyListeners()` on stream updates.
@@ -100,7 +100,7 @@ Providers that use Firestore streams call `startListening(...)` from `DashboardR
 
 All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `MockBillData`) exist **primarily for `DashboardProvider`**, which cannot hold Firestore streams of its own — every provider's stream listener calls `MockFoo.replaceAll(list)` to keep statics in sync. `MockComplaints` is additionally used by `ComplaintProvider` for **optimistic UI updates** only (e.g. inserting a newly created complaint before the Firestore stream fires); it is not the primary data source for complaints.
 
-**Models** live in `lib/models/`. Key ones: `user_model.dart`, `bill_model.dart`, `apartment_model.dart` (now has `type`, `address`, `towerCount`, `towerNames`, `presidentFlat` fields), `flat_model.dart` (see below), `president_invitation_model.dart` (token-based super-admin invite flow — `status`: `pending`|`completed`|`expired`, 12-char `invitationToken`, expires after set duration).
+**Models** live in `lib/models/`. Key ones: `user_model.dart`, `bill_model.dart`, `apartment_model.dart` (now has `type`, `address`, `towerCount`, `towerNames`, `presidentFlat` fields), `flat_model.dart` (see below), `president_invitation_model.dart` (token-based super-admin invite flow — `status`: `pending`|`completed`|`expired`, 12-char `invitationToken`, expires after set duration), `app_version_model.dart` (immutable snapshot of Remote Config fields: `latestVersion`, `forceUpdate`, `playStoreUrl`; factory `fromRemoteConfig`), `update_status.dart` (enum: `upToDate`, `optionalUpdate`, `forceUpdate`).
 
 **Key Firestore collections:**
 - `users/` — real Firebase Auth UID as document ID
@@ -176,6 +176,7 @@ apartments/{id}:
 | `FirebaseAuthService` | Wraps `FirebaseAuth`. Handles sign-in, password change, reset email, `registerPresident`, `registerResident`. |
 | `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). Uses `flutter_local_notifications` to display foreground messages. Uses `navigatorKey` for out-of-tree navigation on notification tap. |
 | `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded_v4`. **DEV flavor only** — `bootstrap()` skips seeding when `AppConfig.isProduction`. Creates admin, demo president, demo resident, demo apartment (Green Valley Residency / `GRVL1234`), one maintenance bill, one open complaint, and one scheduled meeting. On subsequent launches with the guard present, only repairs the admin user doc if accidentally deleted. |
+| `VersionService` | Zero-UI version logic in `lib/core/services/version/version_service.dart`. `fetchVersionInfo()` fetches Remote Config (8-second timeout, safe defaults on failure); `determineUpdateStatus(AppVersionModel)` compares installed vs latest via `VersionCompare`; `openStore(AppVersionModel)` opens Play Store URL via `url_launcher`. Used by `VersionProvider`. |
 
 **`AppUtils`** (`lib/core/utils/app_utils.dart`): Static helpers — `formatCurrency`, `formatDate`, `formatMonthYear`, `formatDateTime`, `timeAgo`, `showSnackBar` (accepts optional `color` override), `displayFirstName`, `showConfirmDialog`, `launchPrivacyPolicy`. `showConfirmDialog` renders a bottom-sheet style confirmation with customizable `confirmColor`. `launchPrivacyPolicy` opens the privacy policy in Chrome Custom Tabs (Android) or Safari (iOS).
 

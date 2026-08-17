@@ -58,6 +58,7 @@ class _ResidentProfileScreenState extends State<ResidentProfileScreen> {
     final allViews = billProvider.userBillViews(user.id);
     final paidCount = allViews.where((v) => v.payment.isPaid).length;
     final pendingCount = allViews.where((v) => !v.payment.isPaid).length;
+    final isWeb = MediaQuery.sizeOf(context).width >= 600;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -71,8 +72,11 @@ class _ResidentProfileScreenState extends State<ResidentProfileScreen> {
             isCollapsed: _isCollapsed,
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isWeb ? 720 : double.infinity),
+                child: Padding(
+              padding: EdgeInsets.fromLTRB(isWeb ? 24 : 16, 20, isWeb ? 24 : 16, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -126,12 +130,14 @@ class _ResidentProfileScreenState extends State<ResidentProfileScreen> {
                   const SizedBox(height: 24),
 
                   // Logout
-                  _LogoutButton(),
+                  _LogoutButton(isWeb: isWeb),
                   const SizedBox(height: 24),
 
                   // Footer
                   _VersionFooter(),
                 ],
+              ),
+                ),
               ),
             ),
           ),
@@ -906,41 +912,43 @@ class _DarkModeSettingTile extends StatelessWidget {
 // ── Logout button ─────────────────────────────────────────────────────────────
 
 class _LogoutButton extends StatelessWidget {
-  const _LogoutButton();
+  final bool isWeb;
+  const _LogoutButton({this.isWeb = false});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () async {
-          final confirm =
-              await showLogoutSheet(context, UserRole.resident);
-          if (confirm == true && context.mounted) {
-            context.read<AuthProvider>().logout();
-            Navigator.pushReplacementNamed(context, '/login');
-          }
-        },
-        icon: const Icon(Icons.logout_rounded,
-            size: 18, color: AppColors.overdue),
-        label: const Text(
-          'Log Out',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppColors.overdue,
-          ),
-        ),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.overdue,
-          side: const BorderSide(color: AppColors.overdue, width: 1.5),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    final btn = OutlinedButton.icon(
+      onPressed: () async {
+        final confirm =
+            await showLogoutSheet(context, UserRole.resident);
+        if (confirm == true && context.mounted) {
+          context.read<AuthProvider>().logout();
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      },
+      icon: const Icon(Icons.logout_rounded,
+          size: 18, color: AppColors.overdue),
+      label: const Text(
+        'Log Out',
+        style: TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.overdue,
         ),
       ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.overdue,
+        side: const BorderSide(color: AppColors.overdue, width: 1.5),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
     );
+    if (isWeb) {
+      return Center(child: SizedBox(width: 220, child: btn));
+    }
+    return SizedBox(width: double.infinity, child: btn);
   }
 }
 

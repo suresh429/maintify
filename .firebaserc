@@ -3,6 +3,21 @@
     "dev": "maintify-dev",
     "prod": "maintify-ff8c4"
   },
-  "targets": {},
+  "targets": {
+    "maintify-dev": {
+      "hosting": {
+        "dev": [
+          "maintify-dev"
+        ]
+      }
+    },
+    "maintify-ff8c4": {
+      "hosting": {
+        "prod": [
+          "maintify-prod"
+        ]
+      }
+    }
+  },
   "etags": {}
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/app_utils.dart';
 import '../../models/complaint_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/complaint_provider.dart';
@@ -128,54 +129,80 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Consumer<ComplaintProvider>(
               builder: (_, prov, __) {
                 final messages = prov.messagesForComplaint(complaint.id);
-                if (messages.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.chat_bubble_outline,
-                            size: 48, color: _primary.withValues(alpha: 0.3)),
-                        const SizedBox(height: 12),
-                        Text('No messages yet',
-                            style: AppTextStyles.bodyMedium(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                        const SizedBox(height: 4),
-                        Text('Start the conversation below',
-                            style: AppTextStyles.caption(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                      ],
-                    ),
-                  );
-                }
+                final isReadOnly = _isReadOnly(complaint, user);
 
                 WidgetsBinding.instance
                     .addPostFrameCallback((_) => _scrollToBottom());
 
-                return ListView.builder(
+                return ListView(
                   controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final msg = messages[index];
-                    final showDate = index == 0 ||
-                        !_isSameDay(
-                            messages[index - 1].timestamp, msg.timestamp);
-
-                    return Column(
-                      children: [
-                        if (showDate)
-                          ChatDateSeparator(date: msg.timestamp),
-                        ChatBubble(
-                          content: msg.content,
-                          senderName: msg.senderName,
-                          timestamp: msg.timestamp,
-                          isFromAdmin: msg.isFromAdmin,
-                          showSenderName: false,
-                          // In admin view, hide the resident's avatar to preserve anonymity.
-                          showAvatar: !(widget.isAdminView && !msg.isFromAdmin),
+                  padding:
+                      const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  children: [
+                    _buildDescriptionCard(context, complaint),
+                    if (messages.isEmpty)
+                      Padding(
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.chat_bubble_outline,
+                                size: 36,
+                                color: _primary.withValues(alpha: 0.25)),
+                            const SizedBox(height: 8),
+                            Text(
+                              isReadOnly
+                                  ? 'No messages yet'
+                                  : 'No messages yet',
+                              style: AppTextStyles.bodyMedium(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant),
+                            ),
+                            if (!isReadOnly) ...[
+                              const SizedBox(height: 4),
+                              Text('Start the conversation below',
+                                  style: AppTextStyles.caption(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant)),
+                            ],
+                          ],
                         ),
-                      ],
-                    );
-                  },
+                      )
+                    else ...[
+                      _buildSectionHeader(context, 'Conversation'),
+                      ...messages.asMap().entries.expand((entry) {
+                        final i = entry.key;
+                        final msg = entry.value;
+                        final showDate = i == 0 ||
+                            !_isSameDay(messages[i - 1].timestamp,
+                                msg.timestamp);
+                        // Mask sender identity for read-only (non-owner) residents
+                        final effectiveName =
+                            (!widget.isAdminView &&
+                                    isReadOnly &&
+                                    !msg.isFromAdmin)
+                                ? 'Resident'
+                                : msg.senderName;
+                        return [
+                          if (showDate)
+                            ChatDateSeparator(date: msg.timestamp),
+                          ChatBubble(
+                            content: msg.content,
+                            senderName: effectiveName,
+                            timestamp: msg.timestamp,
+                            isFromAdmin: msg.isFromAdmin,
+                            showSenderName: false,
+                            showAvatar: !(widget.isAdminView &&
+                                !msg.isFromAdmin),
+                          ),
+                        ];
+                      }),
+                    ],
+                    const SizedBox(height: 8),
+                  ],
                 );
               },
             ),
@@ -212,11 +239,14 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.lock_outline, color: cs.onSurfaceVariant, size: 16),
+            Icon(Icons.lock_outline_rounded, color: cs.onSurfaceVariant, size: 16),
             const SizedBox(width: 6),
-            Text(
-              "This is someone else's complaint",
-              style: AppTextStyles.caption(color: cs.onSurfaceVariant),
+            Flexible(
+              child: Text(
+                'Only the resident who reported this complaint and the President can participate in the conversation.',
+                style: AppTextStyles.caption(color: cs.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
             ),
           ],
         ),
@@ -346,6 +376,115 @@ class _ChatScreenState extends State<ChatScreen> {
       default:
         return AppColors.pending;
     }
+  }
+
+  Widget _buildDescriptionCard(BuildContext context, ComplaintModel complaint) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : cs.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: _primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.person_outline_rounded,
+                      color: _primary, size: 17),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.isAdminView
+                            ? complaint.userName
+                            : 'Reported by Resident',
+                        style: AppTextStyles.label(color: cs.onSurface),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.isAdminView
+                            ? 'Flat ${complaint.unit} · ${AppUtils.timeAgo(complaint.createdAt)}'
+                            : AppUtils.timeAgo(complaint.createdAt),
+                        style: AppTextStyles.caption(
+                            color: cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (complaint.content.isNotEmpty) ...[
+            Divider(
+                height: 1,
+                color: cs.outlineVariant.withValues(alpha: 0.3)),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Icon(Icons.notes_rounded,
+                        size: 13, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 5),
+                    Text('Description',
+                        style: AppTextStyles.caption(
+                            color: cs.onSurfaceVariant)),
+                  ]),
+                  const SizedBox(height: 8),
+                  Text(
+                    complaint.content,
+                    style: AppTextStyles.bodySmall(color: cs.onSurface)
+                        .copyWith(height: 1.65),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(children: [
+        Expanded(
+            child: Divider(
+                color: cs.outlineVariant.withValues(alpha: 0.5))),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            title,
+            style:
+                AppTextStyles.caption(color: cs.onSurfaceVariant),
+          ),
+        ),
+        Expanded(
+            child: Divider(
+                color: cs.outlineVariant.withValues(alpha: 0.5))),
+      ]),
+    );
   }
 }
 

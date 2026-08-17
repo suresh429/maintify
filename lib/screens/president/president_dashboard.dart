@@ -25,6 +25,8 @@ import '../../models/user_model.dart';
 import '../../providers/user_provider.dart';
 import '../shared/notifications_screen.dart';
 import 'edit_bill_sheet.dart';
+import '../../widgets/web/web_app_shell.dart';
+import '../../widgets/web/web_page_container.dart';
 
 class PresidentDashboard extends StatefulWidget {
   final String? notificationType;
@@ -37,7 +39,7 @@ class PresidentDashboard extends StatefulWidget {
 class _PresidentDashboardState extends State<PresidentDashboard> {
   int _currentIndex = 0;
 
-  static const _titles = ['Dashboard', 'Manage Users', 'Bills', 'Complaints'];
+  static const _titles = ['Dashboard', 'Manage Users', 'Bills', 'Complaints', 'Profile'];
 
   late final List<Widget> _pages;
 
@@ -64,6 +66,7 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
       ManageUsersScreen(),
       MarkPaidScreen(),
       PresidentComplaintsScreen(),
+      PresidentProfileScreen(),
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardProvider>().initialize();
@@ -73,8 +76,24 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
   @override
   Widget build(BuildContext context) {
     final theme = RoleTheme.of(UserRole.president);
-
     final cs = Theme.of(context).colorScheme;
+
+    final isWebLayout = MediaQuery.sizeOf(context).width >= 600;
+    if (isWebLayout) {
+      return WebAppShell(
+        role: UserRole.president,
+        navItems: const [
+          WebNavItem(icon: Icons.dashboard_outlined, label: 'Dashboard'),
+          WebNavItem(icon: Icons.people_outlined, label: 'Manage Users'),
+          WebNavItem(icon: Icons.receipt_long_outlined, label: 'Bills'),
+          WebNavItem(icon: Icons.report_problem_outlined, label: 'Complaints'),
+          WebNavItem(icon: Icons.person_outline_rounded, label: 'Profile'),
+        ],
+        currentIndex: _currentIndex,
+        onIndexChanged: (i) => setState(() => _currentIndex = i),
+        child: IndexedStack(index: _currentIndex, children: _pages),
+      );
+    }
 
     return Scaffold(
       appBar: _buildAppBar(theme),
@@ -113,6 +132,11 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
               selectedIcon: Icon(Icons.chat_bubble_rounded),
               label: 'Complaints',
             ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline_rounded),
+              selectedIcon: Icon(Icons.person_rounded),
+              label: 'Profile',
+            ),
           ],
         ),
       ),
@@ -125,13 +149,18 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
     final unread =
         context.watch<NotificationProvider>().unreadCount(UserRole.president);
     final user = context.read<AuthProvider>().currentUser;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? Colors.white : cs.onSurfaceVariant;
 
     return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
+      backgroundColor: isDark ? Colors.transparent : cs.surface,
+      elevation: isDark ? 0 : 1,
+      shadowColor: cs.shadow.withValues(alpha: 0.08),
+      surfaceTintColor: Colors.transparent,
       title: Text(
         _titles[_currentIndex],
-        style: AppTextStyles.heading3(color: Colors.white),
+        style: AppTextStyles.heading3(color: isDark ? Colors.white : cs.onSurface),
       ),
       actions: [
         // Notification bell
@@ -142,8 +171,7 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
             clipBehavior: Clip.none,
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_outlined,
-                    color: Colors.white),
+                icon: Icon(Icons.notifications_outlined, color: iconColor),
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -177,29 +205,30 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
             ],
           ),
         ),
-        // Profile avatar
+        // Profile avatar — tap to jump to Profile tab
         Padding(
           padding: const EdgeInsets.only(right: 14),
           child: GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => const PresidentProfileScreen()),
-            ),
+            onTap: () => setState(() => _currentIndex = 4),
             child: Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.2),
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : theme.effectivePrimary(context).withValues(alpha: 0.12),
                 border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.7), width: 1.5),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.7)
+                        : theme.effectivePrimary(context).withValues(alpha: 0.5),
+                    width: 1.5),
               ),
               child: Center(
                 child: Text(
                   user?.avatarInitials ?? 'A',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : theme.effectivePrimary(context),
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                     fontFamily: 'Poppins',
@@ -302,16 +331,12 @@ class _PresidentHome extends StatelessWidget {
     final upcomingMeetings =
         context.watch<MeetingProvider>().upcomingMeetings(aptId);
 
-    return RefreshIndicator(
-      color: accent,
-      onRefresh: () async => dashboard.refresh(),
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ApartmentHeader(
+    final isWeb = MediaQuery.sizeOf(context).width >= 600;
+
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ApartmentHeader(
               apartmentName: apt?.name ?? 'My Apartment',
               presidentName:
                   apt?.presidentName ?? auth.currentUser?.name ?? 'You',
@@ -495,40 +520,53 @@ class _PresidentHome extends StatelessWidget {
             Text('Quick Stats', style: AppTextStyles.heading3(color: cs.onSurface)),
             const SizedBox(height: 14),
 
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.35,
-              children: [
-                StatCard(
-                  title: 'Total Bills',
-                  value: '${stats['totalBills']}',
-                  icon: Icons.receipt_long_outlined,
-                  color: accent,
-                ),
-                StatCard(
-                  title: 'Fully Paid',
-                  value: '${stats['paidBills']}',
-                  icon: Icons.check_circle_outline,
-                  color: AppColors.green,
-                ),
-                StatCard(
-                  title: 'Pending',
-                  value: '${stats['pendingBills']}',
-                  icon: Icons.schedule_outlined,
-                  color: AppColors.pending,
-                ),
-                StatCard(
-                  title: 'Overdue',
-                  value: '${stats['overdueBills']}',
-                  icon: Icons.error_outline,
-                  color: AppColors.overdue,
-                ),
-              ],
-            ),
+            if (isWeb)
+              Row(
+                children: [
+                  Expanded(child: StatCard(title: 'Total Bills', value: '${stats['totalBills']}', icon: Icons.receipt_long_outlined, color: accent)),
+                  const SizedBox(width: 12),
+                  Expanded(child: StatCard(title: 'Fully Paid', value: '${stats['paidBills']}', icon: Icons.check_circle_outline, color: AppColors.green)),
+                  const SizedBox(width: 12),
+                  Expanded(child: StatCard(title: 'Pending', value: '${stats['pendingBills']}', icon: Icons.schedule_outlined, color: AppColors.pending)),
+                  const SizedBox(width: 12),
+                  Expanded(child: StatCard(title: 'Overdue', value: '${stats['overdueBills']}', icon: Icons.error_outline, color: AppColors.overdue)),
+                ],
+              )
+            else
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.35,
+                children: [
+                  StatCard(
+                    title: 'Total Bills',
+                    value: '${stats['totalBills']}',
+                    icon: Icons.receipt_long_outlined,
+                    color: accent,
+                  ),
+                  StatCard(
+                    title: 'Fully Paid',
+                    value: '${stats['paidBills']}',
+                    icon: Icons.check_circle_outline,
+                    color: AppColors.green,
+                  ),
+                  StatCard(
+                    title: 'Pending',
+                    value: '${stats['pendingBills']}',
+                    icon: Icons.schedule_outlined,
+                    color: AppColors.pending,
+                  ),
+                  StatCard(
+                    title: 'Overdue',
+                    value: '${stats['overdueBills']}',
+                    icon: Icons.error_outline,
+                    color: AppColors.overdue,
+                  ),
+                ],
+              ),
 
             const SizedBox(height: 24),
 
@@ -700,7 +738,19 @@ class _PresidentHome extends StatelessWidget {
 
             const SizedBox(height: 20),
           ],
-        ),
+        );
+
+    return RefreshIndicator(
+      color: accent,
+      onRefresh: () async => dashboard.refresh(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: isWeb
+            ? WebPageContainer(maxWidth: 960, child: content)
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                child: content,
+              ),
       ),
     );
   }

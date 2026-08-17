@@ -23,6 +23,7 @@ class MarkPaidScreen extends StatelessWidget {
 
     if (billProvider.isLoading) return const ShimmerDashboard();
 
+    final isWeb = MediaQuery.sizeOf(context).width >= 600;
     final monthlySummaries = billProvider.monthlyBillsForApartment(aptId);
     final pendingApprovals =
         billProvider.pendingApprovalPaymentsForApartment(aptId);
@@ -42,7 +43,7 @@ class MarkPaidScreen extends StatelessWidget {
         if (pendingApprovals.isNotEmpty) ...[
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+              padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 16, isWeb ? 24.0 : 16.0, 10),
               child: Row(
                 children: [
                   const Icon(Icons.hourglass_top_rounded,
@@ -63,25 +64,34 @@ class MarkPaidScreen extends StatelessWidget {
                 final payment = pendingApprovals[i];
                 final userName =
                     ctx.read<UserProvider>().findById(payment.userId)?.name;
+                final card = _PendingApprovalCard(
+                  payment: payment,
+                  userName: userName,
+                  theme: theme,
+                  presidentId: presidentId,
+                  aptId: aptId,
+                  isLoading: billProvider.isLoading,
+                );
                 return Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                  child: _PendingApprovalCard(
-                    payment: payment,
-                    userName: userName,
-                    theme: theme,
-                    presidentId: presidentId,
-                    aptId: aptId,
-                    isLoading: billProvider.isLoading,
-                  ),
+                  padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 0, isWeb ? 24.0 : 16.0, 10),
+                  child: isWeb
+                      ? Align(
+                          alignment: Alignment.topCenter,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 960),
+                            child: card,
+                          ),
+                        )
+                      : card,
                 );
               },
               childCount: pendingApprovals.length,
             ),
           ),
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: Divider(),
+              padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 4, isWeb ? 24.0 : 16.0, 0),
+              child: const Divider(),
             ),
           ),
         ],
@@ -89,22 +99,34 @@ class MarkPaidScreen extends StatelessWidget {
         // ── Monthly summaries ─────────────────────────────────────────────
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 12, isWeb ? 24.0 : 16.0, 8),
             child: Text('Monthly Bills',
                 style: AppTextStyles.heading3()),
           ),
         ),
         SliverList(
           delegate: SliverChildBuilderDelegate(
-            (_, i) => Padding(
-              padding: EdgeInsets.fromLTRB(
-                  16, 0, 16, i == monthlySummaries.length - 1 ? 100 : 0),
-              child: _MonthlyCard(
+            (_, i) {
+              final card = _MonthlyCard(
                 summary: monthlySummaries[i],
                 theme: theme,
                 aptId: aptId,
-              ),
-            ),
+              );
+              return Padding(
+                padding: EdgeInsets.fromLTRB(
+                    isWeb ? 24.0 : 16.0, 0, isWeb ? 24.0 : 16.0,
+                    i == monthlySummaries.length - 1 ? 100 : 0),
+                child: isWeb
+                    ? Align(
+                        alignment: Alignment.topCenter,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 960),
+                          child: card,
+                        ),
+                      )
+                    : card,
+              );
+            },
             childCount: monthlySummaries.length,
           ),
         ),

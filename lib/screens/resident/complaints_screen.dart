@@ -25,6 +25,7 @@ class ComplaintsScreen extends StatelessWidget {
     final user = auth.currentUser!;
     final theme = RoleTheme.of(UserRole.resident);
     final aptId = user.apartmentId ?? '';
+    final isWeb = MediaQuery.sizeOf(context).width >= 600;
 
     return Consumer<ComplaintProvider>(
       builder: (_, prov, __) {
@@ -35,32 +36,37 @@ class ComplaintsScreen extends StatelessWidget {
           body: complaints.isEmpty
               ? _EmptyState(onRaise: () => _showNewComplaintSheet(context, user))
               : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 16, isWeb ? 24.0 : 16.0, 100),
                   itemCount: complaints.length,
                   itemBuilder: (_, i) {
                     final complaint = complaints[i];
                     final isOwn = complaint.userId == user.id;
-                    return _ComplaintTile(
+                    final item = _ComplaintTile(
                       complaint: complaint,
                       theme: theme,
                       isOwn: isOwn,
                       onTap: () {
-                        if (isOwn) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ChatScreen(
-                                complaint: complaint,
-                                isAdminView: false,
-                                currentUserId: user.id,
-                              ),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatScreen(
+                              complaint: complaint,
+                              isAdminView: false,
+                              currentUserId: user.id,
                             ),
-                          );
-                        } else {
-                          _showReadOnlySheet(context, complaint, theme);
-                        }
+                          ),
+                        );
                       },
                     );
+                    return isWeb
+                        ? Align(
+                            alignment: Alignment.topCenter,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 960),
+                              child: item,
+                            ),
+                          )
+                        : item;
                   },
                 ),
           floatingActionButton: FloatingActionButton.extended(
@@ -84,171 +90,6 @@ class ComplaintsScreen extends StatelessWidget {
     );
   }
 
-  void _showReadOnlySheet(
-      BuildContext context, ComplaintModel complaint, RoleTheme theme) {
-    final cs = Theme.of(context).colorScheme;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Padding(
-        padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: SingleChildScrollView(
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Handle
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      color: cs.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: theme.effectivePrimary(context)
-                            .withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        _categoryIcon(complaint.category),
-                        color: theme.effectivePrimary(context),
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            complaint.title,
-                            style: AppTextStyles.subheading(
-                                color: cs.onSurface),
-                          ),
-                          Text(
-                            complaint.category,
-                            style: AppTextStyles.caption(
-                                color: cs.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Status row
-                Row(
-                  children: [
-                    Text('Status: ',
-                        style: AppTextStyles.label(
-                            color: cs.onSurfaceVariant)),
-                    _StatusBadge(
-                      status: complaint.status,
-                      color: _statusColor(complaint.status),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Time
-                Row(
-                  children: [
-                    Icon(Icons.schedule_outlined,
-                        size: 14, color: cs.onSurfaceVariant),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Reported ${AppUtils.timeAgo(complaint.createdAt)}',
-                      style: AppTextStyles.caption(
-                          color: cs.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Privacy note
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.textSecondary.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color: AppColors.textSecondary
-                            .withValues(alpha: 0.15)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.lock_outline,
-                          size: 14,
-                          color: AppColors.textSecondary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Message thread is private between the resident and the president.',
-                          style: AppTextStyles.caption(
-                              color: AppColors.textSecondary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  IconData _categoryIcon(String category) {
-    switch (category) {
-      case ComplaintCategory.maintenance:
-        return Icons.build_outlined;
-      case ComplaintCategory.billing:
-        return Icons.receipt_outlined;
-      case ComplaintCategory.noise:
-        return Icons.volume_up_outlined;
-      case ComplaintCategory.parking:
-        return Icons.local_parking_outlined;
-      case ComplaintCategory.amenities:
-        return Icons.fitness_center_outlined;
-      default:
-        return Icons.help_outline;
-    }
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case ComplaintStatus.open:
-        return AppColors.pending;
-      case ComplaintStatus.inProgress:
-        return AppColors.teal;
-      case ComplaintStatus.resolved:
-        return AppColors.paid;
-      default:
-        return AppColors.textSecondary;
-    }
-  }
 }
 
 // ── New Complaint Bottom Sheet ────────────────────────────────────────────────
@@ -263,24 +104,27 @@ class _NewComplaintSheet extends StatefulWidget {
 
 class _NewComplaintSheetState extends State<_NewComplaintSheet> {
   final _formKey = GlobalKey<FormState>();
-  final _titleCtrl = TextEditingController();
+  final _contentCtrl = TextEditingController();
   String _category = ComplaintCategory.maintenance;
 
   @override
   void dispose() {
-    _titleCtrl.dispose();
+    _contentCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     try {
+      final desc = _contentCtrl.text.trim();
+      final autoTitle = desc.length > 57 ? '${desc.substring(0, 57)}...' : desc;
       await context.read<ComplaintProvider>().createComplaint(
             apartmentId: widget.user.apartmentId ?? '',
             userId: widget.user.id,
             userName: widget.user.name,
             unit: widget.user.unit,
-            title: _titleCtrl.text.trim(),
+            title: autoTitle,
+            content: desc,
             category: _category,
             notificationProvider: context.read<NotificationProvider>(),
           );
@@ -352,19 +196,20 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
                 }).toList(),
               ),
               const SizedBox(height: 18),
-              Text('Complaint Title',
+              Text('Description',
                   style: AppTextStyles.label(
                       color: Theme.of(context).colorScheme.onSurfaceVariant)),
               const SizedBox(height: 8),
               TextFormField(
-                controller: _titleCtrl,
-                maxLines: 3,
+                controller: _contentCtrl,
+                maxLines: 4,
                 style: AppTextStyles.bodyMedium(
                     color: Theme.of(context).colorScheme.onSurface),
                 decoration: InputDecoration(
-                  hintText: 'Describe your issue briefly...',
+                  hintText: 'Describe your issue in detail...',
                   hintStyle: AppTextStyles.bodyMedium(
                       color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  alignLabelWithHint: true,
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'Please describe the issue'
@@ -510,7 +355,16 @@ class _ComplaintTile extends StatelessWidget {
                     ],
                   ),
 
-                  if (isOwn && lastMsg != null) ...[
+                  if (complaint.content.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      complaint.content,
+                      style: AppTextStyles.bodySmall(
+                          color: cs.onSurfaceVariant),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ] else if (isOwn && lastMsg != null) ...[
                     const SizedBox(height: 4),
                     Text(
                       lastMsg.isFromAdmin
@@ -545,9 +399,7 @@ class _ComplaintTile extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Icon(
-              isOwn
-                  ? Icons.chevron_right_rounded
-                  : Icons.lock_outline_rounded,
+              Icons.chevron_right_rounded,
               color: cs.onSurfaceVariant,
               size: 20,
             ),

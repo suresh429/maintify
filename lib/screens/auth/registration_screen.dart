@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/registration_provider.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/common_button.dart';
+import '../../widgets/web/auth_web_layout.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -725,8 +726,218 @@ class _RegistrationScreenState extends State<RegistrationScreen>
   // Build
   // ─────────────────────────────────────────────────────────────────────────
 
+  Widget _buildRegistrationForm(BuildContext context) {
+    final cs     = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 520),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Create Account',
+              style: AppTextStyles.heading2(color: cs.onSurface)),
+          const SizedBox(height: 4),
+          Text('Set up your Maintify account',
+              style: AppTextStyles.bodyMedium(color: cs.onSurfaceVariant)),
+          const SizedBox(height: 20),
+
+          // ── Role segmented button ───────────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(
+                    value: 'president',
+                    icon: Icon(Icons.manage_accounts_outlined, size: 18),
+                    label: Text('President'),
+                  ),
+                  ButtonSegment(
+                    value: 'resident',
+                    icon: Icon(Icons.person_outline_rounded, size: 18),
+                    label: Text('Resident'),
+                  ),
+                ],
+                selected: {_selectedRole},
+                onSelectionChanged: (set) => setState(() {
+                  _selectedRole = set.first;
+                  _formKey.currentState?.reset();
+                }),
+                style: SegmentedButton.styleFrom(
+                  selectedBackgroundColor: isDark
+                      ? const Color(0xFF3B82F6).withValues(alpha: 0.22)
+                      : cs.primary.withValues(alpha: 0.12),
+                  selectedForegroundColor: isDark
+                      ? const Color(0xFF93C5FD)
+                      : cs.primary,
+                  backgroundColor: isDark
+                      ? AppColors.darkSurfaceVariant
+                      : null,
+                  foregroundColor: isDark
+                      ? AppColors.darkTextSecondary
+                      : cs.onSurfaceVariant,
+                  side: BorderSide(
+                    color: isDark
+                        ? AppColors.darkBorder
+                        : cs.outline.withValues(alpha: 0.5),
+                    width: isDark ? 1.5 : 1.0,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Common fields ──────────────────────────────────────────
+                AppTextField(
+                  label: 'Full Name',
+                  controller: _nameCtrl,
+                  keyboardType: TextInputType.name,
+                  textCapitalization: TextCapitalization.words,
+                  focusColor: AppColors.blue,
+                  prefixIcon:
+                      const Icon(Icons.person_outline_rounded, size: 20),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Enter your full name'
+                      : null,
+                ),
+                const SizedBox(height: 14),
+
+                AppTextField(
+                  label: 'Email Address',
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  focusColor: AppColors.blue,
+                  prefixIcon:
+                      const Icon(Icons.email_outlined, size: 20),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Enter your email';
+                    }
+                    if (!v.contains('@') || !v.contains('.')) {
+                      return 'Enter a valid email';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+
+                AppTextField(
+                  label: 'Mobile Number',
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  focusColor: AppColors.blue,
+                  prefixIcon:
+                      const Icon(Icons.phone_outlined, size: 20),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Enter your mobile number'
+                      : null,
+                ),
+                const SizedBox(height: 14),
+
+                AppTextField(
+                  label: 'Password',
+                  controller: _passCtrl,
+                  obscureText: _obscurePass,
+                  focusColor: AppColors.blue,
+                  prefixIcon:
+                      const Icon(Icons.lock_outline, size: 20),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePass
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 20,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePass = !_obscurePass),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Enter a password';
+                    if (v.length < 6) return 'Minimum 6 characters';
+                    return null;
+                  },
+                ),
+
+                if (_passCtrl.text.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _PasswordStrengthBar(strength: _passStrength),
+                ],
+
+                const SizedBox(height: 20),
+
+                // ── Role-specific fields ────────────────────────────────────
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, anim) =>
+                      FadeTransition(opacity: anim, child: child),
+                  child: _selectedRole == 'president'
+                      ? _PresidentFields(
+                          key: const ValueKey('president'),
+                          aptNameCtrl: _aptNameCtrl,
+                          aptAddressCtrl: _aptAddressCtrl,
+                          totalFlatsCtrl: _totalFlatsCtrl,
+                          presidentFlatCtrl: _presidentFlatCtrl,
+                          aptType: _aptType,
+                          towerCount: _towerCount,
+                          towerNameCtrls: _towerNameCtrls,
+                          onAptTypeChanged: (t) =>
+                              setState(() => _aptType = t),
+                          onTowerCountChanged: _resizeTowerCtrls,
+                        )
+                      : _ResidentFields(
+                          key: const ValueKey('resident'),
+                          aptCodeCtrl: _aptCodeCtrl,
+                          flatCtrl: _flatCtrl,
+                        ),
+                ),
+
+                const SizedBox(height: 24),
+
+                Consumer<RegistrationProvider>(
+                  builder: (_, reg, __) => CommonButton(
+                    text: _selectedRole == 'president'
+                        ? 'Create Apartment'
+                        : 'Create Account',
+                    gradient: _selectedRole == 'president'
+                        ? AppColors.adminGradient
+                        : const [Color(0xFF1A2A4A), Color(0xFF2D4A6B)],
+                    icon: _selectedRole == 'president'
+                        ? Icons.apartment_outlined
+                        : Icons.person_add_outlined,
+                    isLoading: reg.isLoading,
+                    onPressed: _submit,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isWebLayout = MediaQuery.sizeOf(context).width >= 600;
+    if (isWebLayout) {
+      return Scaffold(
+        body: AuthWebLayout(
+          child: _buildRegistrationForm(context),
+        ),
+      );
+    }
+
     final cs     = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

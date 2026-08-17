@@ -74,6 +74,7 @@ class ComplaintModel {
   final String userName;
   final String unit;
   final String title;
+  final String content;
   final String category;
   String status;
   final DateTime createdAt;
@@ -92,6 +93,7 @@ class ComplaintModel {
     required this.userName,
     required this.unit,
     required this.title,
+    this.content = '',
     required this.category,
     required this.status,
     required this.createdAt,
@@ -111,6 +113,7 @@ class ComplaintModel {
       userName: d['userName'] as String? ?? '',
       unit: d['unit'] as String? ?? '',
       title: d['title'] as String? ?? '',
+      content: d['content'] as String? ?? '',
       category: d['category'] as String? ?? '',
       status: d['status'] as String? ?? ComplaintStatus.open,
       createdAt: createdAt,
@@ -128,6 +131,7 @@ class ComplaintModel {
         'userName': userName,
         'unit': unit,
         'title': title,
+        'content': content,
         'category': category,
         'status': status,
         'createdAt': Timestamp.fromDate(createdAt),

@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -35,6 +37,11 @@ Future<void> bootstrap(
 ) async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ── Web: use path-based URLs (no # hash fragments) ───────────────────────
+  // Must be called before runApp. Firebase Hosting rewrites handle server-side
+  // routing so browser refresh on any path returns index.html correctly.
+  if (kIsWeb) usePathUrlStrategy();
+
   AppConfig.init(env);
 
   // ── Hive (local session storage) ──────────────────────────────────────────
@@ -48,15 +55,17 @@ Future<void> bootstrap(
   // Guarded by _meta/seeded_v4 — runs once per Firebase project, never again.
   await DbSeeder.seedIfNeeded();
 
-  // ── Device orientation ────────────────────────────────────────────────────
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  // ── Device orientation (mobile only) ─────────────────────────────────────
+  if (!kIsWeb) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
 
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
-  );
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
+    );
+  }
 
   runApp(const MaintifyApp());
 }

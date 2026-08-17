@@ -33,89 +33,108 @@ class _ApartmentsScreenState extends State<ApartmentsScreen> {
             a.code.toLowerCase().contains(_search.toLowerCase()))
         .toList();
 
+    final isWeb = MediaQuery.sizeOf(context).width >= 600;
+    final hPad = isWeb ? 24.0 : 16.0;
+    final maxW = isWeb ? 1100.0 : double.infinity;
+
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: TextField(
-            onChanged: (v) => setState(() => _search = v),
-            decoration: InputDecoration(
-              hintText: 'Search apartments...',
-              hintStyle: AppTextStyles.bodyMedium(),
-              prefixIcon: const Icon(Icons.search_rounded,
-                  color: AppColors.textSecondary),
-              suffixIcon: _search.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 18),
-                      onPressed: () => setState(() => _search = ''),
-                    )
-                  : null,
-            ),
-          ),
-        ),
-        // Summary strip
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              _SummaryChip(
-                label: '${aptProvider.apartments.length} Properties',
-                color: superAccent,
-                icon: Icons.apartment_outlined,
-              ),
-              const SizedBox(width: 10),
-              _SummaryChip(
-                label:
-                    '${aptProvider.apartments.fold(0, (s, a) => s + a.totalFlats)} Total Flats',
-                color: adminAccent,
-                icon: Icons.door_front_door_outlined,
-              ),
-              const Spacer(),
-              // Create apartment button
-              GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const CreateApartmentScreen()),
-                ),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: AppColors.superAdminGradient,
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
+        // ── Search + summary header ─────────────────────────────────────
+        Align(
+          alignment: Alignment.center,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxW),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 0),
+              child: Column(
+                children: [
+                  TextField(
+                    onChanged: (v) => setState(() => _search = v),
+                    decoration: InputDecoration(
+                      hintText: 'Search apartments...',
+                      hintStyle: AppTextStyles.bodyMedium(),
+                      prefixIcon: const Icon(Icons.search_rounded,
+                          color: AppColors.textSecondary),
+                      suffixIcon: _search.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () => setState(() => _search = ''),
+                            )
+                          : null,
                     ),
-                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
+                  const SizedBox(height: 12),
+                  Row(
                     children: [
-                      Icon(Icons.add, color: Colors.white, size: 16),
-                      SizedBox(width: 4),
-                      Text(
-                        'Add',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                      _SummaryChip(
+                        label: '${aptProvider.apartments.length} Properties',
+                        color: superAccent,
+                        icon: Icons.apartment_outlined,
+                      ),
+                      const SizedBox(width: 10),
+                      _SummaryChip(
+                        label:
+                            '${aptProvider.apartments.fold(0, (s, a) => s + a.totalFlats)} Total Flats',
+                        color: adminAccent,
+                        icon: Icons.door_front_door_outlined,
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const CreateApartmentScreen()),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: AppColors.superAdminGradient,
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add, color: Colors.white, size: 16),
+                              SizedBox(width: 4),
+                              Text(
+                                'Add',
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 12),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-        const SizedBox(height: 12),
+
+        // ── Apartment list ──────────────────────────────────────────────
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: filtered.length,
-            itemBuilder: (_, i) => _ApartmentDetailCard(apt: filtered[i]),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxW),
+              child: ListView.builder(
+                padding: EdgeInsets.symmetric(horizontal: hPad),
+                itemCount: filtered.length,
+                itemBuilder: (_, i) => _ApartmentDetailCard(apt: filtered[i]),
+              ),
+            ),
           ),
         ),
       ],

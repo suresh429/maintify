@@ -17,6 +17,9 @@ class PaymentBoardScreen extends StatelessWidget {
     final auth = context.read<AuthProvider>();
     final aptId = auth.currentUser?.apartmentId ?? '';
 
+    final isWeb = MediaQuery.sizeOf(context).width >= 600;
+    final hPad = isWeb ? 24.0 : 16.0;
+
     return Consumer2<BillProvider, UserProvider>(
       builder: (_, billProv, userProv, __) {
         final summaries = billProv.monthlyBillsForApartment(aptId);
@@ -26,12 +29,20 @@ class PaymentBoardScreen extends StatelessWidget {
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 24),
           itemCount: summaries.length,
-          itemBuilder: (_, i) => _MonthCard(
-            summary: summaries[i],
-            userProv: userProv,
-          ),
+          itemBuilder: (_, i) {
+            final card = _MonthCard(summary: summaries[i], userProv: userProv);
+            return isWeb
+                ? Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 960),
+                      child: card,
+                    ),
+                  )
+                : card;
+          },
         );
       },
     );

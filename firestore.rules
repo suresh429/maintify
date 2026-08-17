@@ -137,15 +137,19 @@ service cloud.firestore {
       allow delete: if isAdminForApartment(resource.data.apartmentId) || isSuperAdmin();
 
       // Messages subcollection
-      // Simplified to isSignedIn() — the parent complaint read rule already
-      // controls who can see the complaint (and therefore know the complaintId).
-      // Removing the double-nested get() (complaint→user) prevents PERMISSION_DENIED
-      // on fresh auth connections.
+      // Any signed-in user who can read the parent complaint can read its messages.
+      // The parent complaint rule already enforces apartment membership.
+      // get() calls here are acceptable for write operations (not in a stream).
       match /messages/{msgId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn();
+        // Only the complaint creator or the apartment president may post messages.
+        allow create: if isSignedIn() && (
+          request.auth.uid == get(/databases/$(database)/documents/complaints/$(complaintId)).data.userId ||
+          isAdminForApartment(get(/databases/$(database)/documents/complaints/$(complaintId)).data.apartmentId) ||
+          isSuperAdmin()
+        );
         allow update: if false; // messages are immutable
-        allow delete: if isSuperAdmin(); // only super admin can delete (apartment deletion)
+        allow delete: if isSuperAdmin();
       }
     }
 

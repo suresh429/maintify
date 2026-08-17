@@ -1,4 +1,5 @@
 // PROD Firebase project: maintify-ff8c4
+// Web app: Maintify Web (1:709385460007:web:40ff10ac9fab30399b7102)
 // ignore_for_file: lines_longer_than_80_chars
 
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
@@ -7,7 +8,7 @@ import 'package:flutter/foundation.dart'
 
 class FirebaseOptionsProd {
   static FirebaseOptions get currentPlatform {
-    if (kIsWeb) throw UnsupportedError('Web not configured for Prod.');
+    if (kIsWeb) return web;
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
@@ -18,6 +19,16 @@ class FirebaseOptionsProd {
             'FirebaseOptionsProd not supported for $defaultTargetPlatform');
     }
   }
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyAHb536ePpNovwGATJ1Ba6VP8eeY370QA4',
+    appId: '1:709385460007:web:40ff10ac9fab30399b7102',
+    messagingSenderId: '709385460007',
+    projectId: 'maintify-ff8c4',
+    authDomain: 'maintify-ff8c4.firebaseapp.com',
+    storageBucket: 'maintify-ff8c4.firebasestorage.app',
+    measurementId: 'G-SJ3CVE03XJ',
+  );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyB_Tu1xTomM3RYQVLM4Enq-vzDivHtvkLs',

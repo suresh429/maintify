@@ -436,9 +436,22 @@ exports.onComplaintCreated = onDocumentCreated('complaints/{complaintId}', async
 
   const complaintId  = event.params.complaintId;
 
+  // Notify president
   await sendToApartment(aptId, 'president', {
     title:        'New Complaint',
-    body:         `${complaint.userName ?? 'A resident'} (Flat ${complaint.unit ?? '?'}): ${_truncate(complaint.title, 80)}`,
+    body:         'A new complaint has been reported in your apartment.',
+    type:         'complaint',
+    referenceId:  complaintId,
+    referenceType: 'complaint',
+    route:        'complaint_detail',
+    aptId,
+    saveToFirestore: true,
+  });
+
+  // Notify all residents in the apartment
+  await sendToApartment(aptId, 'resident', {
+    title:        'New Apartment Complaint',
+    body:         'A new complaint has been reported in your apartment.',
     type:         'complaint',
     referenceId:  complaintId,
     referenceType: 'complaint',

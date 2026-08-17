@@ -19,6 +19,8 @@ import '../../providers/meeting_provider.dart';
 import '../../models/meeting_model.dart';
 import '../shared/notifications_screen.dart';
 import '../shared/community_screen.dart';
+import '../../widgets/web/web_app_shell.dart';
+import '../../widgets/web/web_page_container.dart';
 
 class ResidentDashboard extends StatefulWidget {
   final String? notificationType;
@@ -66,8 +68,23 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
   @override
   Widget build(BuildContext context) {
     final theme = RoleTheme.of(UserRole.resident);
-
     final cs = Theme.of(context).colorScheme;
+
+    final isWebLayout = MediaQuery.sizeOf(context).width >= 600;
+    if (isWebLayout) {
+      return WebAppShell(
+        role: UserRole.resident,
+        navItems: const [
+          WebNavItem(icon: Icons.home_outlined, label: 'Home'),
+          WebNavItem(icon: Icons.receipt_outlined, label: 'My Bills'),
+          WebNavItem(icon: Icons.groups_outlined, label: 'Community'),
+          WebNavItem(icon: Icons.person_outlined, label: 'Profile'),
+        ],
+        currentIndex: _currentIndex,
+        onIndexChanged: (i) => setState(() => _currentIndex = i),
+        child: IndexedStack(index: _currentIndex, children: _pages),
+      );
+    }
 
     return Scaffold(
       appBar: _currentIndex == 3 ? null : _buildAppBar(theme),
@@ -116,12 +133,18 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     final unread = context
         .watch<NotificationProvider>()
         .unreadCount(UserRole.resident);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? Colors.white : cs.onSurfaceVariant;
+
     return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
+      backgroundColor: isDark ? Colors.transparent : cs.surface,
+      elevation: isDark ? 0 : 1,
+      shadowColor: cs.shadow.withValues(alpha: 0.08),
+      surfaceTintColor: Colors.transparent,
       title: Text(
         _titles[_currentIndex],
-        style: AppTextStyles.heading3(color: Colors.white),
+        style: AppTextStyles.heading3(color: isDark ? Colors.white : cs.onSurface),
       ),
       actions: [
         SizedBox(
@@ -131,8 +154,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
             clipBehavior: Clip.none,
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_outlined,
-                    color: Colors.white),
+                icon: Icon(Icons.notifications_outlined, color: iconColor),
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -223,16 +245,12 @@ class _ResidentHome extends StatelessWidget {
     final upcomingMeetings =
         context.watch<MeetingProvider>().upcomingMeetings(aptId);
 
-    return RefreshIndicator(
-      color: accent,
-      onRefresh: () async => dashboard.refresh(),
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ApartmentHeader(
+    final isWeb = MediaQuery.sizeOf(context).width >= 600;
+
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ApartmentHeader(
               apartmentName: apt?.name ?? 'My Apartment',
               presidentName: apt?.presidentName ?? 'Unassigned',
               role: UserRole.resident,
@@ -478,7 +496,19 @@ class _ResidentHome extends StatelessWidget {
 
             const SizedBox(height: 20),
           ],
-        ),
+        );
+
+    return RefreshIndicator(
+      color: accent,
+      onRefresh: () async => dashboard.refresh(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: isWeb
+            ? WebPageContainer(maxWidth: 860, child: content)
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                child: content,
+              ),
       ),
     );
   }
