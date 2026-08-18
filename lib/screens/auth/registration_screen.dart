@@ -747,7 +747,9 @@ class _RegistrationScreenState extends State<RegistrationScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SegmentedButton<String>(
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 280),
+                child: SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(
                     value: 'president',
@@ -766,6 +768,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                   _formKey.currentState?.reset();
                 }),
                 style: SegmentedButton.styleFrom(
+                  minimumSize: const Size(0, 44),
                   selectedBackgroundColor: isDark
                       ? const Color(0xFF3B82F6).withValues(alpha: 0.22)
                       : cs.primary.withValues(alpha: 0.12),
@@ -786,6 +789,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                   ),
                 ),
               ),
+              ), // ConstrainedBox
             ],
           ),
 

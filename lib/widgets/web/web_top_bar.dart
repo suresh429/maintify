@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/role_theme.dart';
+import '../../core/utils/web_navigator.dart'
+    if (dart.library.html) '../../core/utils/web_navigator_web.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -144,8 +147,12 @@ class WebTopBar extends StatelessWidget implements PreferredSizeWidget {
                 final nav = Navigator.of(context);
                 final confirm = await showLogoutSheet(context, role);
                 if (confirm == true && context.mounted) {
-                  auth.logout();
-                  nav.pushReplacementNamed('/login');
+                  await auth.logout();
+                  if (kIsWeb) {
+                    navigateToStaticLanding();
+                  } else {
+                    nav.pushReplacementNamed('/login');
+                  }
                 }
               },
               child: MouseRegion(

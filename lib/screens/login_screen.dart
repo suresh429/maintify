@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
-import '../providers/version_provider.dart';
 import '../core/config/app_config.dart';
 import '../core/theme/app_text_styles.dart';
 import '../core/constants/app_constants.dart';
@@ -413,10 +411,6 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ),
             ),
-            // ── Google Play badge (web only) ──────────────────────────
-            const SizedBox(height: 28),
-            _GooglePlayBadge(),
-
             // Dev quick-login section
             if (AppConfig.isDevelopment) ...[
               const SizedBox(height: 20),
@@ -702,7 +696,6 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ),
                       const SizedBox(height: 20),
-                      _GooglePlayBadge(),
                       const SizedBox(height: 12),
                       Center(
                         child: Text(
@@ -721,140 +714,6 @@ class _LoginScreenState extends State<LoginScreen>
       ),
     );
   }
-}
-
-// ── Google Play badge ─────────────────────────────────────────────────────────
-
-class _GooglePlayBadge extends StatelessWidget {
-  const _GooglePlayBadge();
-
-  Future<void> _openPlayStore(BuildContext context) async {
-    final versionProvider = context.read<VersionProvider>();
-    final storeUrl = versionProvider.model?.playStoreUrl;
-    final uri = Uri.tryParse(
-        storeUrl?.isNotEmpty == true ? storeUrl! : AppConstants.playStoreUrl);
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: Divider(color: cs.outlineVariant)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                'Also available on',
-                style: AppTextStyles.caption(color: cs.onSurfaceVariant),
-              ),
-            ),
-            Expanded(child: Divider(color: cs.outlineVariant)),
-          ],
-        ),
-        const SizedBox(height: 14),
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => _openPlayStore(context),
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: cs.outlineVariant),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Google Play icon — 4-color official triangle
-                  SizedBox(
-                    width: 30,
-                    height: 34,
-                    child: CustomPaint(painter: _GooglePlayIconPainter()),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'GET IT ON',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          color: cs.onSurfaceVariant,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      Text(
-                        'Google Play',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(Icons.open_in_new_rounded,
-                      size: 14, color: cs.onSurfaceVariant),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Google Play icon painter (official 4-color triangle) ─────────────────────
-
-class _GooglePlayIconPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    // Vertices of the play-button triangle
-    final topLeft = Offset(0, h * 0.04);
-    final bottomLeft = Offset(0, h * 0.96);
-    final tip = Offset(w, h * 0.5);
-    final midLeft = Offset(0, h * 0.5);
-    // Center meeting point of the 4 colors (slightly left of geometric center)
-    final center = Offset(w * 0.46, h * 0.5);
-
-    void draw(List<Offset> pts, Color color) {
-      final path = Path()..moveTo(pts[0].dx, pts[0].dy);
-      for (var i = 1; i < pts.length; i++) {
-        path.lineTo(pts[i].dx, pts[i].dy);
-      }
-      path.close();
-      canvas.drawPath(path, Paint()..color = color);
-    }
-
-    // Blue — top-left quadrant
-    draw([topLeft, center, midLeft], const Color(0xFF54C5F8));
-    // Green — top-right quadrant
-    draw([topLeft, tip, center], const Color(0xFF3DDC84));
-    // Red — bottom-left quadrant
-    draw([midLeft, center, bottomLeft], const Color(0xFFE84040));
-    // Yellow — bottom-right quadrant
-    draw([center, tip, bottomLeft], const Color(0xFFFFBC0E));
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ── Web Dev Quick Login panel ─────────────────────────────────────────────────

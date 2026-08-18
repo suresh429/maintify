@@ -11,11 +11,15 @@ import '../core/theme/role_theme.dart';
 import 'admin/admin_dashboard.dart';
 import 'president/president_dashboard.dart';
 import 'resident/resident_dashboard.dart';
-import 'login_screen.dart';
 
-class DashboardRouter extends StatelessWidget {
+class DashboardRouter extends StatefulWidget {
   const DashboardRouter({super.key});
 
+  @override
+  State<DashboardRouter> createState() => _DashboardRouterState();
+}
+
+class _DashboardRouterState extends State<DashboardRouter> {
   Widget _dashboardFor(UserRole? role, {String? notificationType}) {
     switch (role) {
       case UserRole.admin:
@@ -25,7 +29,7 @@ class DashboardRouter extends StatelessWidget {
       case UserRole.resident:
         return ResidentDashboard(notificationType: notificationType);
       default:
-        return const LoginScreen();
+        return const Scaffold();
     }
   }
 
@@ -34,7 +38,14 @@ class DashboardRouter extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
 
     if (!auth.isLoggedIn) {
-      return const LoginScreen();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/login');
+      });
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return Scaffold(
+        backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+      );
     }
 
     // Read notification type passed by FcmService when a push notification is tapped.

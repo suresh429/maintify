@@ -25,6 +25,7 @@ import 'screens/login_screen.dart';
 import 'screens/auth/registration_screen.dart';
 import 'screens/auth/president_activation_screen.dart';
 import 'screens/dashboard_router.dart';
+import 'screens/web_auth_gate.dart';
 import 'core/services/db_seeder.dart';
 import 'widgets/global_connectivity_overlay.dart';
 
@@ -70,14 +71,55 @@ Future<void> bootstrap(
   runApp(const MaintifyApp());
 }
 
-/// On web, use the browser URL path as the initial route so that navigating
-/// directly to /login or /signup skips SplashScreen entirely.
-/// On mobile, always start at '/' (SplashScreen handles session restore).
-String _initialRoute() {
-  if (!kIsWeb) return '/';
-  final path = Uri.base.path;
-  const directRoutes = {'/login', '/signup', '/activate'};
-  return directRoutes.contains(path) ? path : '/';
+/// Overrides Flutter's default "split path segments into multiple routes"
+/// behavior for the initial route.
+///
+/// Flutter's default: initialRoute '/login' → stack [Route('/'), Route('/login')]
+/// This creates SplashScreen at the bottom → browser back shows Splash.
+///
+/// With onGenerateInitialRoutes: We return exactly ONE route in the stack,
+/// which eliminates SplashScreen from browser history entirely.
+///
+/// On mobile: always returns [SplashScreen] (routeName is always '/').
+/// On web: maps the browser URL path to the correct single-entry stack.
+List<Route<dynamic>> _generateInitialRoutes(String routeName) {
+  if (!kIsWeb) {
+    return [
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: '/'),
+        builder: (_) => const SplashScreen(),
+      ),
+    ];
+  }
+  // Web: routeName IS the browser URL path (because usePathUrlStrategy is active).
+  return [_buildWebRoute(routeName)];
+}
+
+Route<dynamic> _buildWebRoute(String path) {
+  switch (path) {
+    case '/login':
+      return MaterialPageRoute<void>(
+        settings: const RouteSettings(name: '/login'),
+        builder: (_) => const LoginScreen(),
+      );
+    case '/signup':
+      return MaterialPageRoute<void>(
+        settings: const RouteSettings(name: '/signup'),
+        builder: (_) => const RegistrationScreen(),
+      );
+    case '/activate':
+      return MaterialPageRoute<void>(
+        settings: const RouteSettings(name: '/activate'),
+        builder: (_) => const PresidentActivationScreen(),
+      );
+    default:
+      // Protected routes (/dashboard, /*, etc.) and unknown paths:
+      // WebAuthGate restores session then redirects to /dashboard or /login.
+      return MaterialPageRoute<void>(
+        settings: RouteSettings(name: path),
+        builder: (_) => const WebAuthGate(),
+      );
+  }
 }
 
 class MaintifyApp extends StatelessWidget {
@@ -116,7 +158,12 @@ class MaintifyApp extends StatelessWidget {
             builder: (context, child) => GlobalConnectivityOverlay(
               child: child ?? const SizedBox(),
             ),
-            initialRoute: _initialRoute(),
+            // onGenerateInitialRoutes overrides Flutter's default behaviour of
+            // splitting the path into multiple stack entries (e.g. '/login' →
+            // [SplashScreen('/'), LoginScreen('/login')]). By returning exactly
+            // one route we prevent SplashScreen from appearing in browser history
+            // and eliminate the "login shows twice" and "back shows splash" bugs.
+            onGenerateInitialRoutes: _generateInitialRoutes,
             routes: {
               '/': (_) => const SplashScreen(),
               '/login': (_) => const LoginScreen(),

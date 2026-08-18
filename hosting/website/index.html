@@ -26,6 +26,7 @@
       flex-direction: column;
     }
 
+    /* ── Header ─────────────────────────────────────────────────────────── */
     header {
       padding: 20px 32px;
       border-bottom: 1px solid var(--border);
@@ -82,6 +83,7 @@
       letter-spacing: -0.3px;
     }
 
+    /* ── Main / Hero ─────────────────────────────────────────────────────── */
     main {
       flex: 1;
       display: flex;
@@ -136,35 +138,98 @@
       margin-bottom: 48px;
     }
 
-    .cta-group {
+    /* ── Download Section ────────────────────────────────────────────────── */
+    .download-section {
+      width: 100%;
+      max-width: 800px;
+      margin: 64px auto 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px 32px;
+      text-align: center;
+    }
+
+    .download-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+
+    .download-title {
+      font-size: clamp(20px, 3vw, 26px);
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .download-sub {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+    }
+
+    .store-buttons {
       display: flex;
       gap: 16px;
-      flex-wrap: wrap;
       justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
     }
 
-    .btn-primary {
+    .store-btn {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, var(--gold), #8B6A35);
-      color: #fff;
-      font-size: 15px;
-      font-weight: 600;
-      padding: 14px 28px;
-      border-radius: 10px;
+      justify-content: center;
+      height: 56px;
+      padding: 0 4px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #0F172A;
+      cursor: pointer;
       text-decoration: none;
-      transition: opacity 0.2s;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+      overflow: hidden;
     }
-    .btn-primary:hover { opacity: 0.88; }
 
+    .store-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      border-color: var(--text-secondary);
+    }
+
+    .store-btn:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    .store-btn img {
+      height: 52px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    /* App Store — coming soon state */
+    .store-btn.appstore { opacity: 0.75; cursor: default; }
+    .store-btn.appstore:hover {
+      transform: none;
+      box-shadow: none;
+      border-color: var(--border);
+    }
+
+    /* ── Feature Cards ───────────────────────────────────────────────────── */
     .features {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 20px;
       max-width: 800px;
       width: 100%;
-      margin: 64px auto 0;
+      margin: 32px auto 0;
     }
 
     .feature-card {
@@ -175,24 +240,11 @@
       text-align: left;
     }
 
-    .feature-icon {
-      font-size: 28px;
-      margin-bottom: 12px;
-    }
+    .feature-icon { font-size: 28px; margin-bottom: 12px; }
+    .feature-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; color: var(--text-primary); }
+    .feature-desc  { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
 
-    .feature-title {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 6px;
-      color: var(--text-primary);
-    }
-
-    .feature-desc {
-      font-size: 13px;
-      color: var(--text-secondary);
-      line-height: 1.5;
-    }
-
+    /* ── Footer ──────────────────────────────────────────────────────────── */
     footer {
       padding: 32px;
       border-top: 1px solid var(--border);
@@ -215,9 +267,54 @@
     }
     .footer-links a:hover { color: var(--gold); }
 
-    .footer-copy {
-      font-size: 13px;
-      color: var(--border);
+    .footer-copy { font-size: 13px; color: var(--border); }
+
+    /* ── Toast ───────────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 500;
+      padding: 14px 24px;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    /* ── Responsive ──────────────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      header { padding: 16px 20px; }
+      main   { padding: 48px 20px; }
+
+      .download-section { padding: 28px 20px; margin-top: 48px; }
+
+      .store-buttons { flex-direction: column; align-items: center; gap: 12px; }
+      .store-btn     { width: 200px; height: 52px; }
+      .store-btn img { height: 48px; }
+
+      #toast { white-space: normal; text-align: center; max-width: calc(100vw - 48px); }
     }
   </style>
 </head>
@@ -241,11 +338,6 @@
       Handle maintenance requests, monthly bills, community complaints, and meetings
       — effortlessly and transparently.
     </p>
-    <div class="cta-group">
-      <a class="btn-primary" href="https://play.google.com/store/apps/details?id=com.maintify.app" target="_blank" rel="noopener">
-        Get on Google Play
-      </a>
-    </div>
 
     <div class="features">
       <div class="feature-card">
@@ -269,6 +361,33 @@
         <div class="feature-desc">Schedule community meetings with instant push notifications to all residents.</div>
       </div>
     </div>
+
+    <!-- ── Download Section ──────────────────────────────────────────────── -->
+    <div class="download-section">
+      <p class="download-label">Get the App</p>
+      <p class="download-title">Manage your community wherever you are</p>
+      <p class="download-sub">Available on Android — iOS coming soon</p>
+      <div class="store-buttons">
+        <a
+          class="store-btn googleplay"
+          href="https://play.google.com/store/apps/details?id=com.maintify.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Download Maintify from Google Play"
+          title="Download on Google Play"
+        >
+          <img src="/googleplay.png" alt="Get it on Google Play" />
+        </a>
+        <button
+          class="store-btn appstore"
+          onclick="showComingSoon()"
+          aria-label="Maintify for iOS — Coming Soon"
+          title="Maintify for iOS — Coming Soon"
+        >
+          <img src="/appstore.png" alt="Download on the App Store" />
+        </button>
+      </div>
+    </div>
   </main>
 
   <footer>
@@ -277,8 +396,28 @@
       <a href="/terms.html">Terms of Service</a>
       <a href="mailto:support.maintify@gmail.com">Contact</a>
     </div>
-    <p class="footer-copy">&copy; 2025 Maintify. All rights reserved.</p>
+    <p class="footer-copy">&copy; 2026 Maintify. All rights reserved.</p>
   </footer>
+
+  <!-- ── Coming Soon Toast ─────────────────────────────────────────────── -->
+  <div id="toast" role="status" aria-live="polite">
+    <span class="toast-icon">🍎</span>
+    <span>Maintify for iOS is coming soon.</span>
+  </div>
+
+  <script>
+    var _toastTimer = null;
+
+    function showComingSoon() {
+      var toast = document.getElementById('toast');
+      if (_toastTimer) { clearTimeout(_toastTimer); }
+      toast.classList.add('show');
+      _toastTimer = setTimeout(function() {
+        toast.classList.remove('show');
+        _toastTimer = null;
+      }, 3200);
+    }
+  </script>
 
 </body>
 </html>

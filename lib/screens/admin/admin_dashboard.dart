@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/utils/web_navigator.dart'
+    if (dart.library.html) '../../core/utils/web_navigator_web.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../core/theme/app_colors.dart';
@@ -162,8 +165,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
               final confirm =
                   await showLogoutSheet(context, UserRole.admin);
               if (confirm == true && mounted) {
-                auth.logout();
-                nav.pushReplacementNamed('/login');
+                await auth.logout();
+                if (kIsWeb) {
+                  navigateToStaticLanding();
+                } else {
+                  nav.pushReplacementNamed('/login');
+                }
               }
             },
           ),

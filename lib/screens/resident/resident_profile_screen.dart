@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +14,8 @@ import '../../providers/notification_provider.dart';
 import '../../models/user_model.dart';
 import '../../models/apartment_model.dart';
 import '../../core/utils/app_utils.dart';
+import '../../core/utils/web_navigator.dart'
+    if (dart.library.html) '../../core/utils/web_navigator_web.dart';
 import '../../widgets/change_password_sheet.dart';
 import '../../widgets/logout_sheet.dart';
 import '../shared/notifications_screen.dart';
@@ -919,11 +922,16 @@ class _LogoutButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final btn = OutlinedButton.icon(
       onPressed: () async {
+        final nav = Navigator.of(context);
         final confirm =
             await showLogoutSheet(context, UserRole.resident);
         if (confirm == true && context.mounted) {
-          context.read<AuthProvider>().logout();
-          Navigator.pushReplacementNamed(context, '/login');
+          await context.read<AuthProvider>().logout();
+          if (kIsWeb) {
+            navigateToStaticLanding();
+          } else {
+            nav.pushReplacementNamed('/login');
+          }
         }
       },
       icon: const Icon(Icons.logout_rounded,
