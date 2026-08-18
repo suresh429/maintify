@@ -15,6 +15,9 @@
       "hosting": {
         "prod": [
           "maintify-prod"
+        ],
+        "website": [
+          "maintify"
         ]
       }
     }

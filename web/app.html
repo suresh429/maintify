@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Maintify — Manage. Maintain. Simplify. Apartment maintenance management made easy.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Maintify">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Theme color for browser chrome -->
+  <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0F172A" media="(prefers-color-scheme: dark)">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <title>Maintify</title>
+  <link rel="manifest" href="manifest.json">
+
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+
+  <style>
+    html { height: 100%; }
+    body {
+      margin: 0;
+      min-height: 100%;
+      background-color: #0F172A;
+    }
+  </style>
+
+  <script>
+    // Called by Flutter framework when app is ready — no-op since there is no splash element.
+    function removeSplashFromWeb() {
+      document.getElementById("splash")?.remove();
+      document.body.style.background = "transparent";
+    }
+  </script>
+</head>
+<body>
+  <script src="flutter_bootstrap.js" async=""></script>
+</body>
+</html>

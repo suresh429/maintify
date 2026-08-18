@@ -17,6 +17,10 @@ flutter build apk --flavor prod -t lib/main_prod.dart
 flutter build ios --flavor dev -t lib/main_dev.dart
 flutter build ios --flavor prod -t lib/main_prod.dart
 
+# Run/build for web (no flavor flag; uses main_dev.dart or main_prod.dart)
+flutter run -d chrome -t lib/main_dev.dart
+flutter build web -t lib/main_prod.dart
+
 # Lint
 flutter analyze
 
@@ -232,6 +236,21 @@ screens/
 - **Role theming:** `RoleTheme.of(UserRole.x)` → `.gradient`, `.primary`, `.secondary`
 - **Text styles:** `AppTextStyles` in `lib/core/theme/app_text_styles.dart` — use `AppTextStyles.heading1/2/3()`, `.subheading()`, `.bodyLarge/Medium/Small()`, `.label()`, `.caption()`, `.amount()`, `.buttonText()`. All accept an optional `color` override.
 - **Spacing/constants:** `AppConstants` in `lib/core/constants/app_constants.dart`
+- **Responsive:** `lib/core/responsive/responsive.dart` — breakpoint utilities consumed by web widgets
+
+### Web Platform (`lib/widgets/web/`)
+
+The app supports Flutter Web. Web uses path-based URL strategy (no `#`). Web-specific widgets live in `lib/widgets/web/`:
+
+| Widget | Purpose |
+|---|---|
+| `WebAppShell` | Full desktop shell: sidebar + topbar + main content area |
+| `WebSidebar` | Navigation sidebar — exports `WebNavItem` |
+| `WebTopBar` | Top navigation bar |
+| `WebPageContainer` | Page content wrapper |
+| `AuthWebLayout` | Auth page layout for web |
+
+Web title management uses conditional imports: `web_title.dart` → `web_title_web.dart` (web) or `web_title_stub.dart` (mobile/desktop).
 
 ### Widget Library (`lib/widgets/`)
 
@@ -254,7 +273,7 @@ Always check before building a new component:
 | `ChatBubble` / `ChatInputField` | Complaint chat UI |
 | `ScheduleMeetingSheet` | Bottom sheet for scheduling meetings |
 | `LogoutSheet` | Confirmation bottom sheet for logout |
-| `EmptyState` | Empty-state placeholder with icon, title, subtitle, and optional action button |
+| `EmptyState` | Empty-state placeholder with icon, title, subtitle, and optional action button — defined in `shimmer_loading.dart` |
 | `UpdateDialog` | Force/soft update dialog driven by `VersionProvider`; shown from `SplashScreen` |
 
 ### Bottom Sheet Rules
@@ -286,11 +305,10 @@ Node.js v2 functions in `functions/index.js`. Deploy with `firebase deploy --onl
 
 | Function | Trigger | Action |
 |---|---|---|
-| `onApartmentCreated` | `apartments/{aptId}` onCreate | Gmail SMTP welcome email to designated president with apartment code |
 | `onPresidentRegistered` | `apartments/{aptId}` onUpdate | FCM to all admins (role=`admin`) when status changes `waiting_for_president` → `active` |
 | `onPresidentInvitationCreated` | `presidentInvitations/{id}` onCreate | Gmail SMTP invitation email to president (includes tower info if gated community) |
 | `onWelcomeEmailReady` | `apartments/{aptId}` onUpdate | Gmail SMTP welcome email when `welcomeEmailReady=true` flag is set |
-| `onResidentApproved` | `users/{userId}` onCreate (role=`resident`) | Gmail SMTP approval email to resident |
+| `onResidentRegistered` | `users/{userId}` onCreate (role=`resident`) | FCM to apartment president notifying of new resident signup |
 | `onPresidentTransferred` | `apartments/{aptId}` onUpdate | FCM to old + new president when `presidentId` changes between two real UIDs |
 | `onBillCreated` | `bills/{billId}` onCreate | FCM to all residents in the apartment |
 | `onBillUpdated` | `bills/{billId}` onUpdate | FCM to all residents when bill is edited |

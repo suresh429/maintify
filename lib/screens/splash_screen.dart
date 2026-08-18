@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -24,6 +25,17 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+
+    // On web, skip branding animations — navigate immediately after the frame.
+    if (kIsWeb) {
+      _controller = AnimationController(vsync: this, duration: Duration.zero);
+      _fadeAnim = const AlwaysStoppedAnimation(1.0);
+      _scaleAnim = const AlwaysStoppedAnimation(1.0);
+      _taglineFadeAnim = const AlwaysStoppedAnimation(1.0);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _navigate());
+      return;
+    }
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
@@ -59,7 +71,7 @@ class _SplashScreenState extends State<SplashScreen>
     final version = context.read<VersionProvider>();
 
     await Future.wait([
-      Future.delayed(const Duration(milliseconds: 2400)),
+      if (!kIsWeb) Future.delayed(const Duration(milliseconds: 2400)),
       auth.tryRestoreSession(),
       version.checkVersion(),
     ]);

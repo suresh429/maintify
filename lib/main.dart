@@ -70,6 +70,16 @@ Future<void> bootstrap(
   runApp(const MaintifyApp());
 }
 
+/// On web, use the browser URL path as the initial route so that navigating
+/// directly to /login or /signup skips SplashScreen entirely.
+/// On mobile, always start at '/' (SplashScreen handles session restore).
+String _initialRoute() {
+  if (!kIsWeb) return '/';
+  final path = Uri.base.path;
+  const directRoutes = {'/login', '/signup', '/activate'};
+  return directRoutes.contains(path) ? path : '/';
+}
+
 class MaintifyApp extends StatelessWidget {
   const MaintifyApp({super.key});
 
@@ -106,7 +116,7 @@ class MaintifyApp extends StatelessWidget {
             builder: (context, child) => GlobalConnectivityOverlay(
               child: child ?? const SizedBox(),
             ),
-            initialRoute: '/',
+            initialRoute: _initialRoute(),
             routes: {
               '/': (_) => const SplashScreen(),
               '/login': (_) => const LoginScreen(),
