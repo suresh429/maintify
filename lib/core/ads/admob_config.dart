@@ -1,22 +1,52 @@
 import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
+    show kIsWeb, kDebugMode, debugPrint, defaultTargetPlatform, TargetPlatform;
 import '../config/app_config.dart';
 
 /// Single source of truth for all AdMob identifiers.
 ///
-/// Usage:
-///   final config = AdMobConfig.current;
-///   final bannerId = config.bannerAdUnitId;
+/// ════════════════════════════════════════════════════════════════════════════
+/// ENVIRONMENT SELECTION
+/// ════════════════════════════════════════════════════════════════════════════
 ///
-/// ────────────────────────────────────────────────────────────────────────────
-/// BEFORE PUBLISHING TO PRODUCTION
-///   1. Create a new AdMob account (or use your existing one).
-///   2. Register Android and iOS apps → get real App IDs.
-///   3. Create Banner, Interstitial, and Native ad units for each app.
-///   4. Replace every placeholder marked [PROD Android] / [PROD iOS] below.
-///   5. Update android/app/src/prod/AndroidManifest.xml with the real Android App ID.
-///   6. Update ios/Runner/Info.plist (prod variant) with the real iOS App ID.
-/// ────────────────────────────────────────────────────────────────────────────
+/// DEV flavor  → always Google's official test IDs (hardcoded, safe to commit,
+///               never overridable by --dart-define in dev builds).
+///
+/// PROD flavor → IDs are resolved at compile time from --dart-define values.
+///               If a --dart-define is not supplied the value falls back to the
+///               placeholder string, which will NOT display real ads.
+///
+/// ════════════════════════════════════════════════════════════════════════════
+/// HOW TO CONFIGURE PRODUCTION AD UNIT IDs
+/// ════════════════════════════════════════════════════════════════════════════
+///
+/// Pass each ID as a --dart-define flag when building for production:
+///
+///   flutter build appbundle --flavor prod -t lib/main_prod.dart \
+///     --dart-define=ADMOB_PROD_ANDROID_APP_ID=ca-app-pub-REAL~APPID \
+///     --dart-define=ADMOB_PROD_IOS_APP_ID=ca-app-pub-REAL~APPID \
+///     --dart-define=ADMOB_PROD_ANDROID_BANNER_ID=ca-app-pub-REAL/BANNERID \
+///     --dart-define=ADMOB_PROD_IOS_BANNER_ID=ca-app-pub-REAL/BANNERID \
+///     --dart-define=ADMOB_PROD_ANDROID_INTERSTITIAL_ID=ca-app-pub-REAL/INTID \
+///     --dart-define=ADMOB_PROD_IOS_INTERSTITIAL_ID=ca-app-pub-REAL/INTID \
+///     --dart-define=ADMOB_PROD_ANDROID_NATIVE_ID=ca-app-pub-REAL/NATIVEID \
+///     --dart-define=ADMOB_PROD_IOS_NATIVE_ID=ca-app-pub-REAL/NATIVEID
+///
+///   flutter build ipa --flavor prod -t lib/main_prod.dart \
+///     --dart-define=ADMOB_PROD_IOS_APP_ID=ca-app-pub-REAL~APPID \
+///     --dart-define=ADMOB_PROD_IOS_BANNER_ID=ca-app-pub-REAL/BANNERID \
+///     ... (same pattern)
+///
+/// Note: App IDs (APP_ID) must also be updated in native manifests:
+///   Android : android/app/src/prod/AndroidManifest.xml
+///   iOS     : ios/inject_admob_id.sh  (PROD_ADMOB_APP_ID variable)
+///
+/// ════════════════════════════════════════════════════════════════════════════
+/// USAGE
+/// ════════════════════════════════════════════════════════════════════════════
+///
+///   final config = AdMobConfig.current;
+///   final bannerId = config.bannerAdUnitId;   // platform-appropriate
+///
 class AdMobConfig {
   /// Whether this config represents the development environment.
   final bool isDev;
@@ -25,7 +55,7 @@ class AdMobConfig {
   /// Android AdMob App ID. Set in AndroidManifest.xml per flavor.
   final String androidAppId;
 
-  /// iOS AdMob App ID. Set in Info.plist.
+  /// iOS AdMob App ID. Set in Info.plist via ios/inject_admob_id.sh.
   final String iosAppId;
 
   // ── Banner Ad Unit IDs ──────────────────────────────────────────────────────
@@ -52,54 +82,126 @@ class AdMobConfig {
     required this.iosNativeAdUnitId,
   });
 
+  // ── Sentinel values — detect unconfigured prod placeholders ─────────────────
+
+  static const String _kUnsetAdUnit = 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX';
+  static const String _kUnsetAppId  = 'ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX';
+
   // ── DEV config — Google's official test IDs ─────────────────────────────────
-  // Safe to commit. Google allows these in production builds during testing
-  // but they must NEVER appear in a published app (use _prod instead).
+  //
+  // These IDs are hardcoded and intentionally cannot be overridden via
+  // --dart-define in a dev build.  They are safe to commit: Google publishes
+  // them in the official documentation for testing purposes only.
+  //
+  // Reference: https://developers.google.com/admob/flutter/test-ads
   static const AdMobConfig _dev = AdMobConfig._(
     isDev: true,
-    // Google test App IDs
+    // Google's official test App IDs
     androidAppId: 'ca-app-pub-3940256099942544~3347511713',
-    iosAppId: 'ca-app-pub-3940256099942544~1458002511',
-    // Google test Banner IDs
+    iosAppId:     'ca-app-pub-3940256099942544~1458002511',
+    // Google's official test Banner Ad Unit IDs
     androidBannerAdUnitId: 'ca-app-pub-3940256099942544/6300978111',
-    iosBannerAdUnitId: 'ca-app-pub-3940256099942544/2934735716',
-    // Google test Interstitial IDs
+    iosBannerAdUnitId:     'ca-app-pub-3940256099942544/2934735716',
+    // Google's official test Interstitial Ad Unit IDs
     androidInterstitialAdUnitId: 'ca-app-pub-3940256099942544/1033173712',
-    iosInterstitialAdUnitId: 'ca-app-pub-3940256099942544/4411468910',
-    // Google test Native Advanced IDs
+    iosInterstitialAdUnitId:     'ca-app-pub-3940256099942544/4411468910',
+    // Google's official test Native Advanced Ad Unit IDs
     androidNativeAdUnitId: 'ca-app-pub-3940256099942544/2247696110',
-    iosNativeAdUnitId: 'ca-app-pub-3940256099942544/3986624511',
+    iosNativeAdUnitId:     'ca-app-pub-3940256099942544/3986624511',
   );
 
-  // ── PROD config — replace placeholders before publishing ────────────────────
+  // ── PROD config — resolved from --dart-define at compile time ───────────────
+  //
+  // Each value is supplied via --dart-define=<KEY>=<value> when building.
+  // If a key is absent the placeholder default is used, which will NOT display
+  // real ads and will trigger a warning in debug builds.
+  //
+  // Keys:
+  //   ADMOB_PROD_ANDROID_APP_ID        — Android AdMob App ID (also in AndroidManifest)
+  //   ADMOB_PROD_IOS_APP_ID            — iOS AdMob App ID (also in inject_admob_id.sh)
+  //   ADMOB_PROD_ANDROID_BANNER_ID     — Android Banner Ad Unit ID
+  //   ADMOB_PROD_IOS_BANNER_ID         — iOS Banner Ad Unit ID
+  //   ADMOB_PROD_ANDROID_INTERSTITIAL_ID
+  //   ADMOB_PROD_IOS_INTERSTITIAL_ID
+  //   ADMOB_PROD_ANDROID_NATIVE_ID
+  //   ADMOB_PROD_IOS_NATIVE_ID
   static const AdMobConfig _prod = AdMobConfig._(
     isDev: false,
-    // [PROD Android] Replace with your production Android AdMob App ID
-    androidAppId: 'ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX',
-    // [PROD iOS] Replace with your production iOS AdMob App ID
-    iosAppId: 'ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX',
-    // [PROD Android] Replace with your production Android banner ad unit ID
-    androidBannerAdUnitId: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',
-    // [PROD iOS] Replace with your production iOS banner ad unit ID
-    iosBannerAdUnitId: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',
-    // [PROD Android] Replace with your production Android interstitial ad unit ID
-    androidInterstitialAdUnitId: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',
-    // [PROD iOS] Replace with your production iOS interstitial ad unit ID
-    iosInterstitialAdUnitId: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',
-    // [PROD Android] Replace when Phase 3 launches
-    androidNativeAdUnitId: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',
-    // [PROD iOS] Replace when Phase 3 launches
-    iosNativeAdUnitId: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',
+    // Android PROD App ID — real production ID (also set in android/app/src/prod/AndroidManifest.xml)
+    androidAppId: String.fromEnvironment(
+      'ADMOB_PROD_ANDROID_APP_ID',
+      defaultValue: 'ca-app-pub-5097788367258292~4281310723',
+    ),
+    // iOS PROD App ID — not released yet; supply via --dart-define when ready
+    iosAppId: String.fromEnvironment(
+      'ADMOB_PROD_IOS_APP_ID',
+      defaultValue: _kUnsetAppId,
+    ),
+    // Android PROD Banner Ad Unit ID — real production ID
+    androidBannerAdUnitId: String.fromEnvironment(
+      'ADMOB_PROD_ANDROID_BANNER_ID',
+      defaultValue: 'ca-app-pub-5097788367258292/5961097598',
+    ),
+    // iOS PROD Banner Ad Unit ID — not released yet; supply via --dart-define when ready
+    iosBannerAdUnitId: String.fromEnvironment(
+      'ADMOB_PROD_IOS_BANNER_ID',
+      defaultValue: _kUnsetAdUnit,
+    ),
+    // Android PROD Interstitial Ad Unit ID — real production ID
+    androidInterstitialAdUnitId: String.fromEnvironment(
+      'ADMOB_PROD_ANDROID_INTERSTITIAL_ID',
+      defaultValue: 'ca-app-pub-5097788367258292/5825366227',
+    ),
+    // iOS PROD Interstitial Ad Unit ID — not released yet; supply via --dart-define when ready
+    iosInterstitialAdUnitId: String.fromEnvironment(
+      'ADMOB_PROD_IOS_INTERSTITIAL_ID',
+      defaultValue: _kUnsetAdUnit,
+    ),
+    // Android PROD Native Ad Unit ID — real production ID
+    androidNativeAdUnitId: String.fromEnvironment(
+      'ADMOB_PROD_ANDROID_NATIVE_ID',
+      defaultValue: 'ca-app-pub-5097788367258292/7956705545',
+    ),
+    // iOS PROD Native Ad Unit ID — not released yet; supply via --dart-define when ready
+    iosNativeAdUnitId: String.fromEnvironment(
+      'ADMOB_PROD_IOS_NATIVE_ID',
+      defaultValue: _kUnsetAdUnit,
+    ),
   );
 
+  // ── Config selector ─────────────────────────────────────────────────────────
+
   /// Returns the correct config for the current build flavor.
-  /// DEV flavor → test IDs. PROD flavor → production IDs.
-  static AdMobConfig get current =>
-      AppConfig.isDevelopment ? _dev : _prod;
+  ///
+  /// DEV  → Google test IDs (hardcoded, always safe).
+  /// PROD → IDs from --dart-define values compiled in at build time.
+  static AdMobConfig get current {
+    if (AppConfig.isDevelopment) {
+      if (kDebugMode) {
+        debugPrint('[AdMob] Environment : DEV');
+        debugPrint('[AdMob] Banner ID   : TEST (${_isAndroid ? _dev.androidBannerAdUnitId : _dev.iosBannerAdUnitId})');
+      }
+      return _dev;
+    }
 
-  // ── Convenience getters ─────────────────────────────────────────────────────
+    // PROD — validate that real IDs have been supplied.
+    if (kDebugMode) {
+      final bannerOk = !_prod.androidBannerAdUnitId.contains('XXXXXXXXXXXXXXXX') &&
+                       !_prod.iosBannerAdUnitId.contains('XXXXXXXXXXXXXXXX');
+      debugPrint('[AdMob] Environment : PROD');
+      debugPrint('[AdMob] Banner ID   : ${bannerOk ? "CONFIGURED" : "NOT CONFIGURED — placeholder in use"}');
+      if (!bannerOk) {
+        debugPrint('[AdMob] ⚠  Pass --dart-define=ADMOB_PROD_ANDROID_BANNER_ID=<id>');
+        debugPrint('[AdMob] ⚠  Pass --dart-define=ADMOB_PROD_IOS_BANNER_ID=<id>');
+      }
+    }
 
-  /// True when running on a mobile platform (Android or iOS), not web.
+    return _prod;
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  /// True when running on Android or iOS (not web/desktop).
   static bool get isMobilePlatform =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
@@ -108,22 +210,27 @@ class AdMobConfig {
   static bool get _isAndroid =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
-  /// Platform-appropriate banner ad unit ID for the current flavor.
+  /// Platform-appropriate Banner Ad Unit ID for the current flavor.
   /// Returns empty string on web (ads are disabled on web).
   String get bannerAdUnitId {
     if (!isMobilePlatform) return '';
     return _isAndroid ? androidBannerAdUnitId : iosBannerAdUnitId;
   }
 
-  /// Platform-appropriate interstitial ad unit ID for the current flavor.
+  /// Platform-appropriate Interstitial Ad Unit ID for the current flavor.
   String get interstitialAdUnitId {
     if (!isMobilePlatform) return '';
     return _isAndroid ? androidInterstitialAdUnitId : iosInterstitialAdUnitId;
   }
 
-  /// Platform-appropriate native ad unit ID for the current flavor.
+  /// Platform-appropriate Native Ad Unit ID for the current flavor.
   String get nativeAdUnitId {
     if (!isMobilePlatform) return '';
     return _isAndroid ? androidNativeAdUnitId : iosNativeAdUnitId;
   }
+
+  /// True if this config has all prod ad unit IDs configured (non-placeholder).
+  /// Always true for DEV (test IDs are always valid).
+  bool get isBannerConfigured =>
+      isDev || !bannerAdUnitId.contains('XXXXXXXXXXXXXXXX');
 }

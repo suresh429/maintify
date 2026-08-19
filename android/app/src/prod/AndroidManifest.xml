@@ -2,16 +2,12 @@
 <!--
     PROD flavor manifest — merged on top of src/main/AndroidManifest.xml.
     Contains the PROD AdMob App ID.
-
-    !! BEFORE PUBLISHING !!
-    Replace the placeholder below with your real production AdMob App ID.
-    Get it from: AdMob Console → Apps → Your App → App settings → App ID.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
-        <!-- AdMob PROD App ID — TODO: replace with real production App ID -->
+        <!-- AdMob PROD App ID — real production Android App ID -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX"/>
+            android:value="ca-app-pub-5097788367258292~4281310723"/>
     </application>
 </manifest>
