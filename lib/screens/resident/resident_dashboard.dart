@@ -251,12 +251,22 @@ class _ResidentHome extends StatelessWidget {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const MaintifyBannerAd(),
+        const Padding(
+          padding: EdgeInsets.only(top: 5),
+          child: MaintifyBannerAd(),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
         ApartmentHeader(
               apartmentName: apt?.name ?? 'My Apartment',
               presidentName: apt?.presidentName ?? 'Unassigned',
               role: UserRole.resident,
             ),
+
+           // const SizedBox(height: 10),
 
             // Hero card
             Container(
@@ -392,7 +402,7 @@ class _ResidentHome extends StatelessWidget {
             ),
 
             if (overdueViews.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -419,12 +429,12 @@ class _ResidentHome extends StatelessWidget {
             ],
 
             if (upcomingMeetings.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               _UpcomingMeetingsBanner(
                   meetings: upcomingMeetings, theme: theme),
             ],
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
 
             Row(
               children: [
@@ -458,7 +468,7 @@ class _ResidentHome extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
 
             if (pendingMonths.isNotEmpty) ...[
               Text('Pending Months', style: AppTextStyles.heading3(color: cs.onSurface)),
@@ -496,9 +506,12 @@ class _ResidentHome extends StatelessWidget {
                 ),
               ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
           ],
-        );
+        ),
+          ),
+        ],
+      );
 
     return RefreshIndicator(
       color: accent,
@@ -507,10 +520,7 @@ class _ResidentHome extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         child: isWeb
             ? WebPageContainer(maxWidth: 860, child: content)
-            : Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                child: content,
-              ),
+            : content,
       ),
     );
   }

@@ -337,13 +337,23 @@ class _PresidentHome extends StatelessWidget {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const MaintifyBannerAd(),
+        const Padding(
+          padding: EdgeInsets.only(top: 5),
+          child: MaintifyBannerAd(),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
         ApartmentHeader(
               apartmentName: apt?.name ?? 'My Apartment',
               presidentName:
                   apt?.presidentName ?? auth.currentUser?.name ?? 'You',
               role: UserRole.president,
             ),
+
+           // const SizedBox(height: 10),
 
             // Hero banner
             Container(
@@ -442,7 +452,7 @@ class _PresidentHome extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
             // ── Schedule Meeting action card ──────────────────────────────
             GestureDetector(
@@ -509,18 +519,18 @@ class _PresidentHome extends StatelessWidget {
 
             // Upcoming meetings section
             if (upcomingMeetings.isNotEmpty) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 10),
               Text('Upcoming Meetings', style: AppTextStyles.heading3(color: cs.onSurface)),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               ...upcomingMeetings.map((m) => _MeetingCard(
                     meeting: m,
                     theme: theme,
                   )),
             ],
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
             Text('Quick Stats', style: AppTextStyles.heading3(color: cs.onSurface)),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             if (isWeb)
               Row(
@@ -648,9 +658,9 @@ class _PresidentHome extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
             Text('Recent Bills', style: AppTextStyles.heading3(color: cs.onSurface)),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             if (recentBills.isEmpty)
               const EmptyState(
@@ -736,9 +746,12 @@ class _PresidentHome extends StatelessWidget {
                 );
               }),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
           ],
-        );
+        ),
+          ),
+        ],
+      );
 
     return RefreshIndicator(
       color: accent,
@@ -747,10 +760,7 @@ class _PresidentHome extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         child: isWeb
             ? WebPageContainer(maxWidth: 960, child: content)
-            : Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                child: content,
-              ),
+            : content,
       ),
     );
   }

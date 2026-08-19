@@ -24,7 +24,7 @@ class ApartmentHeader extends StatelessWidget {
     final accent = theme.effectivePrimary(context);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: cs.surface,

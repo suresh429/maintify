@@ -93,11 +93,12 @@ class _MaintifyBannerAdState extends State<MaintifyBannerAd> {
 
     return SafeArea(
       top: false,
-      child: Container(
-        width: _bannerAd!.size.width.toDouble(),
-        height: _bannerAd!.size.height.toDouble(),
-        alignment: Alignment.center,
-        child: AdWidget(ad: _bannerAd!),
+      child: Center(
+        child: SizedBox(
+          width: _bannerAd!.size.width.toDouble(),
+          height: _bannerAd!.size.height.toDouble(),
+          child: AdWidget(ad: _bannerAd!),
+        ),
       ),
     );
   }
