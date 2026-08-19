@@ -20,6 +20,10 @@ class CommunityScreen extends StatelessWidget {
       length: 3,
       child: Column(
         children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 5),
+            child: MaintifyBannerAd(),
+          ),
           // TabBar
           Container(
             color: cs.surface,
@@ -56,8 +60,6 @@ class CommunityScreen extends StatelessWidget {
           Divider(
               height: 1,
               color: cs.outlineVariant.withValues(alpha: 0.4)),
-
-          const MaintifyBannerAd(),
 
           // Tab views
           const Expanded(

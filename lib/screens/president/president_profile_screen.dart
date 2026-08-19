@@ -73,7 +73,7 @@ class _PresidentProfileScreenState extends State<PresidentProfileScreen> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: isWeb ? 720 : double.infinity),
                 child: Padding(
-              padding: EdgeInsets.fromLTRB(isWeb ? 24 : 16, 20, isWeb ? 24 : 16, 40),
+              padding: EdgeInsets.fromLTRB(isWeb ? 24 : 8, 20, isWeb ? 24 : 8, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -156,6 +156,12 @@ class _PresidentProfileScreenState extends State<PresidentProfileScreen> {
                         label: 'Privacy Policy',
                         iconColor: const Color(0xFF10B981),
                         onTap: () => AppUtils.launchPrivacyPolicy(context),
+                      ),
+                      _SettingTile(
+                        icon: Icons.description_outlined,
+                        label: 'Terms of Service',
+                        iconColor: const Color(0xFF6366F1),
+                        onTap: () => AppUtils.launchTerms(context),
                       ),
                       _SettingTile(
                         icon: Icons.info_outline_rounded,

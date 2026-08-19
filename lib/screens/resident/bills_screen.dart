@@ -41,9 +41,13 @@ class _BillsScreenState extends State<BillsScreen> {
 
     return Column(
       children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 5),
+          child: MaintifyBannerAd(),
+        ),
         // Filter tabs
         Padding(
-          padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 16, isWeb ? 24.0 : 16.0, 0),
+          padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 8.0, 8, isWeb ? 24.0 : 8.0, 0),
           child: Row(
             children: _filters.map((f) {
               final isActive = _filter == f;
@@ -96,9 +100,6 @@ class _BillsScreenState extends State<BillsScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 4),
-        const MaintifyBannerAd(),
-
         Expanded(
           child: displayed.isEmpty
               ? EmptyState(
@@ -115,7 +116,7 @@ class _BillsScreenState extends State<BillsScreen> {
                       : Icons.receipt_outlined,
                 )
               : ListView.builder(
-                  padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 4, isWeb ? 24.0 : 16.0, 100),
+                  padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 8.0, 4, isWeb ? 24.0 : 8.0, 100),
                   itemCount: displayed.length,
                   itemBuilder: (_, i) {
                     final item = _UserMonthlyCard(

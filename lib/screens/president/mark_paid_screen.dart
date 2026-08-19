@@ -43,7 +43,7 @@ class MarkPaidScreen extends StatelessWidget {
         if (pendingApprovals.isNotEmpty) ...[
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 16, isWeb ? 24.0 : 16.0, 10),
+              padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 8.0, 16, isWeb ? 24.0 : 8.0, 10),
               child: Row(
                 children: [
                   const Icon(Icons.hourglass_top_rounded,
@@ -73,7 +73,7 @@ class MarkPaidScreen extends StatelessWidget {
                   isLoading: billProvider.isLoading,
                 );
                 return Padding(
-                  padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 0, isWeb ? 24.0 : 16.0, 10),
+                  padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 8.0, 0, isWeb ? 24.0 : 8.0, 10),
                   child: isWeb
                       ? Align(
                           alignment: Alignment.topCenter,
@@ -90,20 +90,13 @@ class MarkPaidScreen extends StatelessWidget {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 4, isWeb ? 24.0 : 16.0, 0),
+              padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 8.0, 4, isWeb ? 24.0 : 8.0, 0),
               child: const Divider(),
             ),
           ),
         ],
 
         // ── Monthly summaries ─────────────────────────────────────────────
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 12, isWeb ? 24.0 : 16.0, 8),
-            child: Text('Monthly Bills',
-                style: AppTextStyles.heading3()),
-          ),
-        ),
         SliverList(
           delegate: SliverChildBuilderDelegate(
             (_, i) {
@@ -114,7 +107,7 @@ class MarkPaidScreen extends StatelessWidget {
               );
               return Padding(
                 padding: EdgeInsets.fromLTRB(
-                    isWeb ? 24.0 : 16.0, 0, isWeb ? 24.0 : 16.0,
+                    isWeb ? 24.0 : 8.0, i == 0 ? 8 : 0, isWeb ? 24.0 : 8.0,
                     i == monthlySummaries.length - 1 ? 100 : 0),
                 child: isWeb
                     ? Align(

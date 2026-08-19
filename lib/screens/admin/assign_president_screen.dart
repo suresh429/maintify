@@ -99,7 +99,7 @@ class _AssignPresidentScreenState extends State<AssignPresidentScreen> {
     final accent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

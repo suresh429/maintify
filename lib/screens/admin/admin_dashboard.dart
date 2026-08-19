@@ -584,7 +584,7 @@ class _DashboardHome extends StatelessWidget {
         child: isWeb
             ? WebPageContainer(maxWidth: 1000, child: contentColumn)
             : Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                padding: const EdgeInsets.all(8),
                 child: contentColumn,
               ),
       ),

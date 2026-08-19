@@ -34,7 +34,7 @@ class _ApartmentsScreenState extends State<ApartmentsScreen> {
         .toList();
 
     final isWeb = MediaQuery.sizeOf(context).width >= 600;
-    final hPad = isWeb ? 24.0 : 16.0;
+    final hPad = isWeb ? 24.0 : 8.0;
     final maxW = isWeb ? 1100.0 : double.infinity;
 
     return Column(

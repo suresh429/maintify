@@ -62,7 +62,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 40),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

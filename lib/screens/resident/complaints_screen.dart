@@ -36,7 +36,7 @@ class ComplaintsScreen extends StatelessWidget {
           body: complaints.isEmpty
               ? _EmptyState(onRaise: () => _showNewComplaintSheet(context, user))
               : ListView.builder(
-                  padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 16, isWeb ? 24.0 : 16.0, 100),
+                  padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 8.0, 16, isWeb ? 24.0 : 8.0, 100),
                   itemCount: complaints.length,
                   itemBuilder: (_, i) {
                     final complaint = complaints[i];

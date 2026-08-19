@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 
 /// Seeds Firestore with minimal demo data for Google Play Internal Testing.
 ///
-/// Guard document : `_meta/seeded_v4`
+/// Guard document : `_meta/seeded_v5`
 /// Seeds on first launch only; repairs the Admin account on subsequent launches.
 ///
 /// ┌──────────────┬──────────────────────────────┬───────────────┐
@@ -12,23 +12,25 @@ import 'package:flutter/foundation.dart';
 /// ├──────────────┼──────────────────────────────┼───────────────┤
 /// │ Admin        │ support.maintify@gmail.com   │ maintify@0606 │
 /// │ President    │ president@maintify.demo      │ Maintify@123  │
-/// │ Resident     │ resident@maintify.demo       │ Maintify@123  │
+/// │ Resident 1   │ resident@maintify.demo       │ Maintify@123  │
+/// │ Resident 2   │ resident2@maintify.demo      │ Maintify@123  │
 /// └──────────────┴──────────────────────────────┴───────────────┘
 ///
 /// Apartment : Green Valley Residency (GRVL1234)
-/// Flats     : 101 (President), 102 (Resident)
-/// Bill      : 1 maintenance bill — current month, both pending
-/// Complaint : 1 open complaint from Resident
+/// Flats     : 101 (President), 102 (Resident 1), 103 (Resident 2)
+/// Bill      : 1 maintenance bill — current month, all pending
+/// Complaint : 1 open complaint from Resident 1
 /// Meeting   : 1 scheduled meeting
 class DbSeeder {
   static final FirebaseFirestore _db   = FirebaseFirestore.instance;
   static final FirebaseAuth      _auth = FirebaseAuth.instance;
 
-  static const _adminEmail     = 'support.maintify@gmail.com';
-  static const _adminPassword  = 'maintify@0606';
-  static const _presidentEmail = 'president@maintify.demo';
-  static const _residentEmail  = 'resident@maintify.demo';
-  static const _demoPassword   = 'Maintify@123';
+  static const _adminEmail      = 'support.maintify@gmail.com';
+  static const _adminPassword   = 'maintify@0606';
+  static const _presidentEmail  = 'president@maintify.demo';
+  static const _residentEmail   = 'resident@maintify.demo';
+  static const _resident2Email  = 'resident2@maintify.demo';
+  static const _demoPassword    = 'Maintify@123';
 
   static const _aptId = 'apt_greenvalley';
 
@@ -36,7 +38,7 @@ class DbSeeder {
 
   static Future<void> seedIfNeeded() async {
     try {
-      final meta = await _db.collection('_meta').doc('seeded_v4').get();
+      final meta = await _db.collection('_meta').doc('seeded_v5').get();
       if (meta.exists) {
         await _repairAdmin();
         return;
@@ -80,16 +82,18 @@ class DbSeeder {
     final now = DateTime.now();
 
     // 1. Create Firebase Auth accounts
-    final adminUid     = await _createAuthUser(_adminEmail,     _adminPassword);
-    final presidentUid = await _createAuthUser(_presidentEmail, _demoPassword);
-    final residentUid  = await _createAuthUser(_residentEmail,  _demoPassword);
+    final adminUid      = await _createAuthUser(_adminEmail,     _adminPassword);
+    final presidentUid  = await _createAuthUser(_presidentEmail, _demoPassword);
+    final residentUid   = await _createAuthUser(_residentEmail,  _demoPassword);
+    final resident2Uid  = await _createAuthUser(_resident2Email, _demoPassword);
 
     // Resolve UIDs (sign in if account already existed)
-    final adminId     = adminUid     ?? await _signInUid(_adminEmail,     _adminPassword);
-    final presidentId = presidentUid ?? await _signInUid(_presidentEmail, _demoPassword);
-    final residentId  = residentUid  ?? await _signInUid(_residentEmail,  _demoPassword);
+    final adminId      = adminUid     ?? await _signInUid(_adminEmail,     _adminPassword);
+    final presidentId  = presidentUid ?? await _signInUid(_presidentEmail, _demoPassword);
+    final residentId   = residentUid  ?? await _signInUid(_residentEmail,  _demoPassword);
+    final resident2Id  = resident2Uid ?? await _signInUid(_resident2Email, _demoPassword);
 
-    if (presidentId == null || residentId == null) {
+    if (presidentId == null || residentId == null || resident2Id == null) {
       debugPrint('[DbSeeder] Could not resolve UIDs — aborting seed.');
       return;
     }
@@ -115,7 +119,7 @@ class DbSeeder {
       'status':         'active',
       'type':           'Apartment',
       'address':        '12, Green Valley Road, Hyderabad - 500032',
-      'totalFlats':     2,
+      'totalFlats':     3,
       'towerCount':     0,
       'towerNames':     [],
       'presidentId':    presidentId,
@@ -123,7 +127,7 @@ class DbSeeder {
       'presidentEmail': _presidentEmail,
       'presidentPhone': '+91 98765 10001',
       'presidentFlat':  '101',
-      'occupiedFlats':  2,
+      'occupiedFlats':  3,
       'createdAt':      Timestamp.fromDate(now),
       'updatedAt':      Timestamp.fromDate(now),
     });
@@ -163,7 +167,7 @@ class DbSeeder {
       'updatedAt':    Timestamp.fromDate(now),
     });
 
-    // 5. Flat 102 — Resident
+    // 5. Flat 102 — Resident 1
     batch.set(_db.collection('flats').doc('${_aptId}_102'), {
       'flatNumber':   '102',
       'tower':        null,
@@ -174,21 +178,45 @@ class DbSeeder {
       'updatedAt':    Timestamp.fromDate(now),
     });
 
+    // 6. Flat 103 — Resident 2
+    batch.set(_db.collection('flats').doc('${_aptId}_103'), {
+      'flatNumber':   '103',
+      'tower':        null,
+      'status':       'occupied',
+      'residentId':   resident2Id,
+      'residentType': 'Resident',
+      'apartmentId':  _aptId,
+      'updatedAt':    Timestamp.fromDate(now),
+    });
+
+    // 7. Resident 2 user doc
+    batch.set(_db.collection('users').doc(resident2Id), {
+      'name':           'Priya Mehta',
+      'email':          _resident2Email,
+      'phone':          '+91 98765 30001',
+      'role':           'resident',
+      'apartmentId':    _aptId,
+      'unit':           '103',
+      'avatarInitials': 'PM',
+      'isActive':       true,
+      'joinedAt':       Timestamp.fromDate(now),
+    });
+
     await batch.commit();
 
-    // 6. Bill — current month maintenance, both pending
-    await _seedBill(presidentId, residentId, now);
+    // 8. Bill — current month maintenance, all pending
+    await _seedBill(presidentId, residentId, resident2Id, now);
 
-    // 7. Complaint — one open complaint from Resident
+    // 9. Complaint — one open complaint from Resident 1
     await _seedComplaint(residentId, now);
 
-    // 8. Meeting — one upcoming scheduled meeting
+    // 10. Meeting — one upcoming scheduled meeting
     await _seedMeeting(presidentId, now);
 
-    // 9. Guard doc
-    await _db.collection('_meta').doc('seeded_v4').set({
+    // 11. Guard doc
+    await _db.collection('_meta').doc('seeded_v5').set({
       'seededAt': Timestamp.fromDate(now),
-      'version':  4,
+      'version':  5,
     });
 
     // 10. Sign back in as Admin so the app loads the Admin dashboard
@@ -205,6 +233,7 @@ class DbSeeder {
   static Future<void> _seedBill(
     String presidentId,
     String residentId,
+    String resident2Id,
     DateTime now,
   ) async {
     final billRef = _db.collection('bills').doc();
@@ -219,12 +248,12 @@ class DbSeeder {
       'categories': [
         {
           'name':          'Maintenance',
-          'totalAmount':   2000.0,
+          'totalAmount':   3000.0,
           'splitType':     'common',
           'userOverrides': <String, dynamic>{},
         },
       ],
-      'eligibleCount':   2,
+      'eligibleCount':   3,
       'excludedUserIds': [],
       'dueDate':         Timestamp.fromDate(dueDate),
       'createdAt':       Timestamp.fromDate(now),
@@ -244,12 +273,25 @@ class DbSeeder {
       'proofUrl':    null,
     });
 
-    // Resident payment — pending
+    // Resident 1 payment — pending
     batch.set(_db.collection('payments').doc('${billId}_$residentId'), {
       'billId':      billId,
       'userId':      residentId,
       'apartmentId': _aptId,
       'flatNumber':  '102',
+      'amount':      1000.0,
+      'status':      'pending',
+      'paidAt':      null,
+      'approvedAt':  null,
+      'proofUrl':    null,
+    });
+
+    // Resident 2 payment — pending
+    batch.set(_db.collection('payments').doc('${billId}_$resident2Id'), {
+      'billId':      billId,
+      'userId':      resident2Id,
+      'apartmentId': _aptId,
+      'flatNumber':  '103',
       'amount':      1000.0,
       'status':      'pending',
       'paidAt':      null,

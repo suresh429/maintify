@@ -215,7 +215,7 @@ class _AdManagementScreenState extends State<AdManagementScreen> {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 40),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
