@@ -251,6 +251,7 @@ class _ResidentHome extends StatelessWidget {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const MaintifyBannerAd(),
         ApartmentHeader(
               apartmentName: apt?.name ?? 'My Apartment',
               presidentName: apt?.presidentName ?? 'Unassigned',
@@ -495,7 +496,6 @@ class _ResidentHome extends StatelessWidget {
                 ),
               ),
 
-            const MaintifyBannerAd(),
             const SizedBox(height: 20),
           ],
         );

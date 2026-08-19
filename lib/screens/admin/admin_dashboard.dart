@@ -22,6 +22,7 @@ import '../shared/notifications_screen.dart';
 import '../../widgets/logout_sheet.dart';
 import '../../widgets/web/web_app_shell.dart';
 import '../../widgets/web/web_page_container.dart';
+import '../../widgets/maintify_banner_ad.dart';
 import 'ad_management_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -558,6 +559,7 @@ class _DashboardHome extends StatelessWidget {
               ],
             ),
 
+            const MaintifyBannerAd(),
             const SizedBox(height: 24),
             Text('Properties', style: AppTextStyles.heading3(color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 14),

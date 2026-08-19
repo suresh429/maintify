@@ -7,6 +7,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../widgets/shimmer_loading.dart';
+import '../../widgets/maintify_banner_ad.dart';
 import 'monthly_bill_detail_screen.dart';
 
 class BillsScreen extends StatefulWidget {
@@ -96,6 +97,7 @@ class _BillsScreenState extends State<BillsScreen> {
           ),
         ),
         const SizedBox(height: 4),
+        const MaintifyBannerAd(),
 
         Expanded(
           child: displayed.isEmpty

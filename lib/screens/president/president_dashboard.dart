@@ -27,6 +27,7 @@ import '../shared/notifications_screen.dart';
 import 'edit_bill_sheet.dart';
 import '../../widgets/web/web_app_shell.dart';
 import '../../widgets/web/web_page_container.dart';
+import '../../widgets/maintify_banner_ad.dart';
 
 class PresidentDashboard extends StatefulWidget {
   final String? notificationType;
@@ -336,6 +337,7 @@ class _PresidentHome extends StatelessWidget {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const MaintifyBannerAd(),
         ApartmentHeader(
               apartmentName: apt?.name ?? 'My Apartment',
               presidentName:
@@ -567,8 +569,6 @@ class _PresidentHome extends StatelessWidget {
                   ),
                 ],
               ),
-
-            const SizedBox(height: 24),
 
             // Collection progress
             Container(

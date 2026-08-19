@@ -27,7 +27,11 @@ class _MaintifyBannerAdState extends State<MaintifyBannerAd> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final enabled = context.watch<AdsProvider>().effectiveBannerEnabled;
+    final ads = context.watch<AdsProvider>();
+    final enabled = ads.effectiveBannerEnabled;
+    debugPrint('[MaintifyBannerAd] didChangeDependencies — effectiveBannerEnabled=$enabled '
+        'configLoaded=${ads.isLoaded} globalAds=${ads.globalAdsEnabled} '
+        'aptAds=${ads.apartmentAdsEnabled}');
     if (enabled && _bannerAd == null) {
       _loadAd();
     } else if (!enabled && _bannerAd != null) {
@@ -36,9 +40,16 @@ class _MaintifyBannerAdState extends State<MaintifyBannerAd> {
   }
 
   void _loadAd() {
-    if (kIsWeb || !AdMobIds.isMobilePlatform) return;
+    if (kIsWeb || !AdMobIds.isMobilePlatform) {
+      debugPrint('[MaintifyBannerAd] skipped — web or unsupported platform');
+      return;
+    }
     final adUnitId = AdMobIds.bannerAdUnitId;
-    if (adUnitId.isEmpty) return;
+    if (adUnitId.isEmpty) {
+      debugPrint('[MaintifyBannerAd] skipped — adUnitId is empty');
+      return;
+    }
+    debugPrint('[MaintifyBannerAd] loading ad — unit=$adUnitId');
 
     _bannerAd = BannerAd(
       adUnitId: adUnitId,
@@ -46,9 +57,11 @@ class _MaintifyBannerAdState extends State<MaintifyBannerAd> {
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (_) {
+          debugPrint('[MaintifyBannerAd] ad loaded successfully');
           if (mounted) setState(() => _isAdLoaded = true);
         },
-        onAdFailedToLoad: (ad, _) {
+        onAdFailedToLoad: (ad, error) {
+          debugPrint('[MaintifyBannerAd] ad FAILED to load: code=${error.code} message=${error.message} domain=${error.domain}');
           ad.dispose();
           _bannerAd = null;
           if (mounted) setState(() => _isAdLoaded = false);

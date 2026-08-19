@@ -698,10 +698,17 @@ class FirestoreService {
 
   /// Writes/merges the full ad configuration (super admin only).
   Future<void> updateAdConfig(AdConfig config, {required String updatedBy}) {
+    final payload = config.toMap(updatedBy: updatedBy);
+    debugPrint('[FirestoreService] updateAdConfig() writing systemConfig/adManagement: $payload');
     return _db
         .collection('systemConfig')
         .doc('adManagement')
-        .set(config.toMap(updatedBy: updatedBy), SetOptions(merge: true));
+        .set(payload, SetOptions(merge: true))
+        .then((_) => debugPrint('[FirestoreService] updateAdConfig() write SUCCESS'))
+        .catchError((e, st) {
+      debugPrint('[FirestoreService] updateAdConfig() write FAILED: $e\n$st');
+      throw e;
+    });
   }
 
   /// Fetches the current ad configuration once (non-streaming).
@@ -725,10 +732,16 @@ class FirestoreService {
     required bool adsEnabled,
     required String updatedBy,
   }) {
+    debugPrint('[FirestoreService] updateApartmentAdsEnabled() aptId=$aptId adsEnabled=$adsEnabled updatedBy=$updatedBy');
     return _db.collection('apartments').doc(aptId).update({
       'adsEnabled': adsEnabled,
       'adsUpdatedAt': FieldValue.serverTimestamp(),
       'adsUpdatedBy': updatedBy,
+    })
+        .then((_) => debugPrint('[FirestoreService] updateApartmentAdsEnabled() SUCCESS'))
+        .catchError((e, st) {
+      debugPrint('[FirestoreService] updateApartmentAdsEnabled() FAILED: $e\n$st');
+      throw e;
     });
   }
 }

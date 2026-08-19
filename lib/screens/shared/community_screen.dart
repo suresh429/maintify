@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
+import '../../widgets/maintify_banner_ad.dart';
 import '../resident/complaints_screen.dart';
 import '../resident/directory_screen.dart';
 import 'payment_board_screen.dart';
@@ -55,6 +56,8 @@ class CommunityScreen extends StatelessWidget {
           Divider(
               height: 1,
               color: cs.outlineVariant.withValues(alpha: 0.4)),
+
+          const MaintifyBannerAd(),
 
           // Tab views
           const Expanded(

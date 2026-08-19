@@ -42,14 +42,19 @@ class _AdManagementScreenState extends State<AdManagementScreen> {
   Future<void> _save(AdConfig config) async {
     final auth = context.read<AuthProvider>();
     final uid = auth.currentUser?.id ?? '';
+    debugPrint('[AdMgmt] _save() called — uid=$uid adsEnabled=${config.adsEnabled} '
+        'banner=${config.bannerEnabled} interstitial=${config.interstitialEnabled}');
     setState(() => _isSaving = true);
     try {
       await context.read<AdsProvider>().updateAdConfig(config, uid);
+      debugPrint('[AdMgmt] _save() SUCCESS');
       if (mounted) {
         AppUtils.showSnackBar(context, 'Settings saved',
             color: AppColors.paid);
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[AdMgmt] _save() FAILED: $e');
+      debugPrint('[AdMgmt] StackTrace: $st');
       if (mounted) {
         AppUtils.showSnackBar(context, 'Failed to save. Please try again.',
             color: AppColors.overdue);
@@ -97,9 +102,11 @@ class _AdManagementScreenState extends State<AdManagementScreen> {
   Future<void> _setApartmentAds(String aptId, bool value) async {
     final auth = context.read<AuthProvider>();
     final uid = auth.currentUser?.id ?? '';
+    debugPrint('[AdMgmt] _setApartmentAds() aptId=$aptId value=$value uid=$uid');
     setState(() => _isSaving = true);
     try {
       await context.read<AdsProvider>().setApartmentAdsEnabled(aptId, value, uid);
+      debugPrint('[AdMgmt] _setApartmentAds() SUCCESS');
       if (mounted) {
         AppUtils.showSnackBar(
           context,
@@ -107,7 +114,9 @@ class _AdManagementScreenState extends State<AdManagementScreen> {
           color: value ? AppColors.paid : AppColors.overdue,
         );
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[AdMgmt] _setApartmentAds() FAILED: $e');
+      debugPrint('[AdMgmt] StackTrace: $st');
       if (mounted) {
         AppUtils.showSnackBar(context, 'Failed. Please try again.',
             color: AppColors.overdue);

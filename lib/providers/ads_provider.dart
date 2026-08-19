@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
 import '../core/ads/ad_config.dart';
 import '../core/ads/admob_ids.dart';
@@ -85,8 +85,11 @@ class AdsProvider extends ChangeNotifier {
 
   void _startConfigListener() {
     _configSub?.cancel();
+    debugPrint('[AdsProvider] _startConfigListener() — subscribing to systemConfig/adManagement');
     _configSub = _fs.streamAdConfig().listen(
       (config) {
+        debugPrint('[AdsProvider] streamAdConfig update: adsEnabled=${config.adsEnabled} '
+            'banner=${config.bannerEnabled} interstitial=${config.interstitialEnabled}');
         _adConfig = config;
         _configLoaded = true;
         notifyListeners();
@@ -95,7 +98,8 @@ class AdsProvider extends ChangeNotifier {
           InterstitialManager.instance.preload(config);
         }
       },
-      onError: (_) {
+      onError: (e, st) {
+        debugPrint('[AdsProvider] streamAdConfig ERROR: $e\n$st');
         // Keep safe default (off) and mark loaded so UI can proceed.
         _configLoaded = true;
         notifyListeners();
@@ -105,13 +109,16 @@ class AdsProvider extends ChangeNotifier {
 
   void _startApartmentListener(String aptId) {
     _aptSub?.cancel();
+    debugPrint('[AdsProvider] _startApartmentListener() — aptId=$aptId');
     _aptSub = _fs.streamApartmentAdsConfig(aptId).listen(
       (enabled) {
+        debugPrint('[AdsProvider] streamApartmentAdsConfig update: aptId=$aptId adsEnabled=$enabled');
         _apartmentAdsEnabled = enabled;
         _aptLoaded = true;
         notifyListeners();
       },
-      onError: (_) {
+      onError: (e, st) {
+        debugPrint('[AdsProvider] streamApartmentAdsConfig ERROR: aptId=$aptId error=$e\n$st');
         _aptLoaded = true;
         notifyListeners();
       },
@@ -122,6 +129,7 @@ class AdsProvider extends ChangeNotifier {
 
   /// Super admin: update the full global ad configuration.
   Future<void> updateAdConfig(AdConfig config, String updatedBy) {
+    debugPrint('[AdsProvider] updateAdConfig() updatedBy=$updatedBy payload=${config.toMap(updatedBy: updatedBy)}');
     return _fs.updateAdConfig(config, updatedBy: updatedBy);
   }
 
@@ -133,6 +141,7 @@ class AdsProvider extends ChangeNotifier {
 
   Future<void> setApartmentAdsEnabled(
       String aptId, bool enabled, String updatedBy) {
+    debugPrint('[AdsProvider] setApartmentAdsEnabled() aptId=$aptId enabled=$enabled updatedBy=$updatedBy');
     return _fs.updateApartmentAdsEnabled(
       aptId: aptId,
       adsEnabled: enabled,
