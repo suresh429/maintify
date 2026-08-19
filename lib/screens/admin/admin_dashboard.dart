@@ -24,6 +24,7 @@ import '../../widgets/web/web_app_shell.dart';
 import '../../widgets/web/web_page_container.dart';
 import '../../widgets/maintify_banner_ad.dart';
 import 'ad_management_screen.dart';
+import 'web_ad_management_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   final String? notificationType;
@@ -41,6 +42,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     'Apartments',
     'Assign President',
     'Reports',
+    'Ad Management',
   ];
 
   @override
@@ -62,6 +64,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return const AssignPresidentScreen();
       case 3:
         return const ReportsScreen();
+      case 4:
+        return const WebAdManagementScreen();
       default:
         return const _DashboardHome();
     }
@@ -82,6 +86,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           WebNavItem(icon: Icons.apartment_outlined, label: 'Apartments'),
           WebNavItem(icon: Icons.manage_accounts_outlined, label: 'Assign President'),
           WebNavItem(icon: Icons.bar_chart_outlined, label: 'Reports'),
+          WebNavItem(icon: Icons.ads_click_rounded, label: 'Ad Management'),
         ],
         currentIndex: _currentIndex,
         onIndexChanged: (i) => setState(() => _currentIndex = i),
