@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    DEV flavor manifest — merged on top of src/main/AndroidManifest.xml.
+    Contains the DEV AdMob App ID (Google's official test app ID).
+    This ID is safe to commit — it is intentionally public for testing.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- AdMob DEV App ID — Google's official test App ID -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713"/>
+    </application>
+</manifest>

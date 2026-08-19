@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import '../ads/ad_config.dart';
 import '../../models/user_model.dart';
 import '../../models/apartment_model.dart';
 import '../../models/flat_model.dart';
@@ -662,4 +663,72 @@ class FirestoreService {
   /// once — it uses `welcomeEmailSentAt` for idempotency.
   Future<void> setWelcomeEmailReady(String userId) =>
       _db.collection('users').doc(userId).update({'welcomeEmailReady': true});
+
+  // ─────────────────────────────── ADS CONFIG ─────────────────────────────────
+  // Firestore path: systemConfig/adManagement
+  // Schema: { adsEnabled, banner:{enabled}, interstitial:{enabled,frequency,cooldownSeconds},
+  //           native:{enabled}, updatedAt, updatedBy }
+
+  /// Streams the full ad configuration from [systemConfig/adManagement].
+  /// Emits an [AdConfig.defaultOff()] (everything disabled) when the document
+  /// does not exist or cannot be read — ads are never accidentally enabled.
+  Stream<AdConfig> streamAdConfig() {
+    return _db
+        .collection('systemConfig')
+        .doc('adManagement')
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists || doc.data() == null) return AdConfig.defaultOff();
+      try {
+        return AdConfig.fromMap(doc.data()!);
+      } catch (_) {
+        return AdConfig.defaultOff();
+      }
+    });
+  }
+
+  /// Streams only the apartment-level adsEnabled field.
+  /// Emits [false] (ads OFF) when the field is absent or the document missing.
+  Stream<bool> streamApartmentAdsConfig(String aptId) {
+    return _db.collection('apartments').doc(aptId).snapshots().map((doc) {
+      if (!doc.exists) return false;
+      return (doc.data()?['adsEnabled'] as bool?) ?? false;
+    });
+  }
+
+  /// Writes/merges the full ad configuration (super admin only).
+  Future<void> updateAdConfig(AdConfig config, {required String updatedBy}) {
+    return _db
+        .collection('systemConfig')
+        .doc('adManagement')
+        .set(config.toMap(updatedBy: updatedBy), SetOptions(merge: true));
+  }
+
+  /// Fetches the current ad configuration once (non-streaming).
+  Future<AdConfig> getAdConfig() async {
+    try {
+      final doc = await _db
+          .collection('systemConfig')
+          .doc('adManagement')
+          .get();
+      if (!doc.exists || doc.data() == null) return AdConfig.defaultOff();
+      return AdConfig.fromMap(doc.data()!);
+    } catch (_) {
+      return AdConfig.defaultOff();
+    }
+  }
+
+  /// Updates only the adsEnabled field in an apartment document.
+  /// Called by both super admin and president.
+  Future<void> updateApartmentAdsEnabled({
+    required String aptId,
+    required bool adsEnabled,
+    required String updatedBy,
+  }) {
+    return _db.collection('apartments').doc(aptId).update({
+      'adsEnabled': adsEnabled,
+      'adsUpdatedAt': FieldValue.serverTimestamp(),
+      'adsUpdatedBy': updatedBy,
+    });
+  }
 }

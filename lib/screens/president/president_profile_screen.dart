@@ -19,6 +19,7 @@ import '../../widgets/change_password_sheet.dart';
 import '../../widgets/logout_sheet.dart';
 import '../shared/notifications_screen.dart';
 import 'transfer_president_screen.dart';
+import 'president_advertising_screen.dart';
 
 class PresidentProfileScreen extends StatefulWidget {
   const PresidentProfileScreen({super.key});
@@ -130,6 +131,15 @@ class _PresidentProfileScreenState extends State<PresidentProfileScreen> {
                         onTap: () => Navigator.push(context,
                             MaterialPageRoute(
                                 builder: (_) => const TransferPresidentScreen())),
+                      ),
+                      _SettingTile(
+                        icon: Icons.ads_click_rounded,
+                        label: 'Advertising',
+                        subtitle: 'Control ads for your residents',
+                        iconColor: const Color(0xFF8B5CF6),
+                        onTap: () => Navigator.push(context,
+                            MaterialPageRoute(
+                                builder: (_) => const PresidentAdvertisingScreen())),
                       ),
                     ],
                   ),

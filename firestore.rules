@@ -190,5 +190,20 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create, update, delete: if isSuperAdmin();
     }
+
+    // ── App Config (legacy — kept for backward compatibility) ────────────────
+    match /app_config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    // ── System Config ─────────────────────────────────────────────────────────
+    // systemConfig/adManagement: global ad configuration (Phase 1/2/3).
+    // Authenticated users can read (required for Firestore stream in AdsProvider).
+    // Only super admin can write.
+    match /systemConfig/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
   }
 }

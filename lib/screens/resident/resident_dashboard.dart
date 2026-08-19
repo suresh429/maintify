@@ -21,6 +21,7 @@ import '../shared/notifications_screen.dart';
 import '../shared/community_screen.dart';
 import '../../widgets/web/web_app_shell.dart';
 import '../../widgets/web/web_page_container.dart';
+import '../../widgets/maintify_banner_ad.dart';
 
 class ResidentDashboard extends StatefulWidget {
   final String? notificationType;
@@ -494,6 +495,7 @@ class _ResidentHome extends StatelessWidget {
                 ),
               ),
 
+            const MaintifyBannerAd(),
             const SizedBox(height: 20),
           ],
         );

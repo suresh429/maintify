@@ -16,6 +16,7 @@ class ApartmentModel {
   final String? presidentId;
   final int totalFlats;
   final int occupiedFlats;
+  final bool adsEnabled;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -35,6 +36,7 @@ class ApartmentModel {
     this.presidentId,
     required this.totalFlats,
     this.occupiedFlats = 0,
+    this.adsEnabled = true,
     required this.createdAt,
     this.updatedAt,
   });
@@ -61,6 +63,7 @@ class ApartmentModel {
       presidentId: d['presidentId'] as String?,
       totalFlats: (d['totalFlats'] as int?) ?? 0,
       occupiedFlats: (d['occupiedFlats'] as int?) ?? 0,
+      adsEnabled: (d['adsEnabled'] as bool?) ?? true,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
     );
@@ -100,6 +103,7 @@ class ApartmentModel {
     String? presidentEmail,
     String? presidentPhone,
     int? occupiedFlats,
+    bool? adsEnabled,
     DateTime? updatedAt,
   }) {
     return ApartmentModel(
@@ -119,6 +123,7 @@ class ApartmentModel {
       presidentPhone: presidentPhone ?? this.presidentPhone,
       totalFlats: totalFlats,
       occupiedFlats: occupiedFlats ?? this.occupiedFlats,
+      adsEnabled: adsEnabled ?? this.adsEnabled,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
