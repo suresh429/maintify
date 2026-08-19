@@ -28,6 +28,8 @@ import 'edit_bill_sheet.dart';
 import '../../widgets/web/web_app_shell.dart';
 import '../../widgets/web/web_page_container.dart';
 import '../../widgets/maintify_banner_ad.dart';
+import '../../providers/ads_provider.dart';
+import '../../core/ads/interstitial_manager.dart';
 
 class PresidentDashboard extends StatefulWidget {
   final String? notificationType;
@@ -56,6 +58,19 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
       default:
         return 0;
     }
+  }
+
+  void _onTabSelected(int index) {
+    if (index != _currentIndex) {
+      final ads = context.read<AdsProvider>();
+      if (ads.effectiveInterstitialEnabled) {
+        InterstitialManager.instance.recordEligibleAction(
+          config: ads.adConfig,
+          apartmentAdsEnabled: ads.apartmentAdsEnabled,
+        );
+      }
+    }
+    setState(() => _currentIndex = index);
   }
 
   @override
@@ -91,7 +106,7 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
           WebNavItem(icon: Icons.person_outline_rounded, label: 'Profile'),
         ],
         currentIndex: _currentIndex,
-        onIndexChanged: (i) => setState(() => _currentIndex = i),
+        onIndexChanged: _onTabSelected,
         child: IndexedStack(index: _currentIndex, children: _pages),
       );
     }
@@ -106,7 +121,7 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
         ),
         child: NavigationBar(
           selectedIndex: _currentIndex,
-          onDestinationSelected: (i) => setState(() => _currentIndex = i),
+          onDestinationSelected: _onTabSelected,
           backgroundColor: Colors.transparent,
           indicatorColor: theme.effectivePrimary(context).withValues(alpha: 0.15),
           surfaceTintColor: Colors.transparent,

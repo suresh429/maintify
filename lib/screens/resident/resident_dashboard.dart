@@ -21,7 +21,9 @@ import '../shared/notifications_screen.dart';
 import '../shared/community_screen.dart';
 import '../../widgets/web/web_app_shell.dart';
 import '../../widgets/web/web_page_container.dart';
-import '../../widgets/maintify_banner_ad.dart';
+import '../../providers/ads_provider.dart';
+import '../../core/ads/interstitial_manager.dart';
+import '../../widgets/maintify_native_ad.dart';
 
 class ResidentDashboard extends StatefulWidget {
   final String? notificationType;
@@ -49,6 +51,19 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
       default:
         return 0;
     }
+  }
+
+  void _onTabSelected(int index) {
+    if (index != _currentIndex) {
+      final ads = context.read<AdsProvider>();
+      if (ads.effectiveInterstitialEnabled) {
+        InterstitialManager.instance.recordEligibleAction(
+          config: ads.adConfig,
+          apartmentAdsEnabled: ads.apartmentAdsEnabled,
+        );
+      }
+    }
+    setState(() => _currentIndex = index);
   }
 
   @override
@@ -82,7 +97,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
           WebNavItem(icon: Icons.person_outlined, label: 'Profile'),
         ],
         currentIndex: _currentIndex,
-        onIndexChanged: (i) => setState(() => _currentIndex = i),
+        onIndexChanged: _onTabSelected,
         child: IndexedStack(index: _currentIndex, children: _pages),
       );
     }
@@ -97,7 +112,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
         ),
         child: NavigationBar(
           selectedIndex: _currentIndex,
-          onDestinationSelected: (i) => setState(() => _currentIndex = i),
+          onDestinationSelected: _onTabSelected,
           backgroundColor: Colors.transparent,
           indicatorColor: theme.secondary.withValues(alpha: 0.12),
           surfaceTintColor: Colors.transparent,
@@ -251,10 +266,6 @@ class _ResidentHome extends StatelessWidget {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 5),
-          child: MaintifyBannerAd(),
-        ),
         Padding(
           padding: const EdgeInsets.all(8),
           child: Column(
@@ -506,6 +517,7 @@ class _ResidentHome extends StatelessWidget {
                 ),
               ),
 
+            const MaintifyNativeAd(),
             const SizedBox(height: 10),
           ],
         ),

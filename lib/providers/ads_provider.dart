@@ -68,6 +68,15 @@ class AdsProvider extends ChangeNotifier {
         _apartmentAdsEnabled;
   }
 
+  /// True when native ads should be shown.
+  bool get effectiveNativeEnabled {
+    if (kIsWeb || !AdMobIds.isMobilePlatform) return false;
+    if (!_configLoaded || !_aptLoaded) return false;
+    return _adConfig.adsEnabled &&
+        _adConfig.nativeEnabled &&
+        _apartmentAdsEnabled;
+  }
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
   /// Called from DashboardRouter._StreamStarter after login.
