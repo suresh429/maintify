@@ -87,7 +87,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
               child: Column(
                 children: [
                   // ── Section 1: Hero Summary ──────────────────────────────

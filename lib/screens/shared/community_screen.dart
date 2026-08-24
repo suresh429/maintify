@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
+import '../../widgets/maintify_banner_ad.dart';
 import '../resident/complaints_screen.dart';
 import '../resident/directory_screen.dart';
 import 'payment_board_screen.dart';
@@ -19,6 +20,10 @@ class CommunityScreen extends StatelessWidget {
       length: 3,
       child: Column(
         children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 5),
+            child: MaintifyBannerAd(),
+          ),
           // TabBar
           Container(
             color: cs.surface,

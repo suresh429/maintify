@@ -7,6 +7,7 @@ import '../providers/complaint_provider.dart';
 import '../providers/meeting_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/user_provider.dart';
+import '../providers/ads_provider.dart';
 import '../core/theme/role_theme.dart';
 import 'admin/admin_dashboard.dart';
 import 'president/president_dashboard.dart';
@@ -94,6 +95,8 @@ class _StreamStarterState extends State<_StreamStarter> {
       // Each user only sees notifications written with their own userId.
       context.read<NotificationProvider>().startListening(user.id);
       context.read<MeetingProvider>().startListening(aptId);
+      // Start ads configuration listener.
+      context.read<AdsProvider>().startListening(aptId.isEmpty ? null : aptId);
 
       switch (role) {
         case UserRole.admin:

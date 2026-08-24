@@ -121,7 +121,7 @@ class _PresidentComplaintsScreenState extends State<PresidentComplaintsScreen> {
                         ),
                       )
                     : ListView.builder(
-                        padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 16, isWeb ? 24.0 : 16.0, 24),
+                        padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 8.0, 16, isWeb ? 24.0 : 8.0, 24),
                         itemCount: filtered.length,
                         itemBuilder: (_, i) {
                           final item = _AdminComplaintTile(

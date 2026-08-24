@@ -39,7 +39,7 @@ class ReportsScreen extends StatelessWidget {
       children: [
         // Overall summary banner
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: AppColors.superAdminGradient,

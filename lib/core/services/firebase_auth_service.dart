@@ -16,6 +16,7 @@ class FirebaseAuthService {
     'support.maintify@gmail.com',
     'president@maintify.demo',
     'resident@maintify.demo',
+    'resident2@maintify.demo',
   };
 
   User? get firebaseUser => _auth.currentUser;

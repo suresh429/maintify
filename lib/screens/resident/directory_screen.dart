@@ -18,7 +18,7 @@ class DirectoryScreen extends StatelessWidget {
     final aptId = auth.currentUser?.apartmentId ?? '';
 
     final isWeb = MediaQuery.sizeOf(context).width >= 600;
-    final hPad = isWeb ? 24.0 : 16.0;
+    final hPad = isWeb ? 24.0 : 8.0;
 
     return Consumer<UserProvider>(
       builder: (_, userProv, __) {

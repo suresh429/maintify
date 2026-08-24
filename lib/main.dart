@@ -20,6 +20,8 @@ import 'providers/notification_provider.dart';
 import 'providers/meeting_provider.dart';
 import 'providers/registration_provider.dart';
 import 'providers/version_provider.dart';
+import 'providers/ads_provider.dart';
+import 'core/services/admob_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/auth/registration_screen.dart';
@@ -51,6 +53,9 @@ Future<void> bootstrap(
 
   // ── Firebase ──────────────────────────────────────────────────────────────
   await Firebase.initializeApp(options: options);
+
+  // ── AdMob (mobile only) ────────────────────────────────────────────────
+  await AdMobService.initialize();
 
   // ── Seed Firestore with demo data (dev + prod for Play Store review) ────────
   // Guarded by _meta/seeded_v4 — runs once per Firebase project, never again.
@@ -143,6 +148,7 @@ class MaintifyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MeetingProvider()),
         ChangeNotifierProvider(create: (_) => RegistrationProvider()),
         ChangeNotifierProvider(create: (_) => VersionProvider()),
+        ChangeNotifierProvider(create: (_) => AdsProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

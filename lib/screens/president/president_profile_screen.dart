@@ -19,6 +19,7 @@ import '../../widgets/change_password_sheet.dart';
 import '../../widgets/logout_sheet.dart';
 import '../shared/notifications_screen.dart';
 import 'transfer_president_screen.dart';
+import 'president_advertising_screen.dart';
 
 class PresidentProfileScreen extends StatefulWidget {
   const PresidentProfileScreen({super.key});
@@ -72,7 +73,7 @@ class _PresidentProfileScreenState extends State<PresidentProfileScreen> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: isWeb ? 720 : double.infinity),
                 child: Padding(
-              padding: EdgeInsets.fromLTRB(isWeb ? 24 : 16, 20, isWeb ? 24 : 16, 40),
+              padding: EdgeInsets.fromLTRB(isWeb ? 24 : 8, 20, isWeb ? 24 : 8, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -131,6 +132,15 @@ class _PresidentProfileScreenState extends State<PresidentProfileScreen> {
                             MaterialPageRoute(
                                 builder: (_) => const TransferPresidentScreen())),
                       ),
+                      _SettingTile(
+                        icon: Icons.ads_click_rounded,
+                        label: 'Advertising',
+                        subtitle: 'Control ads for your residents',
+                        iconColor: const Color(0xFF8B5CF6),
+                        onTap: () => Navigator.push(context,
+                            MaterialPageRoute(
+                                builder: (_) => const PresidentAdvertisingScreen())),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -146,6 +156,12 @@ class _PresidentProfileScreenState extends State<PresidentProfileScreen> {
                         label: 'Privacy Policy',
                         iconColor: const Color(0xFF10B981),
                         onTap: () => AppUtils.launchPrivacyPolicy(context),
+                      ),
+                      _SettingTile(
+                        icon: Icons.description_outlined,
+                        label: 'Terms of Service',
+                        iconColor: const Color(0xFF6366F1),
+                        onTap: () => AppUtils.launchTerms(context),
                       ),
                       _SettingTile(
                         icon: Icons.info_outline_rounded,

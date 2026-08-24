@@ -68,19 +68,31 @@ class AppUtils {
     return parts.last;
   }
 
-  static const _privacyPolicyUrl =
-      'https://suresh429.github.io/maintify/privacy/';
+  static const _privacyPolicyUrl = 'https://maintify.web.app/privacy-policy.html';
+  static const _termsUrl         = 'https://maintify.web.app/terms.html';
+
+  static LaunchMode get _browserMode => defaultTargetPlatform == TargetPlatform.android
+      ? LaunchMode.inAppBrowserView
+      : LaunchMode.externalApplication;
 
   /// Opens the privacy policy.
   /// Android → Chrome Custom Tabs; iOS → external browser (Safari).
   static Future<void> launchPrivacyPolicy(BuildContext context) async {
     final uri = Uri.parse(_privacyPolicyUrl);
-    final mode = defaultTargetPlatform == TargetPlatform.android
-        ? LaunchMode.inAppBrowserView
-        : LaunchMode.externalApplication;
-    if (!await launchUrl(uri, mode: mode)) {
+    if (!await launchUrl(uri, mode: _browserMode)) {
       if (context.mounted) {
         showSnackBar(context, 'Could not open Privacy Policy', isError: true);
+      }
+    }
+  }
+
+  /// Opens the Terms of Service.
+  /// Android → Chrome Custom Tabs; iOS → external browser (Safari).
+  static Future<void> launchTerms(BuildContext context) async {
+    final uri = Uri.parse(_termsUrl);
+    if (!await launchUrl(uri, mode: _browserMode)) {
+      if (context.mounted) {
+        showSnackBar(context, 'Could not open Terms of Service', isError: true);
       }
     }
   }

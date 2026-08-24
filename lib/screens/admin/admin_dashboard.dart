@@ -22,6 +22,9 @@ import '../shared/notifications_screen.dart';
 import '../../widgets/logout_sheet.dart';
 import '../../widgets/web/web_app_shell.dart';
 import '../../widgets/web/web_page_container.dart';
+import '../../widgets/maintify_banner_ad.dart';
+import 'ad_management_screen.dart';
+import 'web_ad_management_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   final String? notificationType;
@@ -39,6 +42,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     'Apartments',
     'Assign President',
     'Reports',
+    'Ad Management',
   ];
 
   @override
@@ -60,6 +64,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return const AssignPresidentScreen();
       case 3:
         return const ReportsScreen();
+      case 4:
+        return const WebAdManagementScreen();
       default:
         return const _DashboardHome();
     }
@@ -80,6 +86,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           WebNavItem(icon: Icons.apartment_outlined, label: 'Apartments'),
           WebNavItem(icon: Icons.manage_accounts_outlined, label: 'Assign President'),
           WebNavItem(icon: Icons.bar_chart_outlined, label: 'Reports'),
+          WebNavItem(icon: Icons.ads_click_rounded, label: 'Ad Management'),
         ],
         currentIndex: _currentIndex,
         onIndexChanged: (i) => setState(() => _currentIndex = i),
@@ -405,6 +412,12 @@ class _DashboardHome extends StatelessWidget {
                   color: Theme.of(context).colorScheme.onSurface)),
           const SizedBox(height: 14),
           ...aptProvider.apartments.map((apt) => _ApartmentCard(apt: apt)),
+          const SizedBox(height: 24),
+          Text('Platform Settings',
+              style: AppTextStyles.heading3(
+                  color: Theme.of(context).colorScheme.onSurface)),
+          const SizedBox(height: 14),
+          _PlatformSettingsCard(),
         ] else ...[
           // ── Mobile: original hero banner ───────────────────────────────
           Container(
@@ -551,11 +564,17 @@ class _DashboardHome extends StatelessWidget {
               ],
             ),
 
+            const MaintifyBannerAd(),
             const SizedBox(height: 24),
             Text('Properties', style: AppTextStyles.heading3(color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 14),
 
             ...aptProvider.apartments.map((apt) => _ApartmentCard(apt: apt)),
+
+            const SizedBox(height: 24),
+            Text('Platform Settings', style: AppTextStyles.heading3(color: Theme.of(context).colorScheme.onSurface)),
+            const SizedBox(height: 14),
+            _PlatformSettingsCard(),
 
             const SizedBox(height: 20),
           ],
@@ -570,7 +589,7 @@ class _DashboardHome extends StatelessWidget {
         child: isWeb
             ? WebPageContainer(maxWidth: 1000, child: contentColumn)
             : Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                padding: const EdgeInsets.all(8),
                 child: contentColumn,
               ),
       ),
@@ -777,6 +796,67 @@ class _ApartmentCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis),
         ),
       ],
+    );
+  }
+}
+
+// ── Platform settings card ────────────────────────────────────────────────────
+
+class _PlatformSettingsCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = RoleTheme.of(UserRole.admin).effectivePrimary(context);
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => const AdManagementScreen()),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.ads_click_rounded, color: accent, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Advertising',
+                      style: AppTextStyles.subheading(color: cs.onSurface)),
+                  Text('Control platform-wide ad settings',
+                      style: AppTextStyles.caption(
+                          color: cs.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                color: cs.onSurfaceVariant, size: 20),
+          ],
+        ),
+      ),
     );
   }
 }

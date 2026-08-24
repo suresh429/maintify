@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    PROD flavor manifest — merged on top of src/main/AndroidManifest.xml.
+    Contains the PROD AdMob App ID.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- AdMob PROD App ID — real production Android App ID -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-5097788367258292~4281310723"/>
+    </application>
+</manifest>

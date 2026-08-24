@@ -33,7 +33,7 @@ class PaymentHistoryScreen extends StatelessWidget {
       children: [
         // ── Summary card ──────────────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
           child: _SummaryCard(
             totalPaid: totalPaid,
             count: paidViews.length,
@@ -45,7 +45,7 @@ class PaymentHistoryScreen extends StatelessWidget {
 
         // ── Section header ────────────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -86,7 +86,7 @@ class PaymentHistoryScreen extends StatelessWidget {
                   icon: Icons.receipt_long_outlined,
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 100),
                   itemCount: paidViews.length,
                   itemBuilder: (_, i) {
                     final showMonth = i == 0 ||

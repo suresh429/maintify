@@ -96,7 +96,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 : ListView.builder(
                     padding: isWeb
                         ? const EdgeInsets.symmetric(vertical: 12)
-                        : const EdgeInsets.all(16),
+                        : const EdgeInsets.all(8),
                     itemCount: notifications.length,
                     itemBuilder: (_, i) {
                       final tile = _NotificationTile(

@@ -27,6 +27,9 @@ import '../shared/notifications_screen.dart';
 import 'edit_bill_sheet.dart';
 import '../../widgets/web/web_app_shell.dart';
 import '../../widgets/web/web_page_container.dart';
+import '../../widgets/maintify_banner_ad.dart';
+import '../../providers/ads_provider.dart';
+import '../../core/ads/interstitial_manager.dart';
 
 class PresidentDashboard extends StatefulWidget {
   final String? notificationType;
@@ -55,6 +58,19 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
       default:
         return 0;
     }
+  }
+
+  void _onTabSelected(int index) {
+    if (index != _currentIndex) {
+      final ads = context.read<AdsProvider>();
+      if (ads.effectiveInterstitialEnabled) {
+        InterstitialManager.instance.recordEligibleAction(
+          config: ads.adConfig,
+          apartmentAdsEnabled: ads.apartmentAdsEnabled,
+        );
+      }
+    }
+    setState(() => _currentIndex = index);
   }
 
   @override
@@ -90,7 +106,7 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
           WebNavItem(icon: Icons.person_outline_rounded, label: 'Profile'),
         ],
         currentIndex: _currentIndex,
-        onIndexChanged: (i) => setState(() => _currentIndex = i),
+        onIndexChanged: _onTabSelected,
         child: IndexedStack(index: _currentIndex, children: _pages),
       );
     }
@@ -105,7 +121,7 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
         ),
         child: NavigationBar(
           selectedIndex: _currentIndex,
-          onDestinationSelected: (i) => setState(() => _currentIndex = i),
+          onDestinationSelected: _onTabSelected,
           backgroundColor: Colors.transparent,
           indicatorColor: theme.effectivePrimary(context).withValues(alpha: 0.15),
           surfaceTintColor: Colors.transparent,
@@ -336,12 +352,23 @@ class _PresidentHome extends StatelessWidget {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 5),
+          child: MaintifyBannerAd(),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
         ApartmentHeader(
               apartmentName: apt?.name ?? 'My Apartment',
               presidentName:
                   apt?.presidentName ?? auth.currentUser?.name ?? 'You',
               role: UserRole.president,
             ),
+
+           // const SizedBox(height: 10),
 
             // Hero banner
             Container(
@@ -440,7 +467,7 @@ class _PresidentHome extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
             // ── Schedule Meeting action card ──────────────────────────────
             GestureDetector(
@@ -507,18 +534,18 @@ class _PresidentHome extends StatelessWidget {
 
             // Upcoming meetings section
             if (upcomingMeetings.isNotEmpty) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 10),
               Text('Upcoming Meetings', style: AppTextStyles.heading3(color: cs.onSurface)),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               ...upcomingMeetings.map((m) => _MeetingCard(
                     meeting: m,
                     theme: theme,
                   )),
             ],
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
             Text('Quick Stats', style: AppTextStyles.heading3(color: cs.onSurface)),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             if (isWeb)
               Row(
@@ -567,8 +594,6 @@ class _PresidentHome extends StatelessWidget {
                   ),
                 ],
               ),
-
-            const SizedBox(height: 24),
 
             // Collection progress
             Container(
@@ -648,9 +673,9 @@ class _PresidentHome extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
             Text('Recent Bills', style: AppTextStyles.heading3(color: cs.onSurface)),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             if (recentBills.isEmpty)
               const EmptyState(
@@ -736,9 +761,12 @@ class _PresidentHome extends StatelessWidget {
                 );
               }),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
           ],
-        );
+        ),
+          ),
+        ],
+      );
 
     return RefreshIndicator(
       color: accent,
@@ -747,10 +775,7 @@ class _PresidentHome extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         child: isWeb
             ? WebPageContainer(maxWidth: 960, child: content)
-            : Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                child: content,
-              ),
+            : content,
       ),
     );
   }

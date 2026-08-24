@@ -76,7 +76,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       children: [
         // Capacity banner
         Padding(
-          padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 12, isWeb ? 24.0 : 16.0, 0),
+          padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 8.0, 12, isWeb ? 24.0 : 8.0, 0),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
@@ -117,7 +117,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
         // Search bar
         Padding(
-          padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 10, isWeb ? 24.0 : 16.0, 0),
+          padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 8.0, 10, isWeb ? 24.0 : 8.0, 0),
           child: TextField(
             onChanged: (v) => setState(() => _search = v),
             decoration: InputDecoration(
@@ -140,7 +140,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           ),
         ),
         Padding(
-          padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 4, isWeb ? 24.0 : 16.0, 8),
+          padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 8.0, 4, isWeb ? 24.0 : 8.0, 8),
           child: Text('${filtered.length} member${filtered.length != 1 ? 's' : ''}',
               style: AppTextStyles.caption(color: AppColors.textSecondary)),
         ),
@@ -153,7 +153,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                   icon: Icons.person_search_outlined,
                 )
               : ListView.builder(
-                  padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 16.0, 0, isWeb ? 24.0 : 16.0, 100),
+                  padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 8.0, 0, isWeb ? 24.0 : 8.0, 100),
                   itemCount: filtered.length,
                   itemBuilder: (_, i) {
                     final item = _MemberCard(
