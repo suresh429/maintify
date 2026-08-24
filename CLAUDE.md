@@ -17,6 +17,19 @@ flutter build apk --flavor prod -t lib/main_prod.dart
 flutter build ios --flavor dev -t lib/main_dev.dart
 flutter build ios --flavor prod -t lib/main_prod.dart
 
+# Build PROD with real AdMob IDs (pass all 8 --dart-define flags)
+flutter build appbundle --flavor prod -t lib/main_prod.dart \
+  --dart-define=ADMOB_PROD_ANDROID_APP_ID=ca-app-pub-REAL~APPID \
+  --dart-define=ADMOB_PROD_ANDROID_BANNER_ID=ca-app-pub-REAL/BANNERID \
+  --dart-define=ADMOB_PROD_ANDROID_INTERSTITIAL_ID=ca-app-pub-REAL/INTID \
+  --dart-define=ADMOB_PROD_ANDROID_NATIVE_ID=ca-app-pub-REAL/NATIVEID \
+  --dart-define=ADMOB_PROD_IOS_APP_ID=ca-app-pub-REAL~APPID \
+  --dart-define=ADMOB_PROD_IOS_BANNER_ID=ca-app-pub-REAL/BANNERID \
+  --dart-define=ADMOB_PROD_IOS_INTERSTITIAL_ID=ca-app-pub-REAL/INTID \
+  --dart-define=ADMOB_PROD_IOS_NATIVE_ID=ca-app-pub-REAL/NATIVEID
+# Note: App IDs must also be set in android/app/src/prod/AndroidManifest.xml
+# and ios/inject_admob_id.sh (PROD_ADMOB_APP_ID variable)
+
 # Run/build for web (no flavor flag; uses main_dev.dart or main_prod.dart)
 flutter run -d chrome -t lib/main_dev.dart
 flutter build web -t lib/main_prod.dart
@@ -95,6 +108,7 @@ All 12 providers registered at root in `main.dart`. All provider files live in `
 | `ThemeProvider` | Dark/light mode toggle; persists `isDarkMode` flag to Hive `'session'` box under key `isDarkMode` |
 | `VersionProvider` | Checks Firebase Remote Config for app version via `VersionService`; exposes `UpdateStatus` (`upToDate`, `optionalUpdate`, `forceUpdate`) and `AppVersionModel` |
 | `ConnectivityProvider` | Wraps `ConnectivityService` (internet_connection_checker_plus); exposes `isConnected`/`isDisconnected`. Only `GlobalConnectivityOverlay` consumes it — no screen should subscribe directly. |
+| `AdsProvider` | Streams `AdConfig` from `systemConfig/adManagement` and apartment-level `adsEnabled` flag. Exposes `effectiveBannerEnabled`, `effectiveInterstitialEnabled`, `effectiveNativeEnabled`. Called `startListening(aptId)` from `DashboardRouter`. Admin screens call `updateAdConfig()` / `setApartmentAdsEnabled()`. Always disabled on web. |
 
 Providers that use Firestore streams call `startListening(...)` from `DashboardRouter` after login. They cache data locally and call `notifyListeners()` on stream updates.
 
@@ -275,6 +289,8 @@ Always check before building a new component:
 | `LogoutSheet` | Confirmation bottom sheet for logout |
 | `EmptyState` | Empty-state placeholder with icon, title, subtitle, and optional action button — defined in `shimmer_loading.dart` |
 | `UpdateDialog` | Force/soft update dialog driven by `VersionProvider`; shown from `SplashScreen` |
+| `MaintifyBannerAd` | Adaptive banner ad; reads `AdsProvider.effectiveBannerEnabled`; no-ops on web. Drop-in — no params needed. |
+| `MaintifyNativeAd` | Native ad widget (Phase 3 — `nativeEnabled` gate). |
 
 ### Bottom Sheet Rules
 
@@ -296,6 +312,29 @@ Use `Column(mainAxisSize: MainAxisSize.min)` to avoid full-height expansion.
 - **President:** AppBar settings icon (`Icons.settings_outlined`) → `showChangePasswordSheet(context)`
 - **Resident:** Profile screen "More" menu → "Change Password" tile → `showChangePasswordSheet(context)`
 - **Admin:** Profile/settings flow → `showChangePasswordSheet(context)`
+
+### AdMob / Advertising
+
+The app has a three-layer ad enable gate: **global kill switch** (`AdConfig.adsEnabled`) AND **per-type switch** (`bannerEnabled`/`interstitialEnabled`/`nativeEnabled`) AND **per-apartment switch** (`apartments/{id}.adsEnabled`). All three must be true for ads to show. Ads are always disabled on web and non-mobile platforms.
+
+**Firestore structure:**
+- `systemConfig/adManagement` — `AdConfig` document (global; managed by super admin via `ad_management_screen.dart`)
+- `apartments/{id}.adsEnabled` — per-apartment flag (managed by super admin per apartment; president sees read-only status on `president_advertising_screen.dart`)
+
+**Key files:**
+- `lib/core/ads/ad_config.dart` — `AdConfig` model (parsed from Firestore). Safe default is `AdConfig.defaultOff()` — all false.
+- `lib/core/ads/admob_config.dart` — `AdMobConfig`: DEV uses Google hardcoded test IDs; PROD reads IDs from `--dart-define` at compile time.
+- `lib/core/ads/admob_ids.dart` — `AdMobIds`: platform-aware helper returning the correct ad unit ID for the current platform/flavor.
+- `lib/core/ads/interstitial_manager.dart` — `InterstitialManager.instance` singleton. Call `preload(config)` after login; call `recordEligibleAction(config, aptAdsEnabled, onDismissed)` at eligible navigation transitions. Frequency and cooldown driven by `AdConfig` fields.
+- `lib/core/services/admob_service.dart` — `AdMobService.initialize()`: initialises the Google Mobile Ads SDK during `bootstrap()`. No-ops on web.
+- `lib/widgets/maintify_banner_ad.dart` — `MaintifyBannerAd`: adaptive banner that self-manages `BannerAd` lifecycle; returns `SizedBox.shrink()` when ads are off.
+- `lib/widgets/maintify_native_ad.dart` — `MaintifyNativeAd`: native ad widget (Phase 3).
+
+**Admin screens:**
+- `lib/screens/admin/ad_management_screen.dart` — super admin controls for global `AdConfig`
+- `lib/screens/admin/web_ad_management_screen.dart` — web variant
+- `lib/screens/admin/advertising_settings_screen.dart` — per-apartment ads toggle
+- `lib/screens/president/president_advertising_screen.dart` — president read-only view
 
 ## Backend: Firebase Cloud Functions (`functions/`)
 
