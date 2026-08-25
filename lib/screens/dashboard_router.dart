@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -9,6 +10,8 @@ import '../providers/notification_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/ads_provider.dart';
 import '../core/theme/role_theme.dart';
+import '../core/services/widget_data_service.dart';
+import '../core/utils/app_utils.dart';
 import 'admin/admin_dashboard.dart';
 import 'president/president_dashboard.dart';
 import 'resident/resident_dashboard.dart';
@@ -72,14 +75,34 @@ class _StreamStarter extends StatefulWidget {
   State<_StreamStarter> createState() => _StreamStarterState();
 }
 
-class _StreamStarterState extends State<_StreamStarter> {
+class _StreamStarterState extends State<_StreamStarter> with WidgetsBindingObserver {
   bool _started = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh widget data whenever user returns to the app.
+      Future.delayed(const Duration(seconds: 1), () => _pushWidgetUpdate());
+    }
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_started) return;
-    _started = true; // set synchronously so rebuilds before the frame don't double-start
+    _started = true;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -89,33 +112,81 @@ class _StreamStarterState extends State<_StreamStarter> {
       final aptId = user.apartmentId ?? '';
       final role = auth.role!;
 
-      // Start all Firestore listeners
       context.read<ApartmentProvider>().startListening();
       context.read<UserProvider>().startListening();
-      // Each user only sees notifications written with their own userId.
       context.read<NotificationProvider>().startListening(user.id);
       context.read<MeetingProvider>().startListening(aptId);
-      // Start ads configuration listener.
       context.read<AdsProvider>().startListening(aptId.isEmpty ? null : aptId);
 
       switch (role) {
         case UserRole.admin:
           context.read<BillProvider>().startListeningAll();
-          break;
         case UserRole.president:
           context.read<BillProvider>().startListeningForApartment(aptId);
           context.read<ComplaintProvider>().startListeningForApartment(aptId);
-          break;
         case UserRole.resident:
-          // Load all apartment bills and payments so the community payment board
-          // and complaint board can display all residents' data.
           context.read<BillProvider>().startListeningForApartment(aptId);
           context
               .read<ComplaintProvider>()
               .startListeningForApartment(aptId);
-          break;
+      }
+
+      // Push initial widget snapshot after streams are started.
+      // A 3-second delay lets the first Firestore snapshots arrive.
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+        Future.delayed(const Duration(seconds: 3), () => _pushWidgetUpdate());
       }
     });
+  }
+
+  /// Reads current app state and pushes a snapshot to iOS WidgetKit.
+  /// Silently no-ops if any data is not yet loaded.
+  void _pushWidgetUpdate() {
+    if (!mounted || kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
+    try {
+      final auth = context.read<AuthProvider>();
+      if (!auth.isLoggedIn || auth.currentUser == null) return;
+
+      final user = auth.currentUser!;
+      final aptProvider = context.read<ApartmentProvider>();
+      final billProvider = context.read<BillProvider>();
+
+      final apt = user.apartmentId != null
+          ? aptProvider.findById(user.apartmentId!)
+          : null;
+
+      int pendingCount = 0;
+      String? pendingAmountDisplay;
+
+      switch (auth.role) {
+        case UserRole.resident:
+          pendingCount = billProvider.pendingUserBillsCount(user.id);
+          final due = billProvider.totalDueForUser(user.id);
+          if (due > 0) pendingAmountDisplay = '₹${due.toStringAsFixed(0)}';
+        case UserRole.president:
+          if (user.apartmentId != null) {
+            final summaries =
+                billProvider.monthlyBillsForApartment(user.apartmentId!);
+            if (summaries.isNotEmpty) {
+              pendingCount = summaries.first.pendingFlats;
+            }
+          }
+        case UserRole.admin:
+        case null:
+          break;
+      }
+
+      WidgetDataService.update(
+        isLoggedIn: true,
+        apartmentName: apt?.name,
+        residentName: AppUtils.displayFirstName(user.name),
+        userRole: auth.role?.name,
+        pendingBillCount: pendingCount,
+        pendingAmountDisplay: pendingAmountDisplay,
+      );
+    } catch (e) {
+      debugPrint('[Widget] _pushWidgetUpdate error (non-critical): $e');
+    }
   }
 
   @override

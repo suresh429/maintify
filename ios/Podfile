@@ -8,6 +8,12 @@ project 'Runner', {
   'Debug' => :debug,
   'Profile' => :release,
   'Release' => :release,
+  'Debug-dev' => :debug,
+  'Debug-prod' => :debug,
+  'Release-dev' => :release,
+  'Release-prod' => :release,
+  'Profile-dev' => :release,
+  'Profile-prod' => :release,
 }
 
 def flutter_root
@@ -34,6 +40,12 @@ target 'Runner' do
   target 'RunnerTests' do
     inherit! :search_paths
   end
+end
+
+# Widget extension — pure SwiftUI, no pods required.
+target 'MaintifyWidgetExtension' do
+  use_frameworks!
+  # No CocoaPods dependencies — WidgetKit is a system framework.
 end
 
 post_install do |installer|

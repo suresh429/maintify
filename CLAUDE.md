@@ -70,7 +70,7 @@ Two flavors — `dev` and `prod` — each with its own Firebase project and entr
 | Firebase project | `maintify-dev` | `maintify-ff8c4` |
 | App name | `Maintify Dev` | `Maintify` |
 | Debug banner | shown | hidden |
-| DbSeeder | runs | runs (guarded by `_meta/seeded_v4`) |
+| DbSeeder | runs | runs (guarded by `_meta/seeded_v5`) |
 
 Both entry points call `bootstrap(FirebaseOptions, AppEnvironment)` in `main.dart`, which initializes Hive, Firebase, and optionally runs `DbSeeder`.
 
@@ -84,7 +84,7 @@ Both entry points call `bootstrap(FirebaseOptions, AppEnvironment)` in `main.dar
 
 Three roles drive the entire app structure: `admin` (super admin), `president` (apartment president), and `resident`. `UserRole` is defined in `lib/core/theme/role_theme.dart` — **not** in `user_model.dart`. Role is determined at login via `AuthProvider`. `DashboardRouter` (`lib/screens/dashboard_router.dart`) watches `AuthProvider` and routes accordingly.
 
-**Test credentials** (seeded via `DbSeeder` — DEV flavor only, guarded by `_meta/seeded_v4`):
+**Test credentials** (seeded via `DbSeeder` — DEV flavor only, guarded by `_meta/seeded_v5`):
 - `support.maintify@gmail.com` / `maintify@0606` → Admin (super admin)
 - `president@maintify.demo` / `Maintify@123` → President (demo apartment)
 - `resident@maintify.demo` / `Maintify@123` → Resident (demo apartment)
@@ -126,7 +126,7 @@ All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `
 - `president_invitations/` — created by super admins; consumed by `onPresidentInvitationCreated` Cloud Function and the president activation flow
 - `complaints/{id}/messages/` — message subcollection; streamed per-complaint by `ComplaintProvider.subscribeToMessages()`
 - `flats/` — individual flat docs, auto-generated at apartment creation. Doc ID: `${aptId}_${flatNumber}`. Fields: `flatNumber`, `tower` (null for non-gated), `status` (`available`|`occupied`), `residentId`, `residentType` (`President`|`Resident`|null), `apartmentId`.
-- `_meta/seeded_v4` — guards `DbSeeder` from re-running
+- `_meta/seeded_v5` — guards `DbSeeder` from re-running
 
 **`DashboardProvider` important note:** Its stats getters read from `MockXxx` statics only. This is intentional — it's kept accurate because `UserProvider`, `ApartmentProvider`, and `BillProvider` all call `replaceAll()` in their stream listeners.
 
@@ -193,7 +193,7 @@ apartments/{id}:
 | `FirestoreService` | Singleton — all collection reads/writes. Providers never import `FirebaseFirestore` directly. Includes `updateBill`, `updatePayment`, `deleteBill`, `deleteAllPaymentsForBill`. |
 | `FirebaseAuthService` | Wraps `FirebaseAuth`. Handles sign-in, password change, reset email, `registerPresident`, `registerResident`. |
 | `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). Uses `flutter_local_notifications` to display foreground messages. Uses `navigatorKey` for out-of-tree navigation on notification tap. |
-| `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded_v4`. **DEV flavor only** — `bootstrap()` skips seeding when `AppConfig.isProduction`. Creates admin, demo president, demo resident, demo apartment (Green Valley Residency / `GRVL1234`), one maintenance bill, one open complaint, and one scheduled meeting. On subsequent launches with the guard present, only repairs the admin user doc if accidentally deleted. |
+| `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded_v5`. **DEV flavor only** — `bootstrap()` skips seeding when `AppConfig.isProduction`. Creates admin, demo president, demo resident, demo apartment (Green Valley Residency / `GRVL1234`), one maintenance bill, one open complaint, and one scheduled meeting. On subsequent launches with the guard present, only repairs the admin user doc if accidentally deleted. |
 | `VersionService` | Zero-UI version logic in `lib/core/services/version/version_service.dart`. `fetchVersionInfo()` fetches Remote Config (8-second timeout, safe defaults on failure); `determineUpdateStatus(AppVersionModel)` compares installed vs latest via `VersionCompare`; `openStore(AppVersionModel)` opens Play Store URL via `url_launcher`. Used by `VersionProvider`. |
 
 **`AppUtils`** (`lib/core/utils/app_utils.dart`): Static helpers — `formatCurrency`, `formatDate`, `formatMonthYear`, `formatDateTime`, `timeAgo`, `showSnackBar` (accepts optional `color` override), `displayFirstName`, `showConfirmDialog`, `launchPrivacyPolicy`. `showConfirmDialog` renders a bottom-sheet style confirmation with customizable `confirmColor`. `launchPrivacyPolicy` opens the privacy policy in Chrome Custom Tabs (Android) or Safari (iOS).
@@ -213,6 +213,8 @@ Defined in `main.dart` via `MaterialApp.routes`:
 - `/activate` → `PresidentActivationScreen`
 - `/dashboard` → `DashboardRouter`
 
+**Web only — `WebAuthGate`** (`lib/screens/web_auth_gate.dart`): Not a named route. Injected via `onGenerateInitialRoutes` on web when a protected URL is accessed directly (e.g. typing `/dashboard` in the browser). Restores Firebase Auth session, then navigates to `/dashboard` or `/login`. Never shown on Android/iOS — mobile uses `SplashScreen` for the same purpose.
+
 ### Screen Layout
 
 ```
@@ -224,11 +226,12 @@ screens/
 │   ├── registration_screen.dart   ← Unified signup: segmented button switches President / Resident form fields; handles email verification bottom sheet + success sheet
 │   ├── president_signup_screen.dart ← Legacy activation path (apartment code + email validation)
 │   └── president_activation_screen.dart ← Current activation path for super-admin-created apartments (imported by main.dart)
-├── admin/                         ← 6 screens: dashboard, apartments, reports, assign-admin,
-│                                    assign-president, create-apartment (super-admin role)
-├── president/                     ← 9 screens: dashboard, create-bill, edit-bill-sheet, complaints,
+├── admin/                         ← 9 screens: dashboard, apartments, reports, assign-admin,
+│                                    assign-president, create-apartment, ad-management,
+│                                    web-ad-management, advertising-settings (super-admin role)
+├── president/                     ← 10 screens: dashboard, create-bill, edit-bill-sheet, complaints,
 │                                    manage-users, mark-paid, monthly-bill-detail, transfer-president,
-│                                    president-profile
+│                                    president-profile, president-advertising (read-only ad status)
 ├── resident/                      ← 8 screens: dashboard, bills, monthly-bill-detail,
 │                                    payment-history, i-paid, complaints (community board), directory, profile
 └── shared/
