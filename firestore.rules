@@ -119,7 +119,7 @@ service cloud.firestore {
       allow update: if isAdminForApartment(resource.data.apartmentId) ||
                        request.auth.uid == resource.data.userId ||
                        isSuperAdmin();
-      allow delete: if isSuperAdmin();
+      allow delete: if isAdminForApartment(resource.data.apartmentId) || isSuperAdmin();
     }
 
     // ── Complaints ───────────────────────────────────────────────────────────

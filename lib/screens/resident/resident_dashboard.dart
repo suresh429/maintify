@@ -118,6 +118,8 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
           surfaceTintColor: Colors.transparent,
           shadowColor: Colors.transparent,
           elevation: 0,
+          labelTextStyle: WidgetStateProperty.resolveWith((states) =>
+              const TextStyle(fontFamily: 'Poppins', fontSize: 10)),
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.home_outlined),
@@ -149,18 +151,14 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     final unread = context
         .watch<NotificationProvider>()
         .unreadCount(UserRole.resident);
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final iconColor = isDark ? Colors.white : cs.onSurfaceVariant;
-
     return AppBar(
-      backgroundColor: isDark ? Colors.transparent : cs.surface,
-      elevation: isDark ? 0 : 1,
-      shadowColor: cs.shadow.withValues(alpha: 0.08),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      shadowColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       title: Text(
         _titles[_currentIndex],
-        style: AppTextStyles.heading3(color: isDark ? Colors.white : cs.onSurface),
+        style: AppTextStyles.heading3(color: Colors.white),
       ),
       actions: [
         SizedBox(
@@ -170,7 +168,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
             clipBehavior: Clip.none,
             children: [
               IconButton(
-                icon: Icon(Icons.notifications_outlined, color: iconColor),
+                icon: const Icon(Icons.notifications_outlined, color: Colors.white),
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(

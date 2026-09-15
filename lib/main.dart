@@ -30,6 +30,7 @@ import 'screens/dashboard_router.dart';
 import 'screens/web_auth_gate.dart';
 import 'core/services/db_seeder.dart';
 import 'widgets/global_connectivity_overlay.dart';
+import 'widgets/pwa_install_banner.dart';
 
 /// Shared bootstrap called by both main_dev.dart and main_prod.dart.
 /// [options] — environment-specific FirebaseOptions.
@@ -58,7 +59,7 @@ Future<void> bootstrap(
   await AdMobService.initialize();
 
   // ── Seed Firestore with demo data (dev + prod for Play Store review) ────────
-  // Guarded by _meta/seeded_v4 — runs once per Firebase project, never again.
+  // Guarded by _meta/seeded_v5 — runs once per Firebase project, never again.
   await DbSeeder.seedIfNeeded();
 
   // ── Device orientation (mobile only) ─────────────────────────────────────
@@ -161,8 +162,10 @@ class MaintifyApp extends StatelessWidget {
             navigatorKey: navigatorKey,
             // GlobalConnectivityOverlay wraps the entire Navigator so every
             // route, dialog, and bottom sheet automatically inherits the banner.
-            builder: (context, child) => GlobalConnectivityOverlay(
-              child: child ?? const SizedBox(),
+            builder: (context, child) => PwaInstallBanner(
+              child: GlobalConnectivityOverlay(
+                child: child ?? const SizedBox(),
+              ),
             ),
             // onGenerateInitialRoutes overrides Flutter's default behaviour of
             // splitting the path into multiple stack entries (e.g. '/login' →

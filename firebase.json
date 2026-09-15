@@ -97,6 +97,10 @@
         "**/.*",
         "**/node_modules/**"
       ],
+      "redirects": [
+        { "source": "/app.html",  "destination": "/login", "type": 301 },
+        { "source": "/activate",  "destination": "/login", "type": 302 }
+      ],
       "rewrites": [
         {
           "source": "**",

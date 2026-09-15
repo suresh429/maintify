@@ -37,7 +37,7 @@
   <title>Maintify</title>
   <link rel="manifest" href="manifest.json">
 
-  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport">
 
   <style id="splash-screen-style">
     html {
@@ -111,6 +111,15 @@
       document.getElementById("splash-branding")?.remove();
       document.body.style.background = "transparent";
     }
+  </script>
+
+  <script>
+    // Capture the beforeinstallprompt event for Android PWA install.
+    // Must be captured early — the event fires before Flutter initialises.
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      window.__pwaInstallPrompt = e;
+    });
   </script>
 </head>
 <body>

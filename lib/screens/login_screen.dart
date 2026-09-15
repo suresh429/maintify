@@ -381,12 +381,6 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
                 TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/signup'),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
                   child: Text(
                     'Sign Up',
                     style: AppTextStyles.caption(color: cs.primary)
@@ -395,7 +389,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             Center(
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.how_to_reg_outlined, size: 16),
@@ -658,12 +652,6 @@ class _LoginScreenState extends State<LoginScreen>
                           TextButton(
                             onPressed: () =>
                                 Navigator.pushNamed(context, '/signup'),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
                             child: Text(
                               'Sign Up',
                               style: AppTextStyles.caption(
@@ -673,7 +661,7 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 16),
 
                       // Invitation-based activation entry point
                       Center(
