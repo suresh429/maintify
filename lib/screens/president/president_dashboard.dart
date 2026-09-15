@@ -127,6 +127,8 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
           surfaceTintColor: Colors.transparent,
           shadowColor: Colors.transparent,
           elevation: 0,
+          labelTextStyle: WidgetStateProperty.resolveWith((states) =>
+              const TextStyle(fontFamily: 'Poppins', fontSize: 10)),
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.dashboard_outlined),
@@ -167,16 +169,16 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
     final user = context.read<AuthProvider>().currentUser;
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final iconColor = isDark ? Colors.white : cs.onSurfaceVariant;
+    const iconColor = Colors.white;
 
     return AppBar(
-      backgroundColor: isDark ? Colors.transparent : cs.surface,
-      elevation: isDark ? 0 : 1,
-      shadowColor: cs.shadow.withValues(alpha: 0.08),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      shadowColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       title: Text(
         _titles[_currentIndex],
-        style: AppTextStyles.heading3(color: isDark ? Colors.white : cs.onSurface),
+        style: AppTextStyles.heading3(color: Colors.white),
       ),
       actions: [
         // Notification bell
@@ -231,20 +233,16 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
               height: 36,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : theme.effectivePrimary(context).withValues(alpha: 0.12),
+                color: Colors.white.withValues(alpha: 0.2),
                 border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.7)
-                        : theme.effectivePrimary(context).withValues(alpha: 0.5),
+                    color: Colors.white.withValues(alpha: 0.7),
                     width: 1.5),
               ),
               child: Center(
                 child: Text(
                   user?.avatarInitials ?? 'A',
-                  style: TextStyle(
-                    color: isDark ? Colors.white : theme.effectivePrimary(context),
+                  style: const TextStyle(
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                     fontFamily: 'Poppins',
@@ -566,7 +564,7 @@ class _PresidentHome extends StatelessWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 1.35,
+                childAspectRatio: 1.6,
                 children: [
                   StatCard(
                     title: 'Total Bills',
@@ -594,6 +592,8 @@ class _PresidentHome extends StatelessWidget {
                   ),
                 ],
               ),
+
+            const SizedBox(height: 10),
 
             // Collection progress
             Container(
@@ -707,6 +707,7 @@ class _PresidentHome extends StatelessWidget {
                     ],
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Column(
@@ -734,27 +735,36 @@ class _PresidentHome extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(
-                            '$paidCount/${bill.totalFlats}',
-                            style: AppTextStyles.subheading(
-                                color: accent),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '$paidCount/${bill.totalFlats}',
+                                    style: AppTextStyles.subheading(color: accent),
+                                  ),
+                                  Text('paid', style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
+                                ],
+                              ),
+                              GestureDetector(
+                                onTap: () => _showBillActionsSheet(
+                                  context,
+                                  bill: rawBill,
+                                  billMonth: bill.month,
+                                  residents: residents,
+                                  billProvider: billProvider,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 4),
+                                  child: Icon(Icons.more_vert_rounded,
+                                      size: 20, color: cs.onSurfaceVariant),
+                                ),
+                              ),
+                            ],
                           ),
-                          Text('paid', style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                         ],
-                      ),
-                      GestureDetector(
-                        onTap: () => _showBillActionsSheet(
-                          context,
-                          bill: rawBill,
-                          billMonth: bill.month,
-                          residents: residents,
-                          billProvider: billProvider,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Icon(Icons.more_vert_rounded,
-                              size: 20, color: cs.onSurfaceVariant),
-                        ),
                       ),
                     ],
                   ),
@@ -1163,8 +1173,12 @@ void _confirmDeleteBill(
   ).then((confirmed) async {
     if (confirmed != true) return;
     if (!context.mounted) return;
-    await billProvider.adminDeleteBill(billId);
+    final error = await billProvider.adminDeleteBill(billId);
     if (!context.mounted) return;
-    AppUtils.showSnackBar(context, '$billMonth bill deleted');
+    if (error != null) {
+      AppUtils.showSnackBar(context, error, isError: true);
+    } else {
+      AppUtils.showSnackBar(context, '$billMonth bill deleted');
+    }
   });
 }

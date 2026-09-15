@@ -352,25 +352,52 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
                       // My share + status icon (uses per-user amount for individual bills)
                       SizedBox(
                         width: 60,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(
-                              AppUtils.formatCurrency(v.userAmount),
-                              style: AppTextStyles.bodySmall(
-                                      color: cs.onSurface)
-                                  .copyWith(fontWeight: FontWeight.w700),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  AppUtils.formatCurrency(v.userAmount),
+                                  style: AppTextStyles.bodySmall(
+                                          color: cs.onSurface)
+                                      .copyWith(fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  isPaid
+                                      ? Icons.check_circle_rounded
+                                      : Icons.radio_button_unchecked,
+                                  size: 14,
+                                  color: isPaid
+                                      ? AppColors.paid
+                                      : AppColors.textSecondary,
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              isPaid
-                                  ? Icons.check_circle_rounded
-                                  : Icons.radio_button_unchecked,
-                              size: 14,
-                              color: isPaid
-                                  ? AppColors.paid
-                                  : AppColors.textSecondary,
-                            ),
+                            // Show "Not Applicable" chip for hybrid ₹0 bills
+                            if (v.bill.billType == 'hybrid' &&
+                                v.userAmount == 0) ...[
+                              const SizedBox(height: 2),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: cs.onSurfaceVariant
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                child: Text(
+                                  'N/A',
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 8,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

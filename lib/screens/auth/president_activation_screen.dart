@@ -27,7 +27,7 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
 
   PresidentInvitationModel? _invitation;
   String?                   _createdUid;
-  final bool                _isVerifying = false;
+  bool                      _isVerifying = false;
 
   late AnimationController _animCtrl;
   late Animation<Offset>   _slideAnim;
@@ -65,10 +65,12 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
       return;
     }
 
+    setState(() => _isVerifying = true);
     final reg    = context.read<RegistrationProvider>();
     final result = await reg.validateInvitationToken(token);
 
     if (!mounted) return;
+    setState(() => _isVerifying = false);
 
     if (result.error != null) {
       AppUtils.showSnackBar(context, result.error!, isError: true);
@@ -512,7 +514,13 @@ class _PresidentActivationScreenState extends State<PresidentActivationScreen>
                       Row(
                         children: [
                           GestureDetector(
-                            onTap: () => Navigator.pop(context),
+                            onTap: () {
+                              if (Navigator.canPop(context)) {
+                                Navigator.pop(context);
+                              } else {
+                                Navigator.pushReplacementNamed(context, '/login');
+                              }
+                            },
                             child: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(

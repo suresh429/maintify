@@ -63,7 +63,8 @@ class MarkPaidScreen extends StatelessWidget {
               (ctx, i) {
                 final payment = pendingApprovals[i];
                 final userName =
-                    ctx.read<UserProvider>().findById(payment.userId)?.name;
+                    ctx.read<UserProvider>().findById(payment.userId)?.name
+                    ?? 'Flat ${payment.unitNumber}';
                 final card = _PendingApprovalCard(
                   payment: payment,
                   userName: userName,

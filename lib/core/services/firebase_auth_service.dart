@@ -59,6 +59,14 @@ class FirebaseAuthService {
       return (user: user, error: null);
     } on FirebaseAuthException catch (e) {
       return (user: null, error: _friendlyError(e.code));
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        await _auth.signOut();
+        return (user: null, error: 'Unable to load account data. Please try again.');
+      }
+      return (user: null, error: 'Something went wrong. Please try again.');
+    } catch (_) {
+      return (user: null, error: 'Something went wrong. Please try again.');
     }
   }
 

@@ -354,16 +354,16 @@ struct MaintifyWidget: Widget {
 struct MaintifyWidget_Previews: PreviewProvider {
     static var previews: some View {
         Group {
-            MaintifyWidgetEntryView(entry: MaintifyEntry(date: .now, data: .placeholder))
+            MaintifyWidgetEntryView(entry: MaintifyEntry(date: Date(), data: .placeholder))
                 .previewContext(WidgetPreviewContext(family: .systemSmall))
                 .previewDisplayName("Small – Logged In")
-            MaintifyWidgetEntryView(entry: MaintifyEntry(date: .now, data: .loggedOut))
+            MaintifyWidgetEntryView(entry: MaintifyEntry(date: Date(), data: .loggedOut))
                 .previewContext(WidgetPreviewContext(family: .systemSmall))
                 .previewDisplayName("Small – Logged Out")
-            MaintifyWidgetEntryView(entry: MaintifyEntry(date: .now, data: .placeholder))
+            MaintifyWidgetEntryView(entry: MaintifyEntry(date: Date(), data: .placeholder))
                 .previewContext(WidgetPreviewContext(family: .systemMedium))
                 .previewDisplayName("Medium – Logged In")
-            MaintifyWidgetEntryView(entry: MaintifyEntry(date: .now, data: .loggedOut))
+            MaintifyWidgetEntryView(entry: MaintifyEntry(date: Date(), data: .loggedOut))
                 .previewContext(WidgetPreviewContext(family: .systemMedium))
                 .previewDisplayName("Medium – Logged Out")
         }

@@ -373,6 +373,22 @@ class FirestoreService {
   Future<void> updateFlat(String flatId, Map<String, dynamic> data) =>
       _db.collection('flats').doc(flatId).update(data);
 
+  /// One-time fetch of all flats for an apartment, sorted by flatNumber.
+  Future<List<FlatModel>> getFlatsForApartment(String aptId) async {
+    final snap = await _db
+        .collection('flats')
+        .where('apartmentId', isEqualTo: aptId)
+        .get();
+    final flats = snap.docs.map(FlatModel.fromFirestore).toList();
+    flats.sort((a, b) {
+      final na = int.tryParse(a.flatNumber);
+      final nb = int.tryParse(b.flatNumber);
+      if (na != null && nb != null) return na.compareTo(nb);
+      return a.flatNumber.compareTo(b.flatNumber);
+    });
+    return flats;
+  }
+
   Stream<List<FlatModel>> streamFlatsForApartment(String aptId) => _db
       .collection('flats')
       .where('apartmentId', isEqualTo: aptId)
@@ -417,15 +433,12 @@ class FirestoreService {
   Future<void> deleteBill(String id) =>
       _db.collection('bills').doc(id).delete();
 
-  Future<void> deleteAllPaymentsForBill(String billId) async {
-    final snap = await _db
-        .collection('payments')
-        .where('billId', isEqualTo: billId)
-        .get();
-    if (snap.docs.isEmpty) return;
+  Future<void> deleteAllPaymentsForBill(
+      String billId, List<String> paymentIds) async {
+    if (paymentIds.isEmpty) return;
     final batch = _db.batch();
-    for (final doc in snap.docs) {
-      batch.delete(doc.reference);
+    for (final id in paymentIds) {
+      batch.delete(_db.collection('payments').doc(id));
     }
     await batch.commit();
   }

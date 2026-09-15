@@ -23,6 +23,7 @@ class BillCategory {
   final double totalAmount;  // apt-level total for this category (stored at creation)
   final double defaultAmount;// per-user default; meaningful for hybrid
   final Map<String, double> userOverrides; // userId → override amount
+  final List<String> applicableResidentIds; // for hybrid: which residents are applicable
 
   const BillCategory({
     required this.name,
@@ -30,12 +31,14 @@ class BillCategory {
     required this.totalAmount,
     this.defaultAmount = 0,
     this.userOverrides = const {},
+    this.applicableResidentIds = const [],
   });
 
   factory BillCategory.fromMap(Map<String, dynamic> m) {
     final rawOverrides = m['userOverrides'] as Map<String, dynamic>? ?? {};
     // DbSeeder stored 'splitType'; newer bills use 'type'.
     final type = (m['type'] as String?) ?? (m['splitType'] as String?) ?? 'common';
+    final rawApplicable = m['applicableResidentIds'] as List<dynamic>? ?? [];
     return BillCategory(
       name: m['name'] as String? ?? '',
       type: type,
@@ -44,6 +47,7 @@ class BillCategory {
       userOverrides: rawOverrides.map(
         (k, v) => MapEntry(k, (v as num).toDouble()),
       ),
+      applicableResidentIds: rawApplicable.cast<String>(),
     );
   }
 
@@ -53,14 +57,25 @@ class BillCategory {
         'totalAmount': totalAmount,
         if (type != 'common') 'defaultAmount': defaultAmount,
         if (userOverrides.isNotEmpty) 'userOverrides': userOverrides,
+        if (applicableResidentIds.isNotEmpty) 'applicableResidentIds': applicableResidentIds,
       };
+
+  /// Whether this resident is applicable for a hybrid bill.
+  /// Non-hybrid categories always return true.
+  /// Hybrid with empty applicableResidentIds (legacy): all are applicable.
+  bool isApplicable(String userId) {
+    if (type != 'hybrid') return true;
+    if (applicableResidentIds.isEmpty) return true;
+    return applicableResidentIds.contains(userId);
+  }
 
   /// Compute the amount this user owes for this category.
   double amountForUser(String userId, int eligibleCount) {
     switch (type) {
       case 'common': return eligibleCount > 0 ? totalAmount / eligibleCount : 0;
-      case 'hybrid': return userOverrides.containsKey(userId)
-          ? userOverrides[userId]! : defaultAmount;
+      case 'hybrid':
+        if (!isApplicable(userId)) return 0;
+        return userOverrides.containsKey(userId) ? userOverrides[userId]! : defaultAmount;
       case 'individual': return userOverrides[userId] ?? 0;
       default: return eligibleCount > 0 ? totalAmount / eligibleCount : 0;
     }

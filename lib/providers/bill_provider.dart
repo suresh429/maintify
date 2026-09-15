@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/bill_model.dart';
+import '../models/flat_model.dart';
 import '../models/notification_model.dart';
 import '../models/user_model.dart';
 import '../core/services/firestore_service.dart';
@@ -298,6 +299,14 @@ class BillProvider extends ChangeNotifier {
   /// Expands a multi-category bill into one synthetic BillModel per category.
   /// All synthetic bills share the same [id] so payment lookups remain correct.
   /// Legacy bills (no categories) are returned as-is in a single-element list.
+  ///
+  /// Each synthetic bill retains [categories: [cat]] so that [BillModel.perFlatShare]
+  /// uses the correct type-specific logic:
+  ///   • common   → cat.totalAmount / eligibleCount
+  ///   • hybrid   → cat.defaultAmount  (NOT totalAmount/eligibleCount)
+  ///   • individual → 0
+  /// Without this, perFlatShare falls back to totalAmount/eligibleCount for all
+  /// types, which disagrees with the resident screen's cat.amountForUser() result.
   List<BillModel> _expandBillToSyntheticList(BillModel bill) {
     if (bill.categories.isEmpty) return [bill];
     return bill.categories
@@ -313,7 +322,7 @@ class BillProvider extends ChangeNotifier {
               dueDate: bill.dueDate,
               createdAt: bill.createdAt,
               billType: cat.type,
-              categories: const [],
+              categories: [cat], // Preserved so perFlatShare uses type-specific logic
               excludedUserIds: bill.excludedUserIds,
             ))
         .toList();
@@ -747,6 +756,12 @@ class BillProvider extends ChangeNotifier {
   /// Creates ONE Firestore bill document with embedded [categories] for [month].
   /// Each resident gets a single payment record whose [amount] equals the sum
   /// of their per-category amounts (category-aware: common / hybrid / individual).
+  ///
+  /// [allFlats] should contain ALL flat documents for the apartment. Flats that
+  /// have no registered resident (residentId is null) still get a payment doc
+  /// so every flat is always billed — even if the resident hasn't signed up.
+  /// Their payment uses the flat document ID as the userId so the president
+  /// can mark it paid manually.
   Future<void> createBillForMonth({
     required String apartmentId,
     required String adminId,
@@ -756,6 +771,7 @@ class BillProvider extends ChangeNotifier {
     required int totalFlats,
     required List<UserModel> residents,
     required NotificationProvider notificationProvider,
+    required List<FlatModel> allFlats,
     List<String> excludedUserIds = const [],
   }) async {
     _isLoading = true;
@@ -765,7 +781,11 @@ class BillProvider extends ChangeNotifier {
     final billId = 'bill_${now.millisecondsSinceEpoch}';
     final totalAmount = categories.fold(0.0, (s, c) => s + c.totalAmount);
 
-    debugPrint('[FLOW] Creating bill for $month: ${categories.length} categories, ${residents.length} residents');
+    // Build a quick lookup: residentId → unit, so we don't search the list per-item.
+    final residentUnitMap = {for (final r in residents) r.id: r.unit};
+
+    debugPrint('[FLOW] Creating bill for $month: ${categories.length} categories, '
+        '${residents.length} registered + ${allFlats.where((f) => f.residentId == null).length} unregistered flats');
 
     await _fs.setBill(billId, {
       'apartmentId': apartmentId,
@@ -786,49 +806,89 @@ class BillProvider extends ChangeNotifier {
     // eligibleCount must match BillModel.eligibleCount so stored amounts are consistent.
     final eligibleCount = (totalFlats - excludedUserIds.length).clamp(1, totalFlats);
 
-    // ── Step 1: compute amounts synchronously (pure Dart, no I/O) ────────────
-    final Map<String, double> userAmounts = {};
+    // ── Step 1: compute amounts for registered residents ──────────────────────
+    final Map<String, ({double amount, String unit})> paymentEntries = {};
+
     for (final resident in residents) {
       if (excludedUserIds.contains(resident.id)) continue;
-      userAmounts[resident.id] = categories.fold(
+      final amount = categories.fold(
           0.0, (s, c) => s + c.amountForUser(resident.id, eligibleCount));
+      paymentEntries[resident.id] = (amount: amount, unit: resident.unit);
     }
-    debugPrint('[FLOW] Computed amounts for ${userAmounts.length} residents');
 
-    // ── Step 2: write all payment docs in parallel ────────────────────────────
+    // ── Step 2: compute amounts for unregistered flats ────────────────────────
+    // Flats with no residentId (resident hasn't signed up) still get a payment
+    // doc. The flat document ID is used as the userId so the president can
+    // track and manually mark these as paid.
+    final registeredIds = residents.map((r) => r.id).toSet();
+
+    for (final flat in allFlats) {
+      // Skip flats already covered by a registered resident.
+      if (flat.residentId != null && registeredIds.contains(flat.residentId)) {
+        continue;
+      }
+      // Skip flats that already have a registered resident we didn't receive
+      // (shouldn't happen in normal flow, but defensive guard).
+      if (flat.residentId != null) continue;
+
+      final flatUserId = flat.id; // stable, unique: "${aptId}_${flatNumber}"
+      if (excludedUserIds.contains(flatUserId)) continue;
+
+      double amount = 0;
+      for (final cat in categories) {
+        final type = cat.type.toLowerCase();
+        if (type == 'common') {
+          amount += cat.totalAmount / eligibleCount;
+        } else if (type == 'hybrid') {
+          // If no applicableResidentIds → legacy (all pay); otherwise check list.
+          final applicable = cat.applicableResidentIds;
+          if (applicable.isEmpty || applicable.contains(flatUserId)) {
+            amount += cat.defaultAmount;
+          }
+          // else: flat is not applicable → pays ₹0 for this category
+        }
+        // individual: flat has no userId override → ₹0 (nothing added)
+      }
+      amount = double.parse(amount.toStringAsFixed(2));
+      paymentEntries[flatUserId] = (amount: amount, unit: flat.flatNumber);
+    }
+
+    debugPrint('[FLOW] Total payment docs to create: ${paymentEntries.length}');
+
+    // ── Step 3: write all payment docs in parallel ────────────────────────────
     await Future.wait(
-      userAmounts.entries.map((entry) {
-        final resident = residents.firstWhere((r) => r.id == entry.key);
-        return _fs.setPayment('${billId}_${entry.key}', {
-          'billId': billId,
-          'userId': entry.key,
-          'unitNumber': resident.unit,
-          'status': BillStatus.pending,
-          'amount': entry.value,
-          'paidDate': null,
-          'transactionId': null,
-          'adminVerified': false,
-          'apartmentId': apartmentId,
-        });
-      }),
+      paymentEntries.entries.map((entry) => _fs.setPayment('${billId}_${entry.key}', {
+        'billId': billId,
+        'userId': entry.key,
+        'unitNumber': entry.value.unit,
+        'status': BillStatus.pending,
+        'amount': entry.value.amount,
+        'paidDate': null,
+        'transactionId': null,
+        'adminVerified': false,
+        'apartmentId': apartmentId,
+      })),
     );
-    debugPrint('[FLOW] All ${userAmounts.length} payment docs written');
+    debugPrint('[FLOW] All ${paymentEntries.length} payment docs written');
 
-    // ── Step 3: write all notification docs in parallel ───────────────────────
+    // ── Step 4: notify registered residents only (unregistered have no FCM) ──
     final dueDateStr = '${dueDate.day}/${dueDate.month}/${dueDate.year}';
+    final notifyIds = paymentEntries.keys
+        .where((id) => residentUnitMap.containsKey(id)) // only real user IDs
+        .toList();
     try {
       await Future.wait(
-        userAmounts.entries.map((entry) => _fs.addNotification({
-              'userId': entry.key,
+        notifyIds.map((uid) => _fs.addNotification({
+              'userId': uid,
               'apartmentId': apartmentId,
               'title': 'New Bill for $month',
-              'body': 'Your due amount is ₹${entry.value.toStringAsFixed(0)} — due by $dueDateStr.',
+              'body': 'Your due amount is ₹${paymentEntries[uid]!.amount.toStringAsFixed(0)} — due by $dueDateStr.',
               'type': NotificationType.bill,
               'createdAt': FieldValue.serverTimestamp(),
               'isRead': false,
             })),
       );
-      debugPrint('[FLOW] All ${userAmounts.length} notifications written');
+      debugPrint('[FLOW] ${notifyIds.length} notifications written');
     } catch (e) {
       debugPrint('[WARN] Bill notifications partially failed: $e');
     }
@@ -899,6 +959,10 @@ class BillProvider extends ChangeNotifier {
       'excludedUserIds': excludedUserIds,
     });
 
+    // eligibleCount must match BillModel.eligibleCount so edited amounts are
+    // consistent with what was stored at creation time.
+    final eligibleCount = (totalFlats - excludedUserIds.length).clamp(1, totalFlats);
+
     // Update amounts only for unpaid payments
     for (final resident in residents) {
       final payment = userPaymentForBill(billId, resident.id);
@@ -908,7 +972,7 @@ class BillProvider extends ChangeNotifier {
       }
       if (payment != null && !payment.isPaid) {
         final userAmount = categories.fold(
-            0.0, (s, c) => s + c.amountForUser(resident.id, totalFlats));
+            0.0, (s, c) => s + c.amountForUser(resident.id, eligibleCount));
         final paymentId = '${billId}_${resident.id}';
         await _fs.updatePayment(paymentId, {'amount': userAmount});
       }
@@ -919,15 +983,46 @@ class BillProvider extends ChangeNotifier {
   }
 
   /// Deletes the bill document and all associated payment documents.
-  Future<void> adminDeleteBill(String billId) async {
+  Future<String?> adminDeleteBill(String billId) async {
     _isLoading = true;
     notifyListeners();
 
-    await _fs.deleteAllPaymentsForBill(billId);
-    await _fs.deleteBill(billId);
+    try {
+      final paymentIds = paymentsForBill(billId).map((p) => p.id).toList();
+      await _fs.deleteAllPaymentsForBill(billId, paymentIds);
+      await _fs.deleteBill(billId);
+      return null;
+    } catch (e) {
+      return 'Failed to delete bill. Please try again.';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
-    _isLoading = false;
-    notifyListeners();
+  /// Recalculates and updates payment amounts for ALL unpaid residents on a
+  /// hybrid bill that previously stored every-resident charges. Call this after
+  /// a bill's applicableResidentIds are set for the first time.
+  /// Safe: only touches unpaid payments; paid/approved records are unchanged.
+  Future<void> recalculateHybridPayments({
+    required String billId,
+    required List<BillCategory> categories,
+    required List<UserModel> residents,
+    required List<String> excludedUserIds,
+  }) async {
+    final bill = rawBillById(billId);
+    final totalFlats = bill?.totalFlats ?? residents.length;
+    final eligibleCount = (totalFlats - excludedUserIds.length).clamp(1, totalFlats);
+
+    for (final resident in residents) {
+      if (excludedUserIds.contains(resident.id)) continue;
+      final payment = userPaymentForBill(billId, resident.id);
+      if (payment != null && !payment.isPaid) {
+        final userAmount = categories.fold(
+            0.0, (s, c) => s + c.amountForUser(resident.id, eligibleCount));
+        await _fs.updatePayment('${billId}_${resident.id}', {'amount': userAmount});
+      }
+    }
   }
 
   @Deprecated('Use residentSubmitPaymentForMonth instead — direct mark-paid bypasses approval flow.')

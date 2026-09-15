@@ -133,7 +133,8 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                 final flat = flats[i];
                 final isPaid = fresh.isUserFullyPaid(flat.userId);
                 final paidDate = fresh.userPaidDate(flat.userId);
-                final userName = ctx.read<UserProvider>().findById(flat.userId)?.name;
+                final userName = ctx.read<UserProvider>().findById(flat.userId)?.name
+                    ?? 'Flat ${flat.unitNumber}';
 
                 // Check if any payment for this user is pending approval
                 final userPayments = fresh.allPayments
@@ -417,8 +418,23 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                                   .copyWith(fontWeight: FontWeight.w500),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis),
-                          Text(bill.category,
-                              style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
+                          // For hybrid, show applicable flat count; otherwise show type
+                          if (bill.billType == 'hybrid' &&
+                              bill.categories.isNotEmpty &&
+                              bill.categories.first.applicableResidentIds.isNotEmpty)
+                            Text(
+                              'Hybrid · ${bill.categories.first.applicableResidentIds.length} of ${bill.totalFlats} applicable',
+                              style: AppTextStyles.caption(
+                                  color: cs.onSurfaceVariant),
+                            )
+                          else
+                            Text(
+                              bill.billType == 'hybrid'
+                                  ? 'Hybrid · all applicable'
+                                  : bill.category,
+                              style: AppTextStyles.caption(
+                                  color: cs.onSurfaceVariant),
+                            ),
                         ],
                       ),
                     ),
