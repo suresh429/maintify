@@ -738,6 +738,20 @@ class FirestoreService {
     }
   }
 
+  /// Updates UPI payment settings for an apartment.
+  Future<void> updateUpiSettings({
+    required String aptId,
+    required String? upiId,
+    required bool upiPaymentsEnabled,
+    required String updatedBy,
+  }) =>
+      _db.collection('apartments').doc(aptId).update({
+        'upiId': upiId?.isEmpty == true ? null : upiId,
+        'upiPaymentsEnabled': upiPaymentsEnabled,
+        'upiUpdatedAt': FieldValue.serverTimestamp(),
+        'upiUpdatedBy': updatedBy,
+      });
+
   /// Updates only the adsEnabled field in an apartment document.
   /// Called by both super admin and president.
   Future<void> updateApartmentAdsEnabled({

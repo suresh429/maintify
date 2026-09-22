@@ -20,6 +20,7 @@ import '../../widgets/logout_sheet.dart';
 import '../shared/notifications_screen.dart';
 import 'transfer_president_screen.dart';
 import 'president_advertising_screen.dart';
+import 'upi_settings_screen.dart';
 
 class PresidentProfileScreen extends StatefulWidget {
   const PresidentProfileScreen({super.key});
@@ -124,6 +125,15 @@ class _PresidentProfileScreenState extends State<PresidentProfileScreen> {
                   _SettingCard(
                     tiles: [
                       _SettingTile(
+                        icon: Icons.currency_rupee_rounded,
+                        label: 'UPI Payment Settings',
+                        subtitle: 'Configure UPI for rent collection',
+                        iconColor: const Color(0xFF10B981),
+                        onTap: () => Navigator.push(context,
+                            MaterialPageRoute(
+                                builder: (_) => const UpiSettingsScreen())),
+                      ),
+                      _SettingTile(
                         icon: Icons.swap_horiz_rounded,
                         label: 'Transfer Presidency',
                         subtitle: 'Hand over to another resident',
@@ -132,15 +142,15 @@ class _PresidentProfileScreenState extends State<PresidentProfileScreen> {
                             MaterialPageRoute(
                                 builder: (_) => const TransferPresidentScreen())),
                       ),
-                      _SettingTile(
-                        icon: Icons.ads_click_rounded,
-                        label: 'Advertising',
-                        subtitle: 'Control ads for your residents',
-                        iconColor: const Color(0xFF8B5CF6),
-                        onTap: () => Navigator.push(context,
-                            MaterialPageRoute(
-                                builder: (_) => const PresidentAdvertisingScreen())),
-                      ),
+                      // _SettingTile(
+                      //   icon: Icons.ads_click_rounded,
+                      //   label: 'Advertising',
+                      //   subtitle: 'Control ads for your residents',
+                      //   iconColor: const Color(0xFF8B5CF6),
+                      //   onTap: () => Navigator.push(context,
+                      //       MaterialPageRoute(
+                      //           builder: (_) => const PresidentAdvertisingScreen())),
+                      // ),
                     ],
                   ),
                   const SizedBox(height: 16),

@@ -81,5 +81,23 @@
             <data
                 android:mimeType="text/plain"/>
         </intent>
+        <!-- Standard UPI intent scheme — required for PackageManager.queryIntentActivities(upi://)
+             and for startActivity(upi://pay?...) on Android 11+ (API 30+). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="upi" />
+        </intent>
+        <!-- PhonePe-specific ppe:// scheme.  Required so PackageManager can resolve
+             ppe://pay? intents and for startActivity(ppe://...) on Android 11+.
+             PhonePe uses this proprietary scheme on devices (e.g. Realme Android 16)
+             where it does not respond to the generic upi:// intent. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="ppe" />
+        </intent>
+        <!-- Explicit PhonePe package visibility: required for
+             PackageManager.getPackageInfo("com.phonepe.app", 0)
+             on Android 11+ (API 30+) package-visibility enforcement. -->
+        <package android:name="com.phonepe.app" />
     </queries>
 </manifest>

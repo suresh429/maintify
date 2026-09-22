@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/bill_model.dart';
+import '../../models/apartment_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/bill_provider.dart';
+import '../../providers/apartment_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
+import '../../widgets/upi_payment_sheet.dart';
 
 class ResidentMonthlyBillDetailScreen extends StatelessWidget {
   final UserMonthlySummary summary;
@@ -30,6 +33,8 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
       (s) => s.month == summary.month,
       orElse: () => summary,
     );
+
+    final apt = context.watch<ApartmentProvider>().findById(aptId);
 
     // Apartment-level total = sum of each bill's totalAmount
     final aptTotal =
@@ -75,7 +80,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
             const SizedBox(height: 14),
 
             // ── Section 3: Payment Info ────────────────────────────────────
-            _buildPaymentInfo(context, theme, fresh, userId, billProvider, cs, isDark),
+            _buildPaymentInfo(context, theme, fresh, userId, billProvider, cs, isDark, apt),
           ],
         ),
       ),
@@ -470,6 +475,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
     BillProvider billProvider,
     ColorScheme cs,
     bool isDark,
+    ApartmentModel? apt,
   ) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -604,6 +610,32 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
+            Builder(builder: (context) {
+              final upiEnabled = apt != null && apt.upiPaymentsEnabled && (apt.upiId ?? '').isNotEmpty;
+              if (!upiEnabled) return const SizedBox.shrink();
+              return Column(
+                children: [
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => showUpiPaymentSheet(
+                        context,
+                        summary: fresh,
+                        aptId: aptId,
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.currency_rupee_rounded, size: 18),
+                      label: Text('Pay Now with UPI', style: AppTextStyles.buttonText()),
+                    ),
+                  ),
+                ],
+              );
+            }),
           ],
         ],
       ),

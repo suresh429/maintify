@@ -17,6 +17,8 @@ class ApartmentModel {
   final int totalFlats;
   final int occupiedFlats;
   final bool adsEnabled;
+  final String? upiId;
+  final bool upiPaymentsEnabled;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -37,6 +39,8 @@ class ApartmentModel {
     required this.totalFlats,
     this.occupiedFlats = 0,
     this.adsEnabled = false,
+    this.upiId,
+    this.upiPaymentsEnabled = false,
     required this.createdAt,
     this.updatedAt,
   });
@@ -64,6 +68,8 @@ class ApartmentModel {
       totalFlats: (d['totalFlats'] as int?) ?? 0,
       occupiedFlats: (d['occupiedFlats'] as int?) ?? 0,
       adsEnabled: (d['adsEnabled'] as bool?) ?? false,
+      upiId: d['upiId'] as String?,
+      upiPaymentsEnabled: (d['upiPaymentsEnabled'] as bool?) ?? false,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
     );
@@ -84,6 +90,8 @@ class ApartmentModel {
         'presidentId': presidentId,
         'totalFlats': totalFlats,
         'occupiedFlats': occupiedFlats,
+        'upiId': upiId,
+        'upiPaymentsEnabled': upiPaymentsEnabled,
         'createdAt': Timestamp.fromDate(createdAt),
         'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
       };
@@ -104,6 +112,8 @@ class ApartmentModel {
     String? presidentPhone,
     int? occupiedFlats,
     bool? adsEnabled,
+    String? upiId,
+    bool? upiPaymentsEnabled,
     DateTime? updatedAt,
   }) {
     return ApartmentModel(
@@ -124,6 +134,8 @@ class ApartmentModel {
       totalFlats: totalFlats,
       occupiedFlats: occupiedFlats ?? this.occupiedFlats,
       adsEnabled: adsEnabled ?? this.adsEnabled,
+      upiId: upiId ?? this.upiId,
+      upiPaymentsEnabled: upiPaymentsEnabled ?? this.upiPaymentsEnabled,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

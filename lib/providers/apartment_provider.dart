@@ -134,6 +134,35 @@ class ApartmentProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateUpiSettings({
+    required String aptId,
+    required String? upiId,
+    required bool upiPaymentsEnabled,
+    required String updatedBy,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _fs.updateUpiSettings(
+        aptId: aptId,
+        upiId: upiId,
+        upiPaymentsEnabled: upiPaymentsEnabled,
+        updatedBy: updatedBy,
+      );
+      final idx = _apartments.indexWhere((a) => a.id == aptId);
+      if (idx != -1) {
+        _apartments[idx] = _apartments[idx].copyWith(
+          upiId: upiId ?? '',
+          upiPaymentsEnabled: upiPaymentsEnabled,
+        );
+        MockApartments.replaceAll(_apartments);
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> editApartment(
       String aptId, {required String name, required String address}) async {
     await _fs.updateApartment(aptId, {

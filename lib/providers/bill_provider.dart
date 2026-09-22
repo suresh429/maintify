@@ -598,6 +598,80 @@ class BillProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Resident submits a UPI payment reference for a single bill.
+  /// Sets status → [BillStatus.pendingApproval], stores transactionId, paymentMethod, upiIdUsed.
+  /// Call this ONCE per bill after the resident returns from the UPI app and enters the reference.
+  /// Guard: if payment is already pendingApproval or paid, does nothing.
+  Future<void> submitUpiPaymentForBill({
+    required String billId,
+    required String userId,
+    required String aptId,
+    required String presidentId,
+    required String unitNumber,
+    required String upiRef,
+    required String upiIdUsed,
+  }) async {
+    final payment = userPaymentForBill(billId, userId);
+    if (payment == null || payment.isPaid || payment.isPendingApproval) return;
+
+    _isLoading = true;
+    notifyListeners();
+
+    final now = DateTime.now();
+    final paymentId = '${billId}_$userId';
+
+    await _fs.updatePayment(paymentId, {
+      'status':        BillStatus.pendingApproval,
+      'transactionId': upiRef.trim(),
+      'paymentMethod': 'upi',
+      'upiIdUsed':     upiIdUsed,
+      'submittedAt':   Timestamp.fromDate(now),
+      'submittedBy':   userId,
+      'rejectedAt':    null,
+      'rejectedBy':    null,
+    });
+
+    final idx = _payments.indexWhere((p) => p.billId == billId && p.userId == userId);
+    if (idx != -1) {
+      final old = _payments[idx];
+      _payments[idx] = BillPayment(
+        id:            old.id,
+        billId:        old.billId,
+        userId:        old.userId,
+        unitNumber:    old.unitNumber,
+        amount:        old.amount,
+        status:        BillStatus.pendingApproval,
+        transactionId: upiRef.trim(),
+        paymentMethod: 'upi',
+        upiIdUsed:     upiIdUsed,
+        adminVerified: false,
+        submittedAt:   now,
+        submittedBy:   userId,
+        approvedAt:    old.approvedAt,
+        approvedBy:    old.approvedBy,
+      );
+    }
+
+    try {
+      await _fs.addNotification({
+        'userId':      presidentId,
+        'senderId':    userId,
+        'apartmentId': aptId,
+        'title':       'UPI Payment Submitted',
+        'body':        'Flat $unitNumber submitted a UPI payment (Ref: $upiRef) awaiting verification.',
+        'type':        NotificationType.paymentReceived,
+        'createdAt':   FieldValue.serverTimestamp(),
+        'isRead':      false,
+      });
+    } catch (e) {
+      debugPrint('[BillProvider] UPI submit notification failed: $e');
+    }
+
+    MockBillData.replaceAll(_bills, _payments);
+    _isLoading = false;
+    notifyListeners();
+  }
+
   // ── President approve / reject ────────────────────────────────────────────
 
   /// President approves a resident's pending payment request.

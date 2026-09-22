@@ -432,6 +432,39 @@ class _PendingApprovalCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (payment.isUpiPayment && payment.transactionId != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.receipt_outlined, size: 12, color: Color(0xFFD97706)),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'UPI Ref: ${payment.transactionId}',
+                                style: AppTextStyles.caption(color: const Color(0xFFD97706)),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (payment.isUpiPayment && payment.upiIdUsed != null) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.arrow_forward_rounded, size: 12, color: Color(0xFFD97706)),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'To: ${payment.upiIdUsed}',
+                                style: AppTextStyles.caption(color: const Color(0xFFD97706)),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

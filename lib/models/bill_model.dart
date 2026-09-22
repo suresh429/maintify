@@ -261,6 +261,10 @@ class BillPayment {
   DateTime? rejectedAt;   // when president rejected
   String?   rejectedBy;   // president uid
 
+  // ── UPI-specific fields ────────────────────────────────────────────────────
+  String? paymentMethod; // 'upi' for UPI, null for manual
+  String? upiIdUsed;    // snapshot of UPI ID at payment time
+
   BillPayment({
     required this.id,
     required this.billId,
@@ -277,6 +281,8 @@ class BillPayment {
     this.approvedBy,
     this.rejectedAt,
     this.rejectedBy,
+    this.paymentMethod,
+    this.upiIdUsed,
   });
 
   bool get isPaid            => status == BillStatus.paid;
@@ -285,6 +291,7 @@ class BillPayment {
   bool get isPendingApproval => status == BillStatus.pendingApproval;
   /// True when status is pending AND was previously rejected (lets UI show a note).
   bool get wasRejected       => status == BillStatus.pending && rejectedAt != null;
+  bool get isUpiPayment      => paymentMethod == 'upi';
 
   factory BillPayment.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
@@ -309,6 +316,8 @@ class BillPayment {
       approvedBy:    d['approvedBy']    as String?,
       rejectedAt:    (d['rejectedAt']   as Timestamp?)?.toDate(),
       rejectedBy:    d['rejectedBy']    as String?,
+      paymentMethod: d['paymentMethod'] as String?,
+      upiIdUsed:     d['upiIdUsed']     as String?,
     );
   }
 
@@ -328,6 +337,8 @@ class BillPayment {
         'approvedBy':    approvedBy,
         'rejectedAt':    rejectedAt   != null ? Timestamp.fromDate(rejectedAt!)  : null,
         'rejectedBy':    rejectedBy,
+        'paymentMethod': paymentMethod,
+        'upiIdUsed':     upiIdUsed,
       };
 
   BillPayment copyWith({
@@ -341,6 +352,8 @@ class BillPayment {
     String?   approvedBy,
     DateTime? rejectedAt,
     String?   rejectedBy,
+    String?   paymentMethod,
+    String?   upiIdUsed,
   }) {
     return BillPayment(
       id:            id,
@@ -358,6 +371,8 @@ class BillPayment {
       approvedBy:    approvedBy    ?? this.approvedBy,
       rejectedAt:    rejectedAt    ?? this.rejectedAt,
       rejectedBy:    rejectedBy    ?? this.rejectedBy,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      upiIdUsed:     upiIdUsed     ?? this.upiIdUsed,
     );
   }
 }

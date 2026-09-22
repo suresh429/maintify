@@ -120,12 +120,17 @@ All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `
 
 **Models** live in `lib/models/`. Key ones: `user_model.dart`, `bill_model.dart`, `apartment_model.dart` (now has `type`, `address`, `towerCount`, `towerNames`, `presidentFlat` fields), `flat_model.dart` (see below), `president_invitation_model.dart` (token-based super-admin invite flow — `status`: `pending`|`completed`|`expired`, 12-char `invitationToken`, expires after set duration), `app_version_model.dart` (immutable snapshot of Remote Config fields: `latestVersion`, `forceUpdate`, `playStoreUrl`; factory `fromRemoteConfig`), `update_status.dart` (enum: `upToDate`, `optionalUpdate`, `forceUpdate`).
 
+**Firestore role string values:** The `role` field stored in Firestore does **not** match the Dart enum names. Mapping: `UserRole.admin` → `'admin'` (super admin), `UserRole.president` → `'president'`, `UserRole.resident` → `'resident'`. The Firestore security rules (`firestore.rules` at root) use these string values directly for all permission checks.
+
 **Key Firestore collections:**
 - `users/` — real Firebase Auth UID as document ID
 - `apartments/`, `bills/`, `payments/`, `complaints/`, `meetings/`, `notifications/`
 - `president_invitations/` — created by super admins; consumed by `onPresidentInvitationCreated` Cloud Function and the president activation flow
 - `complaints/{id}/messages/` — message subcollection; streamed per-complaint by `ComplaintProvider.subscribeToMessages()`
 - `flats/` — individual flat docs, auto-generated at apartment creation. Doc ID: `${aptId}_${flatNumber}`. Fields: `flatNumber`, `tower` (null for non-gated), `status` (`available`|`occupied`), `residentId`, `residentType` (`President`|`Resident`|null), `apartmentId`.
+- `resident_requests/` — written during resident signup (auth account created but not yet signed in); readable only by president/super admin.
+- `systemConfig/adManagement` — global `AdConfig` document (streamed by `AdsProvider`; writable only by super admin).
+- `settings/` — global app feature flags; readable by all signed-in users, writable only by super admin. `app_config/` is a legacy alias kept for backward compatibility.
 - `_meta/seeded_v5` — guards `DbSeeder` from re-running
 
 **`DashboardProvider` important note:** Its stats getters read from `MockXxx` statics only. This is intentional — it's kept accurate because `UserProvider`, `ApartmentProvider`, and `BillProvider` all call `replaceAll()` in their stream listeners.
