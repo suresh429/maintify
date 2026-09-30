@@ -164,6 +164,12 @@ async function _multicast(tokens, title, body, extraData, tokenToUserId) {
   console.log(`[FCM] Sending "${title}" to ${tokens.length} device(s)…`);
   const response = await admin.messaging().sendEachForMulticast(message);
   console.log(`[FCM] Result: ${response.successCount}✓ / ${response.failureCount}✗`);
+  if (response.successCount > 0) {
+    console.log(`[FCM-SERVER] Push sent successfully (${response.successCount} delivered)`);
+  }
+  if (response.failureCount > 0) {
+    console.log(`[FCM-SERVER] Push FAILED for ${response.failureCount} token(s) — see errors below`);
+  }
 
   // Identify and remove stale tokens
   const staleTokens = [];
@@ -257,6 +263,13 @@ async function saveNotification({
     await batch.commit();
   }
 
+  console.log('[NOTIF-SERVER] ══════════════════════════════════════');
+  console.log(`[NOTIF-SERVER] type:          ${type}`);
+  console.log(`[NOTIF-SERVER] referenceId:   ${referenceId}`);
+  console.log(`[NOTIF-SERVER] referenceType: ${referenceType}`);
+  console.log(`[NOTIF-SERVER] route:         ${route}`);
+  console.log(`[NOTIF-SERVER] receiverIds:   ${receiverIds.join(', ')}`);
+  console.log('[NOTIF-SERVER] ══════════════════════════════════════');
   console.log(`[NOTIFICATION] Saved ${receiverIds.length} doc(s) — type: ${type}`);
 }
 
@@ -280,7 +293,18 @@ async function sendToUser(userId, {
   saveToFirestore = true,
 }) {
   try {
+    console.log(`[FCM-SERVER] Preparing push`);
+    console.log(`[FCM-SERVER] recipientUid: ${userId}`);
+    console.log(`[FCM-SERVER] type: ${type}`);
+    console.log(`[FCM-SERVER] referenceId: ${referenceId}`);
+    console.log(`[FCM-SERVER] referenceType: ${referenceType}`);
+
     const { tokens, tokenToUserId } = await _tokensForUserIds([userId]);
+
+    console.log(`[FCM-SERVER] token exists: ${tokens.length > 0}`);
+    if (tokens.length > 0) {
+      console.log(`[FCM-SERVER] token length: ${tokens[0].length}`);
+    }
 
     if (tokens.length > 0) {
       await _multicast(tokens, title, body, {

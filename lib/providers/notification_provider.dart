@@ -5,6 +5,60 @@ import '../models/notification_model.dart';
 import '../core/theme/role_theme.dart';
 import '../core/services/firestore_service.dart';
 
+/// Represents one visible row in the resident notification list.
+///
+/// For complaint notifications sharing a [groupReferenceId], a single
+/// [NotifDisplayItem] covers the entire group (latest activity shown,
+/// unread count as badge). For all other notification types, each
+/// [NotifDisplayItem] maps 1-to-1 with one [NotificationModel].
+class NotifDisplayItem {
+  /// The notification used for display — the most-recent in a group, or the
+  /// only one for single items.
+  final NotificationModel representative;
+
+  /// Non-null when this item is a grouped complaint.
+  /// Equals the shared [NotificationModel.referenceId].
+  final String? groupReferenceId;
+
+  /// Number of unread notifications belonging to this item.
+  /// 0 or 1 for singles; 0..N for groups.
+  final int unreadCount;
+
+  /// IDs of every notification document in this item.
+  /// Used to mark them all read on tap.
+  final List<String> memberIds;
+
+  const NotifDisplayItem._({
+    required this.representative,
+    required this.groupReferenceId,
+    required this.unreadCount,
+    required this.memberIds,
+  });
+
+  factory NotifDisplayItem.single(NotificationModel n) => NotifDisplayItem._(
+        representative: n,
+        groupReferenceId: null,
+        unreadCount: n.isRead ? 0 : 1,
+        memberIds: [n.id],
+      );
+
+  factory NotifDisplayItem.group({
+    required NotificationModel latest,
+    required String referenceId,
+    required int unreadCount,
+    required List<String> memberIds,
+  }) =>
+      NotifDisplayItem._(
+        representative: latest,
+        groupReferenceId: referenceId,
+        unreadCount: unreadCount,
+        memberIds: memberIds,
+      );
+
+  bool get isGrouped => groupReferenceId != null;
+  bool get hasUnread => unreadCount > 0;
+}
+
 class NotificationProvider extends ChangeNotifier {
   final FirestoreService _fs = FirestoreService();
 
@@ -37,6 +91,75 @@ class NotificationProvider extends ChangeNotifier {
   void dispose() {
     _sub?.cancel();
     super.dispose();
+  }
+
+  // ── Resident grouped view ─────────────────────────────────────────────────
+
+  /// Returns a display-ready list for the Resident notification screen.
+  ///
+  /// Complaint notifications (referenceType == 'complaint', non-null referenceId)
+  /// are collapsed into one [NotifDisplayItem] per complaint, keyed by referenceId.
+  /// All other notifications appear as individual [NotifDisplayItem.single] entries.
+  /// Sorted by each item's latest [createdAt] descending (newest first).
+  List<NotifDisplayItem> groupedForResident() {
+    final Map<String, List<NotificationModel>> complaintGroups = {};
+    final List<NotificationModel> singles = [];
+
+    for (final n in _notifications) {
+      final groupable = n.referenceType == 'complaint' &&
+          n.referenceId != null &&
+          n.referenceId!.isNotEmpty;
+      if (groupable) {
+        complaintGroups.putIfAbsent(n.referenceId!, () => []).add(n);
+      } else {
+        singles.add(n);
+      }
+    }
+
+    final result = <NotifDisplayItem>[];
+
+    for (final entry in complaintGroups.entries) {
+      final members = List.of(entry.value)
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final unread = members.where((m) => !m.isRead).length;
+      result.add(NotifDisplayItem.group(
+        latest: members.first,
+        referenceId: entry.key,
+        unreadCount: unread,
+        memberIds: members.map((m) => m.id).toList(),
+      ));
+    }
+
+    for (final n in singles) {
+      result.add(NotifDisplayItem.single(n));
+    }
+
+    result.sort(
+      (a, b) =>
+          b.representative.createdAt.compareTo(a.representative.createdAt),
+    );
+
+    return List.unmodifiable(result);
+  }
+
+  /// Marks all unread complaint notifications for [referenceId] as read.
+  /// Called when the resident taps a grouped complaint notification item.
+  void markComplaintGroupRead(String referenceId) {
+    bool changed = false;
+    for (int i = 0; i < _notifications.length; i++) {
+      final n = _notifications[i];
+      if (!n.isRead &&
+          n.referenceId == referenceId &&
+          n.referenceType == 'complaint') {
+        _notifications[i] = n.copyWith(isRead: true);
+        _fs
+            .markNotificationRead(n.id)
+            .catchError(
+                (e) => debugPrint('[NOTIFICATION] markGroupRead error: $e'));
+        changed = true;
+      }
+    }
+    if (changed) notifyListeners();
   }
 
   // ── Queries ───────────────────────────────────────────────────────────────
@@ -91,6 +214,8 @@ class NotificationProvider extends ChangeNotifier {
     required UserRole targetRole,
     String? aptId,
     List<String>? targetUserIds,
+    String? referenceId,
+    String? referenceType,
   }) async {
     // Resolve target user IDs ─────────────────────────────────────────────
     List<String> userIds = List.of(targetUserIds ?? []);
@@ -110,6 +235,7 @@ class NotificationProvider extends ChangeNotifier {
     // Write one doc per user ──────────────────────────────────────────────
     debugPrint('[NOTIFICATION] Writing ${userIds.length} notification doc(s) — '
         'targetRole: ${targetRole.name}, type: $type, title: "$title"');
+    debugPrint('[NOTIF-SERVER] Creating notification — type: $type  referenceId: $referenceId  referenceType: $referenceType');
 
     for (final userId in userIds) {
       // Note: targetRole is intentionally NOT stored — new docs are identified
@@ -123,9 +249,11 @@ class NotificationProvider extends ChangeNotifier {
         'type': type,
         'createdAt': FieldValue.serverTimestamp(),
         'isRead': false,
+        'referenceId': referenceId,
+        'referenceType': referenceType,
       };
       await _fs.addNotification(data);
-      debugPrint('[NOTIFICATION] Saved for userId: $userId');
+      debugPrint('[NOTIFICATION] Saved for userId: $userId  referenceId: $referenceId');
     }
 
     debugPrint('[NOTIFICATION] All docs saved — Firestore streams will auto-update UI');

@@ -28,7 +28,14 @@ import 'web_ad_management_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   final String? notificationType;
-  const AdminDashboard({super.key, this.notificationType});
+  final String? referenceId;
+  final String? referenceType;
+  const AdminDashboard({
+    super.key,
+    this.notificationType,
+    this.referenceId,
+    this.referenceType,
+  });
 
   @override
   State<AdminDashboard> createState() => _AdminDashboardState();

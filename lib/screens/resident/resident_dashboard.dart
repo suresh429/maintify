@@ -24,10 +24,19 @@ import '../../widgets/web/web_page_container.dart';
 import '../../providers/ads_provider.dart';
 import '../../core/ads/interstitial_manager.dart';
 import '../../widgets/maintify_native_ad.dart';
+import '../../providers/complaint_provider.dart';
+import '../shared/chat_screen.dart';
 
 class ResidentDashboard extends StatefulWidget {
   final String? notificationType;
-  const ResidentDashboard({super.key, this.notificationType});
+  final String? referenceId;
+  final String? referenceType;
+  const ResidentDashboard({
+    super.key,
+    this.notificationType,
+    this.referenceId,
+    this.referenceType,
+  });
 
   @override
   State<ResidentDashboard> createState() => _ResidentDashboardState();
@@ -41,15 +50,22 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
   late final List<Widget> _pages;
 
   // Maps a push notification type to the correct bottom-nav tab index.
-  // bill → Bills (1); payment → Community (2); others → Home (0).
+  // Tabs: 0=Home, 1=My Bills, 2=Community, 3=Profile
   static int _tabForType(String? type) {
     switch (type) {
       case 'bill':
-        return 1;
-      case 'payment':
-        return 2;
+      case 'bill_updated':
+      case 'bill_deleted':
+      case 'payment_approved':
+      case 'payment_rejected':
+        return 1; // My Bills
+      case 'payment':          // legacy
+      case 'complaint':
+      case 'complaint_reply':
+      case 'complaint_closed':
+        return 2; // Community (Complaints sub-tab)
       default:
-        return 0;
+        return 0; // Home
     }
   }
 
@@ -78,7 +94,112 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardProvider>().initialize();
+      debugPrint('[RES-NAV] initState postFrameCallback — notificationType="${widget.notificationType}" referenceId="${widget.referenceId}"');
+      if (widget.referenceId != null && widget.referenceId!.isNotEmpty) {
+        debugPrint('[RES-NAV] referenceId present — calling _tryOpenNotificationDetail (attempt 1)');
+        if (!_tryOpenNotificationDetail(context)) {
+          debugPrint('[RES-NAV] attempt 1 returned false — scheduling 800ms retry');
+          Future.delayed(const Duration(milliseconds: 800), () {
+            debugPrint('[RES-NAV] 800ms retry firing — attempt 2');
+            if (mounted) _tryOpenNotificationDetail(context);
+          });
+        }
+      } else {
+        debugPrint('[RES-NAV] referenceId is null/empty — skipping detail navigation');
+      }
     });
+  }
+
+  bool _tryOpenNotificationDetail(BuildContext context) {
+    if (!mounted) return false;
+    final refId  = widget.referenceId ?? '';
+    final type   = widget.notificationType ?? '';
+    final auth   = context.read<AuthProvider>();
+    final aptId  = auth.currentUser?.apartmentId ?? '';
+    final userId = auth.currentUser?.id ?? '';
+
+    debugPrint('[RES-NAV] ══════════════════════════════════════');
+    debugPrint('[RES-NAV] _tryOpenNotificationDetail');
+    debugPrint('[RES-NAV]   type:   "$type"');
+    debugPrint('[RES-NAV]   refId:  "$refId"');
+    debugPrint('[RES-NAV]   aptId:  "$aptId"');
+    debugPrint('[RES-NAV]   userId: "$userId"');
+
+    // Complaint → ChatScreen
+    if (type == 'complaint' || type == 'complaint_reply' || type == 'complaint_closed') {
+      debugPrint('[RES-NAV]   branch: complaint');
+      final complaint = context.read<ComplaintProvider>().findComplaint(refId);
+      debugPrint('[RES-NAV]   findComplaint("$refId") → ${complaint == null ? "NULL (not in cache)" : "found: ${complaint.id}"}');
+      if (complaint == null) {
+        debugPrint('[RES-NAV]   returning false — complaint not in cache yet');
+        return false;
+      }
+      debugPrint('[RES-NAV]   pushing ChatScreen (isAdminView: false)');
+      try {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              complaint:     complaint,
+              isAdminView:   false,
+              currentUserId: userId,
+            ),
+          ),
+        );
+        debugPrint('[RES-NAV]   Navigator.push ChatScreen succeeded');
+      } catch (e, stack) {
+        debugPrint('[RES-NAV]   Navigator.push ChatScreen EXCEPTION: $e');
+        debugPrint('[RES-NAV]   stack: $stack');
+      }
+      return true;
+    }
+
+    // Bill / payment_approved / payment_rejected → ResidentMonthlyBillDetailScreen
+    if ((type == 'bill' || type == 'bill_updated' || type == 'bill_deleted' ||
+         type == 'payment_approved' || type == 'payment_rejected') && aptId.isNotEmpty) {
+      debugPrint('[RES-NAV]   branch: bill/payment');
+      final billProvider = context.read<BillProvider>();
+      final billMonth = billProvider.monthForBill(refId);
+      debugPrint('[RES-NAV]   monthForBill("$refId") → ${billMonth == null ? "NULL (bill not in cache)" : '"$billMonth"'}');
+      if (billMonth == null) {
+        debugPrint('[RES-NAV]   returning false — bill not in cache yet');
+        return false;
+      }
+      final summaries = billProvider.userMonthlySummaries(userId);
+      debugPrint('[RES-NAV]   userMonthlySummaries count: ${summaries.length}');
+      for (final s in summaries) {
+        debugPrint('[RES-NAV]     summary month=${s.month}  bills=${s.views.map((v) => v.bill.id).toList()}');
+      }
+      UserMonthlySummary? target;
+      try {
+        target = summaries.firstWhere((s) => s.month == billMonth);
+      } catch (_) {
+        debugPrint('[RES-NAV]   no UserMonthlySummary found for month "$billMonth" — returning false');
+        return false;
+      }
+      debugPrint('[RES-NAV]   target summary: month=${target.month}');
+      debugPrint('[RES-NAV]   pushing ResidentMonthlyBillDetailScreen');
+      try {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ResidentMonthlyBillDetailScreen(
+              summary: target!,
+              aptId:   aptId,
+            ),
+          ),
+        );
+        debugPrint('[RES-NAV]   Navigator.push ResidentMonthlyBillDetailScreen succeeded');
+      } catch (e, stack) {
+        debugPrint('[RES-NAV]   Navigator.push ResidentMonthlyBillDetailScreen EXCEPTION: $e');
+        debugPrint('[RES-NAV]   stack: $stack');
+      }
+      return true;
+    }
+
+    debugPrint('[RES-NAV]   no matching branch for type="$type" — returning true (tab already set)');
+    debugPrint('[RES-NAV] ══════════════════════════════════════');
+    return true;
   }
 
   @override

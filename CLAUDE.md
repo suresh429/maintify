@@ -118,7 +118,7 @@ Providers that use Firestore streams call `startListening(...)` from `DashboardR
 
 All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `MockBillData`) exist **primarily for `DashboardProvider`**, which cannot hold Firestore streams of its own — every provider's stream listener calls `MockFoo.replaceAll(list)` to keep statics in sync. `MockComplaints` is additionally used by `ComplaintProvider` for **optimistic UI updates** only (e.g. inserting a newly created complaint before the Firestore stream fires); it is not the primary data source for complaints.
 
-**Models** live in `lib/models/`. Key ones: `user_model.dart`, `bill_model.dart`, `apartment_model.dart` (now has `type`, `address`, `towerCount`, `towerNames`, `presidentFlat` fields), `flat_model.dart` (see below), `president_invitation_model.dart` (token-based super-admin invite flow — `status`: `pending`|`completed`|`expired`, 12-char `invitationToken`, expires after set duration), `app_version_model.dart` (immutable snapshot of Remote Config fields: `latestVersion`, `forceUpdate`, `playStoreUrl`; factory `fromRemoteConfig`), `update_status.dart` (enum: `upToDate`, `optionalUpdate`, `forceUpdate`).
+**Models** live in `lib/models/`. Key ones: `user_model.dart`, `bill_model.dart`, `apartment_model.dart` (now has `type`, `address`, `towerCount`, `towerNames`, `presidentFlat`, `upiId`, `upiPaymentsEnabled` fields), `flat_model.dart` (see below), `president_invitation_model.dart` (token-based super-admin invite flow — `status`: `pending`|`completed`|`expired`, 12-char `invitationToken`, expires after set duration), `app_version_model.dart` (immutable snapshot of Remote Config fields: `latestVersion`, `forceUpdate`, `playStoreUrl`; factory `fromRemoteConfig`), `update_status.dart` (enum: `upToDate`, `optionalUpdate`, `forceUpdate`).
 
 **Firestore role string values:** The `role` field stored in Firestore does **not** match the Dart enum names. Mapping: `UserRole.admin` → `'admin'` (super admin), `UserRole.president` → `'president'`, `UserRole.resident` → `'resident'`. The Firestore security rules (`firestore.rules` at root) use these string values directly for all permission checks.
 
@@ -390,3 +390,35 @@ firebase functions:secrets:set GMAIL_APP_PASSWORD
 ### In-App Notifications
 
 `writeNotification(title, body, type, targetRole)` writes to the `notifications` Firestore collection. `NotificationProvider` streams pick these up automatically. Only called by `onPaymentUpdated` (Cases A and B).
+
+## UPI Payment Flow
+
+**Android-only.** UPI payments are disabled on iOS and web — `UpiLauncher.isAndroid` gates all entry points.
+
+### Architecture
+
+- `lib/core/services/upi_payment_service.dart` — `UpiLauncher.instance` singleton. Uses `MethodChannel('com.maintify.upi/launcher')` to call into Kotlin. Two methods: `getAvailableUpiApps()` (discovery) and `launchApp(UpiApp, UpiPaymentParams)` (intent launch).
+- `android/app/src/main/kotlin/com/maintify/app/MainActivity.kt` — handles `getAvailableUpiApps` and `launchUpi` channel calls. Discovery queries `upi://` resolvers; also adds PhonePe via `ppe://` scheme if installed but not in the standard resolver list (workaround for Android 16 Realme/ColorOS devices).
+- `lib/core/utils/upi_validator.dart` — `UpiValidator.validate()` / `.normalize()` for UPI ID format validation (format only; does not verify the ID exists).
+- `lib/widgets/upi_payment_sheet.dart` — bottom sheet shown to the resident: lists available UPI apps, resident selects one, app launches, then resident enters the transaction reference.
+- `lib/screens/president/upi_settings_screen.dart` — president configures their UPI ID + enables/disables UPI payments. Accessed via president profile AppBar settings icon.
+
+### Data Model
+
+`ApartmentModel` now has two new fields:
+- `upiId` (`String?`) — president's UPI ID
+- `upiPaymentsEnabled` (`bool`) — feature toggle per apartment
+
+`BillPayment` has three new fields:
+- `paymentMethod` (`String?`) — `'upi'` for UPI payments, null for manual
+- `upiIdUsed` (`String?`) — snapshot of the UPI ID at payment time
+- `transactionId` (`String?`) — UPI reference entered by the resident
+
+### Payment Lifecycle
+
+1. **President** sets their UPI ID via `UpiSettingsScreen` → `ApartmentProvider.updateUpiSettings()`.
+2. **Resident** opens bill detail → taps "Pay via UPI" → `UpiPaymentSheet` discovers installed UPI apps → resident selects app → `UpiLauncher.launchApp()` fires the Android intent.
+3. After returning from the UPI app, resident enters their transaction reference → `BillProvider.submitUpiPayment()` sets `BillPayment.status` → `pendingApproval`, writes `transactionId`, `paymentMethod='upi'`, `upiIdUsed`.
+4. **President** reviews in `MarkPaidScreen` → verifies and approves (same flow as manual payments; `onPaymentUpdated` Cloud Function fires FCM + in-app notification to resident).
+
+**Important:** Launching a UPI app does NOT confirm payment. The reference + president verification step is mandatory before a bill is marked paid.

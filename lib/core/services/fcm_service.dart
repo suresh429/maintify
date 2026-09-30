@@ -57,7 +57,7 @@ class FcmService {
     });
 
     // iOS: show system banner while app is in foreground
-    if (Platform.isIOS) {
+    if (!kIsWeb && Platform.isIOS) {
       await _messaging.setForegroundNotificationPresentationOptions(
         alert: true,
         badge: true,
@@ -68,7 +68,7 @@ class FcmService {
     // Foreground messages — show local notification on Android
     FirebaseMessaging.onMessage.listen((message) {
       debugPrint('[FCM] Foreground — ${message.notification?.title} | type: ${message.data["type"]}');
-      if (Platform.isAndroid) _showLocalNotification(message);
+      if (!kIsWeb && Platform.isAndroid) _showLocalNotification(message);
     });
 
     // Background tap (app in background, not terminated)
@@ -110,6 +110,10 @@ class FcmService {
   // ── Local notifications (Android foreground) ──────────────────────────────
 
   Future<void> _initLocalNotifications() async {
+    if (kIsWeb) {
+      debugPrint('[FCM] Skipping flutter_local_notifications init on web');
+      return;
+    }
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit     = DarwinInitializationSettings();
     const settings    = InitializationSettings(android: androidInit, iOS: iosInit);
@@ -197,7 +201,7 @@ class FcmService {
   Future<void> _saveToken(String userId) async {
     debugPrint('[FCM] _saveToken for $userId');
     try {
-      if (Platform.isIOS) {
+      if (!kIsWeb && Platform.isIOS) {
         final apns = await _messaging.getAPNSToken();
         if (apns == null) {
           debugPrint('[FCM] APNS token not ready — skipping');
@@ -227,11 +231,14 @@ class FcmService {
       // ignore: avoid_print
       print('╚══════════════════════════════════════════╝');
 
+      final platform = kIsWeb
+          ? 'web'
+          : (Platform.isAndroid ? 'android' : 'ios');
       await _fs.updateUser(userId, {
         'fcmToken':            token,
         'notificationEnabled': true,
         'lastTokenUpdated':    DateTime.now().toIso8601String(),
-        'platform':            Platform.isAndroid ? 'android' : 'ios',
+        'platform':            platform,
       });
       debugPrint('[FCM] Token saved ✓');
     } catch (e) {
@@ -242,12 +249,25 @@ class FcmService {
   // ── Tap navigation ────────────────────────────────────────────────────────
 
   void _handleTap(RemoteMessage message) {
+    // ── DEBUG: dump full FCM data payload ─────────────────────────────────────
+    debugPrint('[FCM-TAP] ══════════════════════════════════════');
+    debugPrint('[FCM-TAP] _handleTap fired');
+    debugPrint('[FCM-TAP] message.data keys: ${message.data.keys.toList()}');
+    debugPrint('[FCM-TAP] message.data full: ${message.data}');
+    debugPrint('[FCM-TAP] notification title: ${message.notification?.title}');
+    // ─────────────────────────────────────────────────────────────────────────
+
     final type          = message.data['type'] as String?;
     final referenceId   = message.data['referenceId'] as String?;
     final referenceType = message.data['referenceType'] as String?;
     final payload       = '${type ?? ''}|${referenceId ?? ''}|${referenceType ?? ''}';
 
-    debugPrint('[FCM] Tapped — type: $type | referenceId: $referenceId');
+    debugPrint('[FCM-TAP] extracted notificationType: $type');
+    debugPrint('[FCM-TAP] extracted referenceId:      $referenceId');
+    debugPrint('[FCM-TAP] extracted referenceType:    $referenceType');
+    debugPrint('[FCM-TAP] pipe payload:               $payload');
+    debugPrint('[FCM-TAP] ══════════════════════════════════════');
+
     _navigateFromPayload(payload);
   }
 
@@ -259,7 +279,7 @@ class FcmService {
   void _navigateFromPayload(String? payload) {
     final navigator = navigatorKey.currentState;
     if (navigator == null) {
-      debugPrint('[FCM] Navigator not ready — retrying in 500ms');
+      debugPrint('[FCM-NAV] Navigator not ready — retrying in 500ms');
       Future.delayed(
         const Duration(milliseconds: 500),
         () => _navigateFromPayload(payload),
@@ -267,21 +287,35 @@ class FcmService {
       return;
     }
 
+    debugPrint('[FCM-NAV] Navigator ready: ${navigator.runtimeType}');
+
     final parts         = (payload ?? '').split('|');
     final type          = parts.isNotEmpty ? parts[0] : '';
     final referenceId   = parts.length > 1 ? parts[1] : '';
     final referenceType = parts.length > 2 ? parts[2] : '';
 
-    debugPrint('[FCM] Navigate — type: $type | refId: $referenceId');
+    debugPrint('[FCM-NAV] ══════════════════════════════════════');
+    debugPrint('[FCM-NAV] About to pushNamedAndRemoveUntil /dashboard');
+    debugPrint('[FCM-NAV]   notificationType: "$type"');
+    debugPrint('[FCM-NAV]   referenceId:      "$referenceId"');
+    debugPrint('[FCM-NAV]   referenceType:    "$referenceType"');
+    debugPrint('[FCM-NAV]   arguments type:   Map<String,String>');
+    debugPrint('[FCM-NAV] ══════════════════════════════════════');
 
-    navigator.pushNamedAndRemoveUntil(
-      '/dashboard',
-      (route) => false,
-      arguments: {
-        'notificationType': type,
-        'referenceId':      referenceId,
-        'referenceType':    referenceType,
-      },
-    );
+    try {
+      navigator.pushNamedAndRemoveUntil(
+        '/dashboard',
+        (route) => false,
+        arguments: {
+          'notificationType': type,
+          'referenceId':      referenceId,
+          'referenceType':    referenceType,
+        },
+      );
+      debugPrint('[FCM-NAV] pushNamedAndRemoveUntil called successfully');
+    } catch (e, stack) {
+      debugPrint('[FCM-NAV] pushNamedAndRemoveUntil EXCEPTION: $e');
+      debugPrint('[FCM-NAV] stack: $stack');
+    }
   }
 }

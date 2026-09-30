@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/complaint_provider.dart';
+import '../../providers/bill_provider.dart';
 import '../../models/notification_model.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
+import 'chat_screen.dart';
+import '../president/monthly_bill_detail_screen.dart';
+import '../resident/monthly_bill_detail_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -22,8 +27,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userId = context.read<AuthProvider>().currentUser?.id;
-      if (userId != null) {
+      final auth = context.read<AuthProvider>();
+      final userId = auth.currentUser?.id;
+      // Resident and President use tap-based read marking (grouped complaint UX).
+      // Admin auto-marks all read on screen open (existing behaviour).
+      final skipAutoRead = auth.role == UserRole.resident ||
+          auth.role == UserRole.president;
+      if (userId != null && !skipAutoRead) {
         context.read<NotificationProvider>().markAllRead(userId);
       }
     });
@@ -39,9 +49,36 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isWeb = MediaQuery.sizeOf(context).width >= 600;
 
-    final all = role != null ? notifProvider.forRole(role) : <NotificationModel>[];
-    final notifications = _showUnreadOnly ? all.where((n) => !n.isRead).toList() : all;
-    final unreadCount = all.where((n) => !n.isRead).length;
+    // Resident and President both use the grouped complaint view.
+    // Admin uses the existing flat list.
+    final bool useGroupedView =
+        role == UserRole.resident || role == UserRole.president;
+
+    // ── Data preparation ───────────────────────────────────────────────────
+    final List<NotifDisplayItem> groupedItems;
+    final List<NotificationModel> flatItems;
+    final int unreadCount;
+
+    if (useGroupedView) {
+      final allGrouped = notifProvider.groupedForResident();
+      groupedItems = _showUnreadOnly
+          ? allGrouped.where((i) => i.hasUnread).toList()
+          : List.of(allGrouped);
+      flatItems = const [];
+      unreadCount = allGrouped.where((i) => i.hasUnread).length;
+    } else {
+      groupedItems = const [];
+      final all =
+          role != null ? notifProvider.forRole(role) : <NotificationModel>[];
+      flatItems =
+          _showUnreadOnly ? all.where((n) => !n.isRead).toList() : List.of(all);
+      unreadCount = role != null
+          ? notifProvider.forRole(role).where((n) => !n.isRead).length
+          : 0;
+    }
+
+    final int itemCount =
+        useGroupedView ? groupedItems.length : flatItems.length;
 
     return Scaffold(
       backgroundColor: isWeb
@@ -91,18 +128,33 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
           // ── Notification list ──────────────────────────────────────────
           Expanded(
-            child: notifications.isEmpty
+            child: itemCount == 0
                 ? _buildEmpty(context, isDark)
                 : ListView.builder(
                     padding: isWeb
                         ? const EdgeInsets.symmetric(vertical: 12)
                         : const EdgeInsets.all(8),
-                    itemCount: notifications.length,
+                    itemCount: itemCount,
                     itemBuilder: (_, i) {
-                      final tile = _NotificationTile(
-                        notification: notifications[i],
-                        theme: theme,
-                      );
+                      Widget tile;
+                      if (useGroupedView) {
+                        final item = groupedItems[i];
+                        tile = item.isGrouped
+                            ? _GroupedComplaintTile(
+                                item: item,
+                                theme: theme,
+                                isAdminView: role == UserRole.president,
+                              )
+                            : _NotificationTile(
+                                notification: item.representative,
+                                theme: theme,
+                              );
+                      } else {
+                        tile = _NotificationTile(
+                          notification: flatItems[i],
+                          theme: theme,
+                        );
+                      }
                       if (isWeb) {
                         return Center(
                           child: ConstrainedBox(
@@ -297,6 +349,167 @@ class _NotificationTile extends StatelessWidget {
     }
   }
 
+  // ── Tap navigation ──────────────────────────────────────────────────────────
+
+  void _handleTap(BuildContext context) {
+    final refId = notification.referenceId ?? '';
+    final type  = notification.type;
+    final role  = context.read<AuthProvider>().role;
+
+    debugPrint('[NOTIF-TAP] ══════════════════════════════════════');
+    debugPrint('[NOTIF-TAP] _handleTap fired');
+    debugPrint('[NOTIF-TAP] type: $type');
+    debugPrint('[NOTIF-TAP] referenceId: $refId');
+    debugPrint('[NOTIF-TAP]   role:  $role');
+
+    // Complaint types → ChatScreen (read-only for admin, interactive for resident)
+    if (type == NotificationType.complaint ||
+        type == NotificationType.complaintReply ||
+        type == NotificationType.complaintClosed) {
+      debugPrint('[NOTIF-TAP]   branch: complaint');
+      if (refId.isEmpty) {
+        debugPrint('[NOTIF-TAP]   refId is empty — returning');
+        return;
+      }
+      final complaint = context.read<ComplaintProvider>().findComplaint(refId);
+      debugPrint('[NOTIF-TAP]   findComplaint("$refId") → ${complaint == null ? "NULL" : "found: ${complaint.id}"}');
+      if (complaint == null) {
+        debugPrint('[NOTIF-TAP]   complaint not in cache — returning');
+        return;
+      }
+      final userId    = context.read<AuthProvider>().currentUser?.id;
+      final isAdmin   = role == UserRole.president;
+      debugPrint('[NOTIF-TAP]   pushing ChatScreen (isAdminView: $isAdmin)');
+      try {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              complaint:     complaint,
+              isAdminView:   isAdmin,
+              currentUserId: userId,
+            ),
+          ),
+        );
+        debugPrint('[NOTIF-TAP]   Navigator.push ChatScreen succeeded');
+      } catch (e, stack) {
+        debugPrint('[NOTIF-TAP]   Navigator.push ChatScreen EXCEPTION: $e');
+        debugPrint('[NOTIF-TAP]   stack: $stack');
+      }
+      return;
+    }
+
+    // Bill types → role-specific bill detail screen
+    if (type == NotificationType.bill ||
+        type == NotificationType.billUpdated ||
+        type == NotificationType.billDeleted) {
+      debugPrint('[NOTIF-TAP]   branch: bill');
+      if (refId.isEmpty) {
+        debugPrint('[NOTIF-TAP]   refId is empty — returning');
+        return;
+      }
+      _navigateToBill(context, refId, role);
+      return;
+    }
+
+    // Payment types — referenceId is billId for these notifications
+    if (type == NotificationType.paymentReceived ||
+        type == NotificationType.paymentApproved ||
+        type == NotificationType.paymentRejected) {
+      debugPrint('[NOTIF-TAP]   branch: payment');
+      if (refId.isEmpty) {
+        debugPrint('[NOTIF-TAP]   refId is empty — returning');
+        return;
+      }
+      _navigateToBill(context, refId, role);
+      return;
+    }
+
+    // Other types (meeting, president_transfer, resident_registered, system)
+    debugPrint('[NOTIF-TAP]   type "$type" has no detail screen — no-op');
+    debugPrint('[NOTIF-TAP] ══════════════════════════════════════');
+  }
+
+  void _navigateToBill(BuildContext context, String refId, UserRole? role) {
+    final auth      = context.read<AuthProvider>();
+    final aptId     = auth.currentUser?.apartmentId ?? '';
+    final billProvider = context.read<BillProvider>();
+
+    debugPrint('[NOTIF-TAP]   _navigateToBill refId="$refId" role=$role aptId="$aptId"');
+
+    if (role == UserRole.president) {
+      // President sees MonthlyBillDetailScreen — find the summary containing this bill.
+      if (aptId.isEmpty) {
+        debugPrint('[NOTIF-TAP]   aptId empty — returning');
+        return;
+      }
+      final summaries = billProvider.monthlyBillsForApartment(aptId);
+      debugPrint('[NOTIF-TAP]   monthlyBillsForApartment count: ${summaries.length}');
+      MonthlyBillSummary? target;
+      for (final s in summaries) {
+        debugPrint('[NOTIF-TAP]     summary month=${s.month}  bills=${s.bills.map((b) => b.id).toList()}');
+        if (s.bills.any((b) => b.id == refId)) {
+          target = s;
+          break;
+        }
+      }
+      debugPrint('[NOTIF-TAP]   target summary: ${target == null ? "NOT FOUND" : target.month}');
+      if (target == null) {
+        debugPrint('[NOTIF-TAP]   bill not in any summary — returning');
+        return;
+      }
+      try {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MonthlyBillDetailScreen(summary: target!, aptId: aptId),
+          ),
+        );
+        debugPrint('[NOTIF-TAP]   Navigator.push MonthlyBillDetailScreen succeeded');
+      } catch (e, stack) {
+        debugPrint('[NOTIF-TAP]   Navigator.push MonthlyBillDetailScreen EXCEPTION: $e');
+        debugPrint('[NOTIF-TAP]   stack: $stack');
+      }
+    } else if (role == UserRole.resident) {
+      // Resident sees ResidentMonthlyBillDetailScreen — find via month string.
+      final userId    = auth.currentUser?.id ?? '';
+      final billMonth = billProvider.monthForBill(refId);
+      debugPrint('[NOTIF-TAP]   monthForBill("$refId") → ${billMonth == null ? "NULL" : '"$billMonth"'}');
+      if (billMonth == null || aptId.isEmpty) {
+        debugPrint('[NOTIF-TAP]   billMonth null or aptId empty — returning');
+        return;
+      }
+      final summaries = billProvider.userMonthlySummaries(userId);
+      debugPrint('[NOTIF-TAP]   userMonthlySummaries count: ${summaries.length}');
+      UserMonthlySummary? target;
+      try {
+        target = summaries.firstWhere((s) => s.month == billMonth);
+      } catch (_) {
+        debugPrint('[NOTIF-TAP]   no UserMonthlySummary for month "$billMonth" — returning');
+        return;
+      }
+      debugPrint('[NOTIF-TAP]   pushing ResidentMonthlyBillDetailScreen month=${target.month}');
+      try {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ResidentMonthlyBillDetailScreen(
+              summary: target!,
+              aptId:   aptId,
+            ),
+          ),
+        );
+        debugPrint('[NOTIF-TAP]   Navigator.push ResidentMonthlyBillDetailScreen succeeded');
+      } catch (e, stack) {
+        debugPrint('[NOTIF-TAP]   Navigator.push ResidentMonthlyBillDetailScreen EXCEPTION: $e');
+        debugPrint('[NOTIF-TAP]   stack: $stack');
+      }
+    } else {
+      debugPrint('[NOTIF-TAP]   role is admin/null — no bill detail screen');
+    }
+    debugPrint('[NOTIF-TAP] ══════════════════════════════════════');
+  }
+
   Color _colorForType(String type, bool isDark) {
     switch (type) {
       case NotificationType.bill:
@@ -340,7 +553,7 @@ class _NotificationTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () {},
+        onTap: () => _handleTap(context),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
@@ -419,6 +632,176 @@ class _NotificationTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: accent,
                     shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Grouped complaint tile (resident-only) ────────────────────────────────────
+
+/// Tile for a group of complaint notifications sharing the same [referenceId].
+/// Displays the latest notification's content and a badge with the unread count.
+/// Tapping marks the whole group read and opens ChatScreen.
+class _GroupedComplaintTile extends StatelessWidget {
+  final NotifDisplayItem item;
+  final RoleTheme theme;
+  final bool isAdminView;
+
+  const _GroupedComplaintTile({
+    required this.item,
+    required this.theme,
+    required this.isAdminView,
+  });
+
+  void _handleTap(BuildContext context) {
+    final referenceId = item.groupReferenceId!;
+    debugPrint('[NOTIF-TAP] ══════════════════════════════════════');
+    debugPrint('[NOTIF-TAP] _handleTap (grouped complaint)');
+    debugPrint('[NOTIF-TAP] referenceId: $referenceId');
+    debugPrint('[NOTIF-TAP] isAdminView: $isAdminView');
+
+    final complaint =
+        context.read<ComplaintProvider>().findComplaint(referenceId);
+    debugPrint(
+        '[NOTIF-TAP] findComplaint("$referenceId") → ${complaint == null ? "NULL" : "found: ${complaint.id}"}');
+    if (complaint == null) {
+      debugPrint('[NOTIF-TAP] complaint not in cache — returning');
+      return;
+    }
+
+    // Mark all notifications in this group read before navigating.
+    context.read<NotificationProvider>().markComplaintGroupRead(referenceId);
+
+    final userId = context.read<AuthProvider>().currentUser?.id;
+    debugPrint('[NOTIF-TAP] pushing ChatScreen (isAdminView: $isAdminView)');
+    try {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            complaint: complaint,
+            isAdminView: isAdminView,
+            currentUserId: userId,
+          ),
+        ),
+      );
+      debugPrint('[NOTIF-TAP] Navigator.push ChatScreen succeeded');
+    } catch (e, stack) {
+      debugPrint('[NOTIF-TAP] Navigator.push ChatScreen EXCEPTION: $e');
+      debugPrint('[NOTIF-TAP] stack: $stack');
+    }
+    debugPrint('[NOTIF-TAP] ══════════════════════════════════════');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = item.representative;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = theme.effectivePrimary(context);
+    final typeColor =
+        isDark ? const Color(0xFF60A5FA) : AppColors.blue;
+    final isUnread = item.hasUnread;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => _handleTap(context),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: isUnread
+                ? (isDark
+                    ? accent.withValues(alpha: 0.07)
+                    : accent.withValues(alpha: 0.05))
+                : (isDark ? const Color(0xFF1E293B) : cs.surface),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isUnread
+                  ? accent.withValues(alpha: 0.18)
+                  : cs.outlineVariant.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Icon
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: typeColor.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.chat_bubble_outline_rounded,
+                    color: typeColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+
+              // Text content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      n.title,
+                      style:
+                          AppTextStyles.subheading(color: cs.onSurface).copyWith(
+                        fontWeight:
+                            isUnread ? FontWeight.w700 : FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      n.body,
+                      style:
+                          AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      AppUtils.timeAgo(n.createdAt),
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color:
+                            isUnread ? accent : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Unread count badge (replaces simple dot for grouped complaints)
+              if (item.unreadCount > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: accent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${item.unreadCount}',
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],

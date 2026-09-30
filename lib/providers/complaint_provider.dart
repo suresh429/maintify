@@ -136,6 +136,8 @@ class ComplaintProvider extends ChangeNotifier {
 
     try {
       final id = 'c${DateTime.now().millisecondsSinceEpoch}';
+      debugPrint('[COMPLAINT] Created complaint');
+      debugPrint('[COMPLAINT] complaintId: $id');
       final now = DateTime.now();
       await _fs.createComplaint(id, {
         'apartmentId': apartmentId,
@@ -174,6 +176,8 @@ class ComplaintProvider extends ChangeNotifier {
       try {
         debugPrint(
             '[FLOW] Complaint created — triggering notification to admin (apt: $apartmentId)');
+        debugPrint('[NOTIF-SERVER] Creating complaint notification');
+        debugPrint('[NOTIF-SERVER] complaintId/referenceId: $id');
         // Notify president
         await notificationProvider.addAndPersistNotification(
           title: 'New Complaint',
@@ -181,6 +185,8 @@ class ComplaintProvider extends ChangeNotifier {
           type: NotificationType.complaint,
           targetRole: UserRole.president,
           aptId: apartmentId,
+          referenceId: id,
+          referenceType: 'complaint',
         );
         // Notify all residents in the apartment
         await notificationProvider.addAndPersistNotification(
@@ -189,6 +195,8 @@ class ComplaintProvider extends ChangeNotifier {
           type: NotificationType.complaint,
           targetRole: UserRole.resident,
           aptId: apartmentId,
+          referenceId: id,
+          referenceType: 'complaint',
         );
       } catch (notifErr) {
         debugPrint('[WARN] createComplaint notification failed (non-fatal): $notifErr');
@@ -248,6 +256,8 @@ class ComplaintProvider extends ChangeNotifier {
         if (isFromAdmin) {
           final targetUserId = complaint?.userId;
           debugPrint('[FLOW] Admin replied — notifying user: $targetUserId');
+          debugPrint('[NOTIF-SERVER] Creating complaint reply notification');
+          debugPrint('[NOTIF-SERVER] complaintId/referenceId: $complaintId');
           if (targetUserId != null) {
             await notificationProvider.addAndPersistNotification(
               title: 'Reply on Your Complaint',
@@ -257,11 +267,15 @@ class ComplaintProvider extends ChangeNotifier {
               targetRole: UserRole.resident,
               aptId: aptId,
               targetUserIds: [targetUserId],
+              referenceId: complaintId,
+              referenceType: 'complaint',
             );
           }
         } else {
           debugPrint(
               '[FLOW] User sent message — notifying admin(s) of apt: $aptId');
+          debugPrint('[NOTIF-SERVER] Creating complaint message notification');
+          debugPrint('[NOTIF-SERVER] complaintId/referenceId: $complaintId');
           final truncated =
               content.length > 80 ? '${content.substring(0, 80)}…' : content;
           await notificationProvider.addAndPersistNotification(
@@ -270,6 +284,8 @@ class ComplaintProvider extends ChangeNotifier {
             type: NotificationType.complaint,
             targetRole: UserRole.president,
             aptId: aptId,
+            referenceId: complaintId,
+            referenceType: 'complaint',
           );
         }
       } catch (notifErr) {

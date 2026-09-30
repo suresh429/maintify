@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../core/theme/role_theme.dart';
 
 class NotificationType {
@@ -65,6 +66,14 @@ class NotificationModel {
       default:
         role = UserRole.resident;
     }
+    debugPrint('[NOTIF-MODEL] ══════════════════════════════════════');
+    debugPrint('[NOTIF-MODEL] doc.id:        ${doc.id}');
+    debugPrint('[NOTIF-MODEL] type:          ${d['type']}');
+    debugPrint('[NOTIF-MODEL] referenceId:   ${d['referenceId']} (${d['referenceId'].runtimeType})');
+    debugPrint('[NOTIF-MODEL] referenceType: ${d['referenceType']}');
+    debugPrint('[NOTIF-MODEL] userId:        ${d['userId']}');
+    debugPrint('[NOTIF-MODEL] receiverId:    ${d['receiverId']}');
+    debugPrint('[NOTIF-MODEL] ══════════════════════════════════════');
     return NotificationModel(
       id:            doc.id,
       title:         d['title']         as String?   ?? '',

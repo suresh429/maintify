@@ -24,15 +24,37 @@ class DashboardRouter extends StatefulWidget {
 }
 
 class _DashboardRouterState extends State<DashboardRouter> {
-  Widget _dashboardFor(UserRole? role, {String? notificationType}) {
+  Widget _dashboardFor(
+    UserRole? role, {
+    String? notificationType,
+    String? referenceId,
+    String? referenceType,
+  }) {
+    debugPrint('[DASH-ROUTER] _dashboardFor → role=$role  type=$notificationType  refId=$referenceId');
     switch (role) {
       case UserRole.admin:
-        return AdminDashboard(notificationType: notificationType);
+        debugPrint('[DASH-ROUTER] Opening: AdminDashboard');
+        return AdminDashboard(
+          notificationType: notificationType,
+          referenceId:      referenceId,
+          referenceType:    referenceType,
+        );
       case UserRole.president:
-        return PresidentDashboard(notificationType: notificationType);
+        debugPrint('[DASH-ROUTER] Opening: PresidentDashboard');
+        return PresidentDashboard(
+          notificationType: notificationType,
+          referenceId:      referenceId,
+          referenceType:    referenceType,
+        );
       case UserRole.resident:
-        return ResidentDashboard(notificationType: notificationType);
+        debugPrint('[DASH-ROUTER] Opening: ResidentDashboard');
+        return ResidentDashboard(
+          notificationType: notificationType,
+          referenceId:      referenceId,
+          referenceType:    referenceType,
+        );
       default:
+        debugPrint('[DASH-ROUTER] Opening: Scaffold (no role matched — role=$role)');
         return const Scaffold();
     }
   }
@@ -52,14 +74,53 @@ class _DashboardRouterState extends State<DashboardRouter> {
       );
     }
 
-    // Read notification type passed by FcmService when a push notification is tapped.
-    final notificationType =
-        ModalRoute.of(context)?.settings.arguments as String?;
+    // Read notification arguments.
+    // FcmService._navigateFromPayload() passes a Map<String, String> containing
+    // notificationType, referenceId, referenceType.
+    // Legacy callers may pass a bare String (notificationType only) or null.
+    final Object? args = ModalRoute.of(context)?.settings.arguments;
+
+    // ── DEBUG ─────────────────────────────────────────────────────────────────
+    debugPrint('[DASH-ROUTER] ══════════════════════════════════════');
+    debugPrint('[DASH-ROUTER] build() called — args runtimeType: ${args.runtimeType}');
+    debugPrint('[DASH-ROUTER] args value: $args');
+    // ─────────────────────────────────────────────────────────────────────────
+
+    final String? notificationType;
+    final String? referenceId;
+    final String? referenceType;
+    if (args is Map) {
+      notificationType = args['notificationType'] as String?;
+      referenceId      = args['referenceId']      as String?;
+      referenceType    = args['referenceType']    as String?;
+      debugPrint('[DASH-ROUTER] args branch: Map');
+    } else if (args is String) {
+      notificationType = args;
+      referenceId      = null;
+      referenceType    = null;
+      debugPrint('[DASH-ROUTER] args branch: String');
+    } else {
+      notificationType = null;
+      referenceId      = null;
+      referenceType    = null;
+      debugPrint('[DASH-ROUTER] args branch: null/unknown');
+    }
+
+    debugPrint('[DASH-ROUTER] notificationType: "$notificationType"');
+    debugPrint('[DASH-ROUTER] referenceId:      "$referenceId"');
+    debugPrint('[DASH-ROUTER] referenceType:    "$referenceType"');
+    debugPrint('[DASH-ROUTER] auth.role:        ${auth.role}');
+    debugPrint('[DASH-ROUTER] ══════════════════════════════════════');
 
     // Wrap with _StreamStarter so all Firestore listeners are started exactly
     // once per authenticated session (it's idempotent thanks to _started flag).
     return _StreamStarter(
-      child: _dashboardFor(auth.role, notificationType: notificationType),
+      child: _dashboardFor(
+        auth.role,
+        notificationType: notificationType,
+        referenceId:      referenceId,
+        referenceType:    referenceType,
+      ),
     );
   }
 }

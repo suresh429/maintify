@@ -30,10 +30,20 @@ import '../../widgets/web/web_page_container.dart';
 import '../../widgets/maintify_banner_ad.dart';
 import '../../providers/ads_provider.dart';
 import '../../core/ads/interstitial_manager.dart';
+import '../../providers/complaint_provider.dart';
+import '../shared/chat_screen.dart';
+import 'monthly_bill_detail_screen.dart';
 
 class PresidentDashboard extends StatefulWidget {
   final String? notificationType;
-  const PresidentDashboard({super.key, this.notificationType});
+  final String? referenceId;
+  final String? referenceType;
+  const PresidentDashboard({
+    super.key,
+    this.notificationType,
+    this.referenceId,
+    this.referenceType,
+  });
 
   @override
   State<PresidentDashboard> createState() => _PresidentDashboardState();
@@ -47,16 +57,23 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
   late final List<Widget> _pages;
 
   // Maps a push notification type to the correct bottom-nav tab index.
-  // bill / payment → Bills (2); complaint → Complaints (3); others → Home (0).
+  // Tabs: 0=Dashboard, 1=Manage Users, 2=Bills, 3=Complaints, 4=Profile
   static int _tabForType(String? type) {
     switch (type) {
       case 'bill':
-      case 'payment':
-        return 2;
+      case 'bill_updated':
+      case 'bill_deleted':
+      case 'payment':          // legacy
+      case 'payment_received':
+        return 2; // Bills / MarkPaidScreen
       case 'complaint':
-        return 3;
+      case 'complaint_reply':
+      case 'complaint_closed':
+        return 3; // Complaints
+      case 'resident_registered':
+        return 1; // Manage Users
       default:
-        return 0;
+        return 0; // Dashboard
     }
   }
 
@@ -86,7 +103,118 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardProvider>().initialize();
+
+      // ── DEBUG ─────────────────────────────────────────────────────────────
+      debugPrint('[PRES-DASH] initState postFrameCallback');
+      debugPrint('[PRES-DASH] notificationType: "${widget.notificationType}"');
+      debugPrint('[PRES-DASH] referenceId:      "${widget.referenceId}"');
+      debugPrint('[PRES-DASH] referenceType:    "${widget.referenceType}"');
+      // ──────────────────────────────────────────────────────────────────────
+
+      if (widget.referenceId != null && widget.referenceId!.isNotEmpty) {
+        if (!_tryOpenNotificationDetail(context)) {
+          debugPrint('[PRES-DASH] _tryOpenNotificationDetail returned false — scheduling retry in 800ms');
+          Future.delayed(const Duration(milliseconds: 800), () {
+            if (mounted) {
+              debugPrint('[PRES-DASH] retry _tryOpenNotificationDetail');
+              _tryOpenNotificationDetail(context);
+            }
+          });
+        }
+      } else {
+        debugPrint('[PRES-DASH] referenceId is empty/null — skipping detail navigation');
+      }
     });
+  }
+
+  /// Tries to open the notification detail screen using cached provider data.
+  /// Returns true if navigation was performed, false if data not yet loaded.
+  bool _tryOpenNotificationDetail(BuildContext context) {
+    if (!mounted) return false;
+    final refId   = widget.referenceId ?? '';
+    final type    = widget.notificationType ?? '';
+    final aptId   = context.read<AuthProvider>().currentUser?.apartmentId ?? '';
+
+    debugPrint('[PRES-NAV] ══════════════════════════════════════');
+    debugPrint('[PRES-NAV] _tryOpenNotificationDetail');
+    debugPrint('[PRES-NAV]   type:   "$type"');
+    debugPrint('[PRES-NAV]   refId:  "$refId"');
+    debugPrint('[PRES-NAV]   aptId:  "$aptId"');
+
+    // Complaint → ChatScreen
+    if (type == 'complaint' || type == 'complaint_reply' || type == 'complaint_closed') {
+      debugPrint('[PRES-NAV]   branch: complaint');
+      final complaint = context.read<ComplaintProvider>().findComplaint(refId);
+      debugPrint('[PRES-NAV]   findComplaint("$refId") → ${complaint == null ? "NOT FOUND" : "found: ${complaint.id}"}');
+      if (complaint == null) {
+        debugPrint('[PRES-NAV]   returning false — complaint not in cache');
+        return false;
+      }
+      final userId = context.read<AuthProvider>().currentUser?.id;
+      debugPrint('[PRES-NAV]   pushing ChatScreen (isAdminView:true, userId:$userId)');
+      try {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              complaint:     complaint,
+              isAdminView:   true,
+              currentUserId: userId,
+            ),
+          ),
+        );
+        debugPrint('[PRES-NAV]   ChatScreen push succeeded');
+      } catch (e, st) {
+        debugPrint('[PRES-NAV]   ChatScreen push EXCEPTION: $e\n$st');
+      }
+      return true;
+    }
+
+    // Bill / payment_received → MonthlyBillDetailScreen
+    if (type == 'bill' || type == 'bill_updated' || type == 'bill_deleted' ||
+        type == 'payment_received') {
+      debugPrint('[PRES-NAV]   branch: bill/payment_received');
+      if (aptId.isEmpty) {
+        debugPrint('[PRES-NAV]   aptId is empty — cannot look up bills, returning false');
+        return false;
+      }
+      final billProvider = context.read<BillProvider>();
+      final summaries = billProvider.monthlyBillsForApartment(aptId);
+      debugPrint('[PRES-NAV]   monthlyBillsForApartment("$aptId") → ${summaries.length} summaries');
+      for (final s in summaries) {
+        debugPrint('[PRES-NAV]     summary month=${s.month}  bills=${s.bills.map((b) => b.id).toList()}');
+      }
+      MonthlyBillSummary? target;
+      for (final s in summaries) {
+        if (s.bills.any((b) => b.id == refId)) {
+          target = s;
+          break;
+        }
+      }
+      debugPrint('[PRES-NAV]   looking for bill id "$refId" → ${target == null ? "NOT FOUND in any summary" : "found in month ${target.month}"}');
+      if (target == null) {
+        debugPrint('[PRES-NAV]   returning false — bill not in cache');
+        return false;
+      }
+      debugPrint('[PRES-NAV]   pushing MonthlyBillDetailScreen (aptId:$aptId  month:${target.month})');
+      try {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MonthlyBillDetailScreen(summary: target!, aptId: aptId),
+          ),
+        );
+        debugPrint('[PRES-NAV]   MonthlyBillDetailScreen push succeeded');
+      } catch (e, st) {
+        debugPrint('[PRES-NAV]   MonthlyBillDetailScreen push EXCEPTION: $e\n$st');
+      }
+      return true;
+    }
+
+    debugPrint('[PRES-NAV]   type "$type" has no detail screen — tab switch only');
+    debugPrint('[PRES-NAV] ══════════════════════════════════════');
+    // Other types handled by tab switching only — no specific detail screen.
+    return true;
   }
 
   @override
