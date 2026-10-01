@@ -555,9 +555,9 @@ class _ResidentMonthlyBillDetailScreenState
                                 AppTextStyles.caption(color: AppColors.paid),
                           ),
                         if (fresh.views.isNotEmpty &&
-                            fresh.views.last.payment.transactionId != null)
+                            fresh.views.last.payment.referenceLast4 != null)
                           Text(
-                            'Txn: ${fresh.views.last.payment.transactionId}',
+                            'UPI Ref: •••• ${fresh.views.last.payment.referenceLast4}',
                             style: AppTextStyles.caption(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -596,6 +596,15 @@ class _ResidentMonthlyBillDetailScreenState
                               color: const Color(0xFFD97706)
                                   .withValues(alpha: 0.8)),
                         ),
+                        if (fresh.views.isNotEmpty &&
+                            fresh.views.last.payment.referenceLast4 != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'UPI Ref: •••• ${fresh.views.last.payment.referenceLast4}',
+                            style: AppTextStyles.caption(
+                                color: const Color(0xFFD97706)),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -636,7 +645,7 @@ class _ResidentMonthlyBillDetailScreenState
               ),
             ),
             Builder(builder: (context) {
-              final upiEnabled = apt != null && apt.upiPaymentsEnabled && (apt.upiId ?? '').isNotEmpty;
+              final upiEnabled = apt != null && (apt.upiId ?? '').trim().isNotEmpty;
               if (!upiEnabled) return const SizedBox.shrink();
               return Column(
                 children: [

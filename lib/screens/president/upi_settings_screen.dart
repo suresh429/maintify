@@ -18,7 +18,6 @@ class UpiSettingsScreen extends StatefulWidget {
 class _UpiSettingsScreenState extends State<UpiSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _upiController = TextEditingController();
-  bool _enabled = false;
   bool _saving = false;
   bool _initialized = false;
 
@@ -31,7 +30,6 @@ class _UpiSettingsScreenState extends State<UpiSettingsScreen> {
       final apt = context.read<ApartmentProvider>().findById(auth.currentUser?.apartmentId ?? '');
       if (apt != null) {
         _upiController.text = apt.upiId ?? '';
-        _enabled = apt.upiPaymentsEnabled && (apt.upiId ?? '').isNotEmpty;
       }
     }
   }
@@ -55,7 +53,7 @@ class _UpiSettingsScreenState extends State<UpiSettingsScreen> {
       await context.read<ApartmentProvider>().updateUpiSettings(
         aptId: aptId,
         upiId: normalized,
-        upiPaymentsEnabled: _enabled && normalized.isNotEmpty,
+        upiPaymentsEnabled: normalized.isNotEmpty,
         updatedBy: uid,
       );
       if (!mounted) return;
@@ -71,11 +69,8 @@ class _UpiSettingsScreenState extends State<UpiSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final apt = context.watch<ApartmentProvider>().findById(
           context.read<AuthProvider>().currentUser?.apartmentId ?? '');
-    final hasValidUpi = (apt?.upiId ?? '').isNotEmpty && UpiValidator.validate(apt?.upiId) == null;
-
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -138,7 +133,10 @@ class _UpiSettingsScreenState extends State<UpiSettingsScreen> {
                 hint: 'e.g., name@upi, 9876543210@ybl',
                 keyboardType: TextInputType.emailAddress,
                 focusColor: const Color(0xFF2563EB),
-                validator: UpiValidator.validate,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return null; // empty = remove UPI
+                  return UpiValidator.validate(v);
+                },
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 8),
@@ -146,49 +144,6 @@ class _UpiSettingsScreenState extends State<UpiSettingsScreen> {
                 'Format: name@upi, name@oksbi, 9876543210@ybl',
                 style: AppTextStyles.caption(color: cs.onSurfaceVariant),
               ),
-              const SizedBox(height: 24),
-
-              // Enable toggle
-              Container(
-                decoration: BoxDecoration(
-                  color: cs.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: SwitchListTile.adaptive(
-                    value: _enabled,
-                    onChanged: hasValidUpi || _upiController.text.trim().isNotEmpty
-                        ? (val) => setState(() => _enabled = val)
-                        : null,
-                    activeThumbColor: const Color(0xFF3B82F6),
-                    activeTrackColor: const Color(0xFF3B82F6).withValues(alpha: 0.4),
-                    title: const Text('Accept UPI Payments', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.w500)),
-                    subtitle: Text(
-                      _enabled
-                          ? 'Residents can see the Pay with UPI option'
-                          : 'Pay with UPI is hidden from residents',
-                      style: AppTextStyles.caption(color: cs.onSurfaceVariant),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (!hasValidUpi && _upiController.text.trim().isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Text(
-                    'Save a valid UPI ID first to enable payments.',
-                    style: AppTextStyles.caption(color: cs.onSurfaceVariant),
-                  ),
-                ),
               const SizedBox(height: 32),
 
               // Save button
@@ -213,25 +168,18 @@ class _UpiSettingsScreenState extends State<UpiSettingsScreen> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: apt.upiPaymentsEnabled ? AppColors.paid.withValues(alpha: 0.07) : cs.surfaceContainerHighest,
+                    color: AppColors.paid.withValues(alpha: 0.07),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        apt.upiPaymentsEnabled ? Icons.check_circle_rounded : Icons.pause_circle_outline_rounded,
-                        color: apt.upiPaymentsEnabled ? AppColors.paid : cs.onSurfaceVariant,
-                        size: 20,
-                      ),
+                      const Icon(Icons.check_circle_rounded,
+                          color: AppColors.paid, size: 20),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          apt.upiPaymentsEnabled
-                              ? 'UPI payments are active. Residents can pay using ${apt.upiId}.'
-                              : 'UPI payments are currently disabled.',
-                          style: AppTextStyles.caption(
-                            color: apt.upiPaymentsEnabled ? AppColors.paid : cs.onSurfaceVariant,
-                          ),
+                          'UPI payments are active. Residents can pay using ${apt.upiId}.',
+                          style: AppTextStyles.caption(color: AppColors.paid),
                         ),
                       ),
                     ],

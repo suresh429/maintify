@@ -1,6 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:flutter/services.dart' show Clipboard, ClipboardData, FilteringTextInputFormatter, LengthLimitingTextInputFormatter;
 import 'package:provider/provider.dart';
 import 'dart:io';
 import '../core/services/upi_payment_service.dart';
@@ -701,15 +703,34 @@ class _UpiConfirmSheetState extends State<_UpiConfirmSheet> {
   final _refFormKey = GlobalKey<FormState>();
   bool _submitting = false;
 
+  // 5-second countdown before "Yes, I Paid" becomes active.
+  int _countdown = 5;
+  Timer? _countdownTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      if (_countdown <= 1) {
+        t.cancel();
+        setState(() => _countdown = 0);
+      } else {
+        setState(() => _countdown--);
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _refController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_refFormKey.currentState!.validate()) return;
-    final upiRef = _refController.text.trim();
+    final last4 = _refController.text.trim();
     setState(() => _submitting = true);
 
     final billProvider = context.read<BillProvider>();
@@ -718,7 +739,7 @@ class _UpiConfirmSheetState extends State<_UpiConfirmSheet> {
 
     // Find all pending bills for this user in this month.
     // Payment is set to BillStatus.pendingApproval — NOT paid.
-    // President must verify the UPI reference before it becomes paid.
+    // President must verify the payment before it becomes paid.
     final monthBills = billProvider
         .billsForApartment(widget.aptId)
         .where((b) => b.month == widget.summary.month)
@@ -730,13 +751,13 @@ class _UpiConfirmSheetState extends State<_UpiConfirmSheet> {
       if (payment != null && !payment.isPaid && !payment.isPendingApproval) {
         try {
           await billProvider.submitUpiPaymentForBill(
-            billId: bill.id,
-            userId: widget.userId,
-            aptId: widget.aptId,
-            presidentId: presidentId,
-            unitNumber: widget.unitNumber,
-            upiRef: upiRef,
-            upiIdUsed: widget.apt.upiId ?? '',
+            billId:         bill.id,
+            userId:         widget.userId,
+            aptId:          widget.aptId,
+            presidentId:    presidentId,
+            unitNumber:     widget.unitNumber,
+            referenceLast4: last4,
+            upiIdUsed:      widget.apt.upiId ?? '',
           );
           submitted = true;
         } catch (e) {
@@ -821,45 +842,65 @@ class _UpiConfirmSheetState extends State<_UpiConfirmSheet> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton(
-                        onPressed: () => setState(() => _showRefEntry = true),
+                        onPressed: _countdown > 0
+                            ? null
+                            : () => setState(() => _showRefEntry = true),
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFF2563EB),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        child: Text('Yes, I Paid',
-                            style: AppTextStyles.buttonText()),
+                        child: Text(
+                          _countdown > 0
+                              ? 'Yes, I Paid (${_countdown}s)'
+                              : 'Yes, I Paid',
+                          style: AppTextStyles.buttonText(),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ] else ...[
-                Text('Enter UPI Transaction ID',
+                Text('Payment Completed?',
                     style: AppTextStyles.heading3(color: cs.onSurface)),
                 const SizedBox(height: 8),
                 Text(
-                  'Enter the UPI Reference / Transaction ID from your payment app.',
-                  style: AppTextStyles.caption(color: cs.onSurfaceVariant),
-                  textAlign: TextAlign.center,
+                  AppUtils.formatCurrency(widget.summary.totalAmount),
+                  style: AppTextStyles.subheading(color: cs.onSurface)
+                      .copyWith(fontSize: 22, fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 Form(
                   key: _refFormKey,
                   child: AppTextField(
                     controller: _refController,
-                    label: 'UPI Transaction / Reference ID',
-                    hint: 'e.g., 123456789012',
+                    label: 'UPI Transaction ID — Last 4 digits',
+                    hint: 'e.g., 5832',
                     focusColor: const Color(0xFF2563EB),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(4),
+                    ],
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Transaction ID is required';
+                      final val = v?.trim() ?? '';
+                      if (val.isEmpty) {
+                        return 'Please enter the last 4 digits of your UPI transaction ID.';
                       }
-                      if (v.trim().length < 6) {
-                        return 'Enter a valid transaction ID';
+                      if (val.length != 4) {
+                        return 'Please enter exactly 4 digits.';
                       }
                       return null;
                     },
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Enter the last 4 digits shown in your UPI transaction history.',
+                    style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -878,9 +919,9 @@ class _UpiConfirmSheetState extends State<_UpiConfirmSheet> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Your payment will be marked as paid after the president verifies it.',
-                          style:
-                              AppTextStyles.caption(color: const Color(0xFFD97706)),
+                          'Your payment will be submitted for verification. '
+                          'The president must verify it before it is marked as paid.',
+                          style: AppTextStyles.caption(color: const Color(0xFFD97706)),
                         ),
                       ),
                     ],
@@ -904,7 +945,7 @@ class _UpiConfirmSheetState extends State<_UpiConfirmSheet> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white),
                           )
-                        : Text('Submit Payment',
+                        : Text('Submit for Verification',
                             style: AppTextStyles.buttonText()),
                   ),
                 ),
@@ -913,7 +954,7 @@ class _UpiConfirmSheetState extends State<_UpiConfirmSheet> {
                   onPressed: _submitting
                       ? null
                       : () => setState(() => _showRefEntry = false),
-                  child: Text('Back',
+                  child: Text('Cancel',
                       style: AppTextStyles.bodyMedium(
                           color: cs.onSurfaceVariant)),
                 ),

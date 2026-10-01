@@ -117,8 +117,13 @@ service cloud.firestore {
                        isAdminForApartment(request.resource.data.apartmentId) ||
                        isSuperAdmin();
       allow update: if isAdminForApartment(resource.data.apartmentId) ||
-                       request.auth.uid == resource.data.userId ||
-                       isSuperAdmin();
+                       isSuperAdmin() ||
+                       (request.auth.uid == resource.data.userId &&
+                        request.resource.data.status == 'Pending Approval' &&
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['status', 'referenceLast4', 'paymentMethod',
+                                    'upiIdUsed', 'submittedAt', 'submittedBy',
+                                    'rejectedAt', 'rejectedBy']));
       allow delete: if isAdminForApartment(resource.data.apartmentId) || isSuperAdmin();
     }
 

@@ -262,8 +262,12 @@ class BillPayment {
   String?   rejectedBy;   // president uid
 
   // ── UPI-specific fields ────────────────────────────────────────────────────
-  String? paymentMethod; // 'upi' for UPI, null for manual
-  String? upiIdUsed;    // snapshot of UPI ID at payment time
+  String? paymentMethod;  // 'upi' for UPI, null for manual
+  String? upiIdUsed;      // snapshot of UPI ID at payment time
+  /// Last 4 digits of the UPI transaction ID entered by the resident.
+  /// Never contains a full transaction ID — only the 4-digit suffix used for
+  /// manual verification by the president. Display as "•••• XXXX".
+  String? referenceLast4;
 
   BillPayment({
     required this.id,
@@ -283,6 +287,7 @@ class BillPayment {
     this.rejectedBy,
     this.paymentMethod,
     this.upiIdUsed,
+    this.referenceLast4,
   });
 
   bool get isPaid            => status == BillStatus.paid;
@@ -316,8 +321,9 @@ class BillPayment {
       approvedBy:    d['approvedBy']    as String?,
       rejectedAt:    (d['rejectedAt']   as Timestamp?)?.toDate(),
       rejectedBy:    d['rejectedBy']    as String?,
-      paymentMethod: d['paymentMethod'] as String?,
-      upiIdUsed:     d['upiIdUsed']     as String?,
+      paymentMethod:  d['paymentMethod']  as String?,
+      upiIdUsed:      d['upiIdUsed']      as String?,
+      referenceLast4: d['referenceLast4'] as String?,
     );
   }
 
@@ -337,8 +343,9 @@ class BillPayment {
         'approvedBy':    approvedBy,
         'rejectedAt':    rejectedAt   != null ? Timestamp.fromDate(rejectedAt!)  : null,
         'rejectedBy':    rejectedBy,
-        'paymentMethod': paymentMethod,
-        'upiIdUsed':     upiIdUsed,
+        'paymentMethod':  paymentMethod,
+        'upiIdUsed':      upiIdUsed,
+        'referenceLast4': referenceLast4,
       };
 
   BillPayment copyWith({
@@ -354,25 +361,27 @@ class BillPayment {
     String?   rejectedBy,
     String?   paymentMethod,
     String?   upiIdUsed,
+    String?   referenceLast4,
   }) {
     return BillPayment(
-      id:            id,
-      billId:        billId,
-      userId:        userId,
-      unitNumber:    unitNumber,
-      amount:        amount,
-      status:        status        ?? this.status,
-      paidDate:      paidDate      ?? this.paidDate,
-      transactionId: transactionId ?? this.transactionId,
-      adminVerified: adminVerified ?? this.adminVerified,
-      submittedAt:   submittedAt,   // nullable — explicit null clears the field
-      submittedBy:   submittedBy,
-      approvedAt:    approvedAt    ?? this.approvedAt,
-      approvedBy:    approvedBy    ?? this.approvedBy,
-      rejectedAt:    rejectedAt    ?? this.rejectedAt,
-      rejectedBy:    rejectedBy    ?? this.rejectedBy,
-      paymentMethod: paymentMethod ?? this.paymentMethod,
-      upiIdUsed:     upiIdUsed     ?? this.upiIdUsed,
+      id:             id,
+      billId:         billId,
+      userId:         userId,
+      unitNumber:     unitNumber,
+      amount:         amount,
+      status:         status         ?? this.status,
+      paidDate:       paidDate       ?? this.paidDate,
+      transactionId:  transactionId  ?? this.transactionId,
+      adminVerified:  adminVerified  ?? this.adminVerified,
+      submittedAt:    submittedAt,    // nullable — explicit null clears the field
+      submittedBy:    submittedBy,
+      approvedAt:     approvedAt     ?? this.approvedAt,
+      approvedBy:     approvedBy     ?? this.approvedBy,
+      rejectedAt:     rejectedAt     ?? this.rejectedAt,
+      rejectedBy:     rejectedBy     ?? this.rejectedBy,
+      paymentMethod:  paymentMethod  ?? this.paymentMethod,
+      upiIdUsed:      upiIdUsed      ?? this.upiIdUsed,
+      referenceLast4: referenceLast4 ?? this.referenceLast4,
     );
   }
 }

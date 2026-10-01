@@ -612,17 +612,17 @@ class BillProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Resident submits a UPI payment reference for a single bill.
-  /// Sets status → [BillStatus.pendingApproval], stores transactionId, paymentMethod, upiIdUsed.
-  /// Call this ONCE per bill after the resident returns from the UPI app and enters the reference.
-  /// Guard: if payment is already pendingApproval or paid, does nothing.
+  /// Resident submits a UPI payment for a single bill.
+  /// Sets status → [BillStatus.pendingApproval], stores referenceLast4, paymentMethod, upiIdUsed.
+  /// Call this ONCE per bill after the resident returns from the UPI app and enters the last 4 digits.
+  /// Guard: if payment is already pendingApproval or paid, does nothing (prevents duplicates).
   Future<void> submitUpiPaymentForBill({
     required String billId,
     required String userId,
     required String aptId,
     required String presidentId,
     required String unitNumber,
-    required String upiRef,
+    required String referenceLast4,
     required String upiIdUsed,
   }) async {
     final payment = userPaymentForBill(billId, userId);
@@ -635,34 +635,34 @@ class BillProvider extends ChangeNotifier {
     final paymentId = '${billId}_$userId';
 
     await _fs.updatePayment(paymentId, {
-      'status':        BillStatus.pendingApproval,
-      'transactionId': upiRef.trim(),
-      'paymentMethod': 'upi',
-      'upiIdUsed':     upiIdUsed,
-      'submittedAt':   Timestamp.fromDate(now),
-      'submittedBy':   userId,
-      'rejectedAt':    null,
-      'rejectedBy':    null,
+      'status':          BillStatus.pendingApproval,
+      'referenceLast4':  referenceLast4,
+      'paymentMethod':   'upi',
+      'upiIdUsed':       upiIdUsed,
+      'submittedAt':     Timestamp.fromDate(now),
+      'submittedBy':     userId,
+      'rejectedAt':      null,
+      'rejectedBy':      null,
     });
 
     final idx = _payments.indexWhere((p) => p.billId == billId && p.userId == userId);
     if (idx != -1) {
       final old = _payments[idx];
       _payments[idx] = BillPayment(
-        id:            old.id,
-        billId:        old.billId,
-        userId:        old.userId,
-        unitNumber:    old.unitNumber,
-        amount:        old.amount,
-        status:        BillStatus.pendingApproval,
-        transactionId: upiRef.trim(),
-        paymentMethod: 'upi',
-        upiIdUsed:     upiIdUsed,
-        adminVerified: false,
-        submittedAt:   now,
-        submittedBy:   userId,
-        approvedAt:    old.approvedAt,
-        approvedBy:    old.approvedBy,
+        id:             old.id,
+        billId:         old.billId,
+        userId:         old.userId,
+        unitNumber:     old.unitNumber,
+        amount:         old.amount,
+        status:         BillStatus.pendingApproval,
+        referenceLast4: referenceLast4,
+        paymentMethod:  'upi',
+        upiIdUsed:      upiIdUsed,
+        adminVerified:  false,
+        submittedAt:    now,
+        submittedBy:    userId,
+        approvedAt:     old.approvedAt,
+        approvedBy:     old.approvedBy,
       );
     }
 
@@ -672,7 +672,7 @@ class BillProvider extends ChangeNotifier {
         'senderId':      userId,
         'apartmentId':   aptId,
         'title':         'UPI Payment Submitted',
-        'body':          'Flat $unitNumber submitted a UPI payment (Ref: $upiRef) awaiting verification.',
+        'body':          'Flat $unitNumber submitted a UPI payment (•••• $referenceLast4) awaiting verification.',
         'type':          NotificationType.paymentReceived,
         'referenceId':   billId,
         'referenceType': 'payment',
@@ -685,8 +685,8 @@ class BillProvider extends ChangeNotifier {
     // FCM push via Render server (fire-and-forget)
     NotificationPushService.instance.sendPush(
       recipientUids: [presidentId],
-      title:         'UPI Payment Submitted',
-      body:          'Flat $unitNumber submitted a UPI payment (Ref: $upiRef) awaiting verification.',
+      title:         'Payment Verification Required',
+      body:          'Flat $unitNumber submitted UPI payment (•••• $referenceLast4) — verification needed.',
       type:          NotificationType.paymentReceived,
       referenceId:   billId,
       referenceType: 'payment',

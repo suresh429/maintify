@@ -432,7 +432,7 @@ class _PendingApprovalCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (payment.isUpiPayment && payment.transactionId != null) ...[
+                      if (payment.isUpiPayment && payment.referenceLast4 != null) ...[
                         const SizedBox(height: 4),
                         Row(
                           children: [
@@ -440,7 +440,7 @@ class _PendingApprovalCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
-                                'UPI Ref: ${payment.transactionId}',
+                                'UPI Ref: •••• ${payment.referenceLast4}',
                                 style: AppTextStyles.caption(color: const Color(0xFFD97706)),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -494,23 +494,7 @@ class _PendingApprovalCard extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: isLoading
                         ? null
-                        : () async {
-                            // Find the month for this payment
-                            final bp = context.read<BillProvider>();
-                            final month = bp.monthForBill(payment.billId);
-                            if (month == null) return;
-                            await bp.presidentRejectPaymentForFlat(
-                              month: month,
-                              aptId: aptId,
-                              userId: payment.userId,
-                              presidentId: presidentId,
-                              unitNumber: payment.unitNumber,
-                            );
-                            if (!context.mounted) return;
-                            AppUtils.showSnackBar(
-                                context, 'Payment rejected.',
-                                isError: true);
-                          },
+                        : () => _showRejectConfirmSheet(context),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.overdue,
                       side: BorderSide(
@@ -531,22 +515,7 @@ class _PendingApprovalCard extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: isLoading
                         ? null
-                        : () async {
-                            final bp = context.read<BillProvider>();
-                            final month = bp.monthForBill(payment.billId);
-                            if (month == null) return;
-                            await bp.presidentApprovePaymentForFlat(
-                              month: month,
-                              aptId: aptId,
-                              userId: payment.userId,
-                              presidentId: presidentId,
-                              unitNumber: payment.unitNumber,
-                            );
-                            if (!context.mounted) return;
-                            AppUtils.showSnackBar(
-                                context, 'Payment approved!',
-                                color: AppColors.paid);
-                          },
+                        : () => _showApproveConfirmSheet(context),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.paid,
                       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -566,6 +535,276 @@ class _PendingApprovalCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _detailRow(ColorScheme cs, String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
+        Flexible(
+          child: Text(
+            value,
+            style: AppTextStyles.caption(color: cs.onSurface)
+                .copyWith(fontWeight: FontWeight.w600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showApproveConfirmSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        return Container(
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+              20, 12, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: cs.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(children: [
+                const Icon(Icons.verified_outlined,
+                    color: AppColors.paid, size: 20),
+                const SizedBox(width: 8),
+                Text('Verify Payment?',
+                    style: AppTextStyles.subheading(color: cs.onSurface)),
+              ]),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  children: [
+                    _detailRow(cs, 'Flat', payment.unitNumber),
+                    if (userName != null) ...[
+                      const SizedBox(height: 6),
+                      _detailRow(cs, 'Resident', userName!),
+                    ],
+                    if (payment.amount != null) ...[
+                      const SizedBox(height: 6),
+                      _detailRow(cs, 'Amount',
+                          AppUtils.formatCurrency(payment.amount!)),
+                    ],
+                    if (payment.referenceLast4 != null) ...[
+                      const SizedBox(height: 6),
+                      _detailRow(
+                          cs, 'UPI Transaction', '•••• ${payment.referenceLast4}'),
+                    ],
+                    if (payment.upiIdUsed != null) ...[
+                      const SizedBox(height: 6),
+                      _detailRow(cs, 'Sent to', payment.upiIdUsed!),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Have you verified this payment in your UPI app or bank transaction history?',
+                style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: Text('Cancel',
+                        style:
+                            AppTextStyles.bodyMedium(color: cs.onSurface)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final bp = context.read<BillProvider>();
+                      final month = bp.monthForBill(payment.billId);
+                      if (month == null) return;
+                      await bp.presidentApprovePaymentForFlat(
+                        month: month,
+                        aptId: aptId,
+                        userId: payment.userId,
+                        presidentId: presidentId,
+                        unitNumber: payment.unitNumber,
+                      );
+                      if (!context.mounted) return;
+                      AppUtils.showSnackBar(context, 'Payment approved!',
+                          color: AppColors.paid);
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.paid,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.check_rounded,
+                        size: 16, color: Colors.white),
+                    label: Text('Yes, Approve',
+                        style: AppTextStyles.caption(color: Colors.white)
+                            .copyWith(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showRejectConfirmSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        return Container(
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+              20, 12, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: cs.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(children: [
+                const Icon(Icons.cancel_outlined,
+                    color: AppColors.overdue, size: 20),
+                const SizedBox(width: 8),
+                Text('Reject Payment?',
+                    style: AppTextStyles.subheading(color: cs.onSurface)),
+              ]),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.overdue.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: AppColors.overdue.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  children: [
+                    _detailRow(cs, 'Flat', payment.unitNumber),
+                    if (userName != null) ...[
+                      const SizedBox(height: 6),
+                      _detailRow(cs, 'Resident', userName!),
+                    ],
+                    if (payment.amount != null) ...[
+                      const SizedBox(height: 6),
+                      _detailRow(cs, 'Amount',
+                          AppUtils.formatCurrency(payment.amount!)),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'This will notify the resident that their payment could not be verified. They will need to resubmit.',
+                style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: Text('Cancel',
+                        style:
+                            AppTextStyles.bodyMedium(color: cs.onSurface)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final bp = context.read<BillProvider>();
+                      final month = bp.monthForBill(payment.billId);
+                      if (month == null) return;
+                      await bp.presidentRejectPaymentForFlat(
+                        month: month,
+                        aptId: aptId,
+                        userId: payment.userId,
+                        presidentId: presidentId,
+                        unitNumber: payment.unitNumber,
+                      );
+                      if (!context.mounted) return;
+                      AppUtils.showSnackBar(context, 'Payment rejected.',
+                          isError: true);
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.overdue,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.close_rounded,
+                        size: 16, color: Colors.white),
+                    label: Text('Reject Payment',
+                        style: AppTextStyles.caption(color: Colors.white)
+                            .copyWith(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
     );
   }
 }
