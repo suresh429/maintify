@@ -85,6 +85,8 @@ class MeetingProvider extends ChangeNotifier {
       type: NotificationType.meeting,
       targetRole: UserRole.resident,
       aptId: aptId,
+      referenceId: docRef.id,
+      referenceType: 'meeting',
     );
 
     // Optimistic local update

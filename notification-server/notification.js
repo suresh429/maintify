@@ -234,26 +234,28 @@ async function getUserDoc(uid) {
  * Sends FCM push notification to one or more specific user UIDs.
  * Fetches FCM tokens from Firestore — never exposes tokens to callers.
  *
- * @param {{ recipientUids: string[], title: string, body: string, type: string, referenceId: string }} params
+ * @param {{ recipientUids: string[], title: string, body: string, type: string, referenceId: string, referenceType?: string }} params
  * @returns {Promise<{ successCount: number, failureCount: number }>}
  */
-async function sendToUids({ recipientUids, title, body, type, referenceId }) {
-  console.log(`[NOTIFICATION] Recipient count: ${recipientUids.length}`);
-  console.log(`[NOTIFICATION] type: ${type}`);
-  console.log(`[NOTIFICATION] referenceId: ${referenceId || '(none)'}`);
+async function sendToUids({ recipientUids, title, body, type, referenceId, referenceType }) {
+  console.log(`[FCM-SERVER] recipient count: ${recipientUids.length}`);
+  console.log(`[FCM-SERVER] type: ${type}`);
+  console.log(`[FCM-SERVER] referenceId: ${referenceId || '(none)'}`);
+  console.log(`[FCM-SERVER] referenceType: ${referenceType || '(none)'}`);
 
   const { tokens, tokenToUserId } = await _tokensForUserIds(recipientUids);
 
-  console.log(`[FCM] Tokens found: ${tokens.length}`);
+  console.log(`[FCM-SERVER] tokens found: ${tokens.length}`);
 
   if (tokens.length === 0) {
-    console.warn('[FCM] No valid tokens found for any recipient');
+    console.warn('[FCM-SERVER] no valid tokens found for any recipient');
     return { successCount: 0, failureCount: 0 };
   }
 
   return _multicast(tokens, title, body, {
-    type:        type        ?? '',
-    referenceId: referenceId ?? '',
+    type:          type          ?? '',
+    referenceId:   referenceId   ?? '',
+    referenceType: referenceType ?? '',
   }, tokenToUserId);
 }
 

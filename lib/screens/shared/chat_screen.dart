@@ -43,6 +43,15 @@ class _ChatScreenState extends State<ChatScreen> {
           .read<ComplaintProvider>()
           .subscribeToMessages(widget.complaint.id);
       _scrollToBottom();
+
+      // Mark all unread complaint notifications for this complaint as read.
+      // This fires whether the user arrived via the Notifications screen or
+      // directly from the Complaints list — ensuring the badge always reflects
+      // the true unread state.
+      context.read<NotificationProvider>().markNotificationsReadByReference(
+        referenceType: 'complaint',
+        referenceId: widget.complaint.id,
+      );
     });
   }
 
@@ -342,7 +351,11 @@ class _ChatScreenState extends State<ChatScreen> {
                       Navigator.pop(ctx);
                       await context
                           .read<ComplaintProvider>()
-                          .updateStatus(widget.complaint.id, s);
+                          .updateStatus(
+                            widget.complaint.id,
+                            s,
+                            notificationProvider: context.read<NotificationProvider>(),
+                          );
                     }
                   : null,
             );

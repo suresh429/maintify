@@ -30,6 +30,13 @@ class FcmService {
   static const _channelId   = 'maintify_notifications';
   static const _channelName = 'Maintify Notifications';
 
+  // Web Push Certificate (VAPID) key pair.
+  // Get it from: Firebase Console → Project Settings → Cloud Messaging →
+  //              Web Push certificates → Key pair
+  // Paste the Base64URL public key string below (≈87 characters, no quotes/spaces).
+  // Leave empty to disable Web push (app will still function without it).
+  static const _vapidKey = '';
+
   // ── Public API ────────────────────────────────────────────────────────────
 
   /// Call once after every successful login.
@@ -198,8 +205,8 @@ class FcmService {
 
   // ── Token ─────────────────────────────────────────────────────────────────
 
-  Future<void> _saveToken(String userId) async {
-    debugPrint('[FCM] _saveToken for $userId');
+  Future<void> _saveToken(String userId, {bool isRetry = false}) async {
+    debugPrint('[FCM] _saveToken for $userId${isRetry ? ' (retry)' : ''}');
     try {
       if (!kIsWeb && Platform.isIOS) {
         final apns = await _messaging.getAPNSToken();
@@ -209,7 +216,19 @@ class FcmService {
         }
       }
 
-      final token = await _messaging.getToken().timeout(
+      // On web, pass the VAPID key when configured; otherwise pass null so
+      // Firebase uses the project's default web push certificate.
+      // If _vapidKey is empty, we still attempt getToken() — it may succeed
+      // using the project's default certificate.
+      if (kIsWeb && _vapidKey.isEmpty) {
+        debugPrint('[FCM] No explicit VAPID key — using project default web push certificate');
+        debugPrint('[FCM] To set explicit key: Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → Key pair → paste into _vapidKey');
+      }
+      final String? vapidKeyForWeb = (kIsWeb && _vapidKey.isNotEmpty) ? _vapidKey : null;
+
+      final token = await _messaging
+          .getToken(vapidKey: kIsWeb ? vapidKeyForWeb : null)
+          .timeout(
         const Duration(seconds: 10),
         onTimeout: () {
           debugPrint('[FCM] getToken() timed out');
@@ -222,14 +241,7 @@ class FcmService {
         return;
       }
 
-      // ignore: avoid_print
-      print('╔══════════════════════════════════════════╗');
-      // ignore: avoid_print
-      print('║  FCM TOKEN (user: $userId)');
-      // ignore: avoid_print
-      print('║  $token');
-      // ignore: avoid_print
-      print('╚══════════════════════════════════════════╝');
+      debugPrint('[FCM] Token obtained');
 
       final platform = kIsWeb
           ? 'web'
@@ -240,9 +252,16 @@ class FcmService {
         'lastTokenUpdated':    DateTime.now().toIso8601String(),
         'platform':            platform,
       });
-      debugPrint('[FCM] Token saved ✓');
+      debugPrint('[FCM] Token saved successfully');
     } catch (e) {
       debugPrint('[FCM] _saveToken error: $e');
+      // SERVICE_NOT_AVAILABLE is transient on some Android ROMs (Realme/ColorOS).
+      // Retry once after a short delay before giving up.
+      if (!isRetry && e.toString().contains('SERVICE_NOT_AVAILABLE')) {
+        debugPrint('[FCM] SERVICE_NOT_AVAILABLE — retrying in 5 s…');
+        await Future<void>.delayed(const Duration(seconds: 5));
+        await _saveToken(userId, isRetry: true);
+      }
     }
   }
 

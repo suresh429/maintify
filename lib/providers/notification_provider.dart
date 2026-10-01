@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/notification_model.dart';
 import '../core/theme/role_theme.dart';
 import '../core/services/firestore_service.dart';
+import '../core/services/notification_push_service.dart';
 
 /// Represents one visible row in the resident notification list.
 ///
@@ -70,10 +71,6 @@ class NotificationProvider extends ChangeNotifier {
   /// Starts a real-time stream scoped to this specific user's notifications.
   /// Each notification doc has `userId == currentUser.id`.
   void startListening(String userId) {
-    // Remove any legacy docs (targetRole only, no userId) so they don't pollute
-    // future queries. Runs on every login; no-op when there is nothing to clean.
-    _fs.cleanupLegacyNotifications()
-        .catchError((e) => debugPrint('[CLEANUP] Legacy notification error: $e'));
     _sub?.cancel();
     _sub = _fs.streamNotificationsForUser(userId).listen((list) {
       debugPrint('[REALTIME] Listener triggered — userId: $userId');
@@ -81,6 +78,8 @@ class NotificationProvider extends ChangeNotifier {
       _notifications
         ..clear()
         ..addAll(list);
+      final unread = _notifications.where((n) => !n.isRead).length;
+      debugPrint('[NOTIF-COUNT] userId=$userId  total=${list.length}  unread=$unread');
       notifyListeners();
     }, onError: (e) {
       debugPrint('[REALTIME] Notifications stream ERROR (userId: $userId): $e');
@@ -146,19 +145,25 @@ class NotificationProvider extends ChangeNotifier {
   /// Called when the resident taps a grouped complaint notification item.
   void markComplaintGroupRead(String referenceId) {
     bool changed = false;
+    int count = 0;
     for (int i = 0; i < _notifications.length; i++) {
       final n = _notifications[i];
       if (!n.isRead &&
           n.referenceId == referenceId &&
           n.referenceType == 'complaint') {
         _notifications[i] = n.copyWith(isRead: true);
+        debugPrint('[NOTIF-READ] notificationId=${n.id}  type=${n.type}  referenceId=$referenceId');
         _fs
             .markNotificationRead(n.id)
             .catchError(
                 (e) => debugPrint('[NOTIFICATION] markGroupRead error: $e'));
         changed = true;
+        count++;
       }
     }
+    final unread = _notifications.where((n) => !n.isRead).length;
+    debugPrint('[NOTIF-READ-REF] referenceType=complaint  referenceId=$referenceId  matched=$count');
+    debugPrint('[NOTIF-COUNT] after markComplaintGroupRead — total=${_notifications.length}  unread=$unread');
     if (changed) notifyListeners();
   }
 
@@ -177,9 +182,13 @@ class NotificationProvider extends ChangeNotifier {
   void markRead(String id) {
     final i = _notifications.indexWhere((n) => n.id == id);
     if (i != -1 && !_notifications[i].isRead) {
-      _notifications[i] = _notifications[i].copyWith(isRead: true);
+      final n = _notifications[i];
+      _notifications[i] = n.copyWith(isRead: true);
+      debugPrint('[NOTIF-READ] notificationId=${n.id}  type=${n.type}  referenceId=${n.referenceId}');
       _fs.markNotificationRead(id)
           .catchError((e) => debugPrint('[NOTIFICATION] markRead error: $e'));
+      final unread = _notifications.where((n) => !n.isRead).length;
+      debugPrint('[NOTIF-COUNT] after markRead — total=${_notifications.length}  unread=$unread');
       notifyListeners();
     }
   }
@@ -195,8 +204,47 @@ class NotificationProvider extends ChangeNotifier {
     if (changed) {
       _fs.markAllNotificationsReadForUser(userId)
           .catchError((e) => debugPrint('[NOTIFICATION] markAllRead error: $e'));
+      final unread = _notifications.where((n) => !n.isRead).length;
+      debugPrint('[NOTIF-COUNT] after markAllRead — total=${_notifications.length}  unread=$unread');
       notifyListeners();
     }
+  }
+
+  /// Marks all unread notifications for a given [referenceType] + [referenceId]
+  /// as read — both in-memory and in Firestore.
+  ///
+  /// Called when the user opens a feature screen directly (e.g. complaint chat,
+  /// bill detail) without going through the Notifications list.
+  void markNotificationsReadByReference({
+    required String referenceType,
+    required String referenceId,
+  }) {
+    bool changed = false;
+    int count = 0;
+    int alreadyRead = 0;
+    int refMismatch = 0;
+    for (int i = 0; i < _notifications.length; i++) {
+      final n = _notifications[i];
+      final refMatch = n.referenceId == referenceId && n.referenceType == referenceType;
+      if (refMatch) {
+        if (!n.isRead) {
+          _notifications[i] = n.copyWith(isRead: true);
+          _fs.markNotificationRead(n.id).catchError(
+              (e) => debugPrint('[NOTIF-READ] markRead error (id=${n.id}): $e'));
+          changed = true;
+          count++;
+        } else {
+          alreadyRead++;
+        }
+      } else {
+        refMismatch++;
+      }
+    }
+    final unread = _notifications.where((n) => !n.isRead).length;
+    debugPrint('[NOTIF-READ-REF] referenceType=$referenceType  referenceId=$referenceId');
+    debugPrint('[NOTIF-READ-REF] total loaded=${_notifications.length}  matched=$count  alreadyRead=$alreadyRead  noRef=$refMismatch');
+    debugPrint('[NOTIF-COUNT] after markByRef — total=${_notifications.length}  unread=$unread');
+    if (changed) notifyListeners();
   }
 
   /// Saves one Firestore notification document per target user.
@@ -207,7 +255,10 @@ class NotificationProvider extends ChangeNotifier {
   ///   fetched from Firestore automatically.
   ///
   /// When both are omitted nothing is written (logged as a warning).
-  Future<void> addAndPersistNotification({
+  ///
+  /// Returns the list of user IDs that received a notification document.
+  /// Callers may use this list to send an FCM push via [NotificationPushService].
+  Future<List<String>> addAndPersistNotification({
     required String title,
     required String body,
     required String type,
@@ -229,7 +280,7 @@ class NotificationProvider extends ChangeNotifier {
 
     if (userIds.isEmpty) {
       debugPrint('[NOTIFICATION] ⚠ No target users — notification skipped (targetRole: ${targetRole.name}, aptId: $aptId)');
-      return;
+      return [];
     }
 
     // Write one doc per user ──────────────────────────────────────────────
@@ -257,9 +308,25 @@ class NotificationProvider extends ChangeNotifier {
     }
 
     debugPrint('[NOTIFICATION] All docs saved — Firestore streams will auto-update UI');
+
+    // FCM push via Render notification server (fire-and-forget).
+    // Runs after Firestore writes so in-app notifications are always persisted
+    // even if the push call fails.
+    if (userIds.isNotEmpty) {
+      NotificationPushService.instance.sendPush(
+        recipientUids: List.of(userIds),
+        title: title,
+        body: body,
+        type: type,
+        referenceId: referenceId ?? '',
+        referenceType: referenceType ?? '',
+      );
+    }
+
     // No optimistic insert: each user's stream fires automatically when their
     // own doc is created. The current caller is a different role, so their
     // _notifications list is unaffected.
+    return List.unmodifiable(userIds);
   }
 
   /// Adds a notification only to in-memory list (no Firestore write).

@@ -435,11 +435,16 @@ exports.onComplaintCreated = onDocumentCreated('complaints/{complaintId}', async
   if (!aptId) return;
 
   const complaintId  = event.params.complaintId;
+  const userName     = complaint.userName ?? 'A resident';
+  const unit         = complaint.unit     ?? '';
+  const category     = complaint.category ?? 'General';
+  const unitLabel    = unit ? ` (Flat ${unit})` : '';
+  const content      = _truncate(complaint.content ?? complaint.title ?? '', 100);
 
-  // Notify president
+  // Notify president — name + flat + actual complaint text
   await sendToApartment(aptId, 'president', {
-    title:        'New Complaint',
-    body:         'A new complaint has been reported in your apartment.',
+    title:        category,
+    body:         `${userName}${unitLabel}: "${content}"`,
     type:         'complaint',
     referenceId:  complaintId,
     referenceType: 'complaint',
@@ -448,10 +453,10 @@ exports.onComplaintCreated = onDocumentCreated('complaints/{complaintId}', async
     saveToFirestore: true,
   });
 
-  // Notify all residents in the apartment
+  // Notify residents — actual complaint text, no name or flat
   await sendToApartment(aptId, 'resident', {
-    title:        'New Apartment Complaint',
-    body:         'A new complaint has been reported in your apartment.',
+    title:        category,
+    body:         `"${content}"`,
     type:         'complaint',
     referenceId:  complaintId,
     referenceType: 'complaint',
@@ -510,13 +515,15 @@ exports.onComplaintMessage = onDocumentCreated(
     const complaint = complaintDoc.data();
     const aptId     = complaint.apartmentId;
 
+    const complaintTitle = complaint.title ?? 'your complaint';
+
     if (msg.isFromAdmin) {
-      // Admin replied → notify the resident who raised the complaint
+      // President replied → notify the resident who raised the complaint
       const userId = complaint.userId;
       if (!userId) return;
       await sendToUser(userId, {
-        title:        'Complaint Updated',
-        body:         `Admin replied: "${_truncate(msg.content, 80)}"`,
+        title:        'Reply on Your Complaint',
+        body:         `President replied: "${_truncate(msg.content, 80)}"`,
         type:         'complaint_reply',
         referenceId:  complaintId,
         referenceType: 'complaint',
@@ -525,7 +532,7 @@ exports.onComplaintMessage = onDocumentCreated(
         saveToFirestore: true,
       });
     } else {
-      // Resident sent a message → notify admin
+      // Resident sent a message → notify president
       await sendToApartment(aptId, 'president', {
         title:        'New Message on Complaint',
         body:         `${msg.senderName ?? 'Resident'}: ${_truncate(msg.content, 80)}`,

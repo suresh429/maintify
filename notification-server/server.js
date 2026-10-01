@@ -69,7 +69,7 @@ app.post('/send-notification', async (req, res) => {
   }
 
   // ── Step 3: Validate request body ─────────────────────────────────────────
-  const { recipientUids, title, body, type, referenceId } = req.body ?? {};
+  const { recipientUids, title, body, type, referenceId, referenceType } = req.body ?? {};
 
   if (!Array.isArray(recipientUids) || recipientUids.length === 0) {
     return res.status(400).json({ success: false, error: 'recipientUids must be a non-empty array' });
@@ -131,11 +131,12 @@ app.post('/send-notification', async (req, res) => {
   let result;
   try {
     result = await sendToUids({
-      recipientUids: validUids,
-      title:         title.trim(),
-      body:          body.trim(),
-      type:          type.trim(),
-      referenceId:   typeof referenceId === 'string' ? referenceId.trim() : '',
+      recipientUids:  validUids,
+      title:          title.trim(),
+      body:           body.trim(),
+      type:           type.trim(),
+      referenceId:    typeof referenceId  === 'string' ? referenceId.trim()  : '',
+      referenceType:  typeof referenceType === 'string' ? referenceType.trim() : '',
     });
   } catch (e) {
     console.error('[FCM] Unexpected send error:', e.message);

@@ -161,18 +161,21 @@ service cloud.firestore {
     }
 
     // ── Notifications ─────────────────────────────────────────────────────────
-    // Read is scoped to the notification's owner; admins can read all for
-    // management purposes. App-level queries always add userId == currentUser.
-    // create is open to all signed-in users: residents write notifications for
-    // presidents when sending complaint messages; presidents write for residents
-    // when replying. The app controls targeting — no server-side restriction
-    // is needed beyond requiring authentication.
+    // Read: owner reads their own; president/superAdmin can read their own.
+    // App-level queries always include userId == currentUser.uid.
+    // Create: Cloud Functions (Admin SDK) bypass rules; client-side create
+    // allowed for signed-in users to support any remaining edge cases.
+    // Update: only the owner may update, and only the read-state fields.
+    // Delete: super admin only.
     match /notifications/{notifId} {
       allow read: if isSignedIn() &&
                      (request.auth.uid == resource.data.userId ||
                       isAdmin() || isSuperAdmin());
       allow create: if isSignedIn();
-      allow update: if isSignedIn(); // mark as read
+      allow update: if isSignedIn() &&
+                       request.auth.uid == resource.data.userId &&
+                       request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['isRead', 'readAt']);
       allow delete: if isSuperAdmin();
     }
 

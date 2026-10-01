@@ -5,13 +5,14 @@ import '../../models/apartment_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/bill_provider.dart';
 import '../../providers/apartment_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../widgets/upi_payment_sheet.dart';
 
-class ResidentMonthlyBillDetailScreen extends StatelessWidget {
+class ResidentMonthlyBillDetailScreen extends StatefulWidget {
   final UserMonthlySummary summary;
   final String aptId;
 
@@ -22,6 +23,30 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
   });
 
   @override
+  State<ResidentMonthlyBillDetailScreen> createState() =>
+      _ResidentMonthlyBillDetailScreenState();
+}
+
+class _ResidentMonthlyBillDetailScreenState
+    extends State<ResidentMonthlyBillDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Mark all unread bill notifications for every bill in this monthly
+      // summary as read. Works whether the user arrived via Notifications or
+      // directly from the Bills tab.
+      final notifProvider = context.read<NotificationProvider>();
+      for (final view in widget.summary.views) {
+        notifProvider.markNotificationsReadByReference(
+          referenceType: 'bill',
+          referenceId: view.bill.id,
+        );
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = RoleTheme.of(UserRole.resident);
     final billProvider = context.watch<BillProvider>();
@@ -30,11 +55,11 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
 
     final allSummaries = billProvider.userMonthlySummaries(userId);
     final fresh = allSummaries.firstWhere(
-      (s) => s.month == summary.month,
-      orElse: () => summary,
+      (s) => s.month == widget.summary.month,
+      orElse: () => widget.summary,
     );
 
-    final apt = context.watch<ApartmentProvider>().findById(aptId);
+    final apt = context.watch<ApartmentProvider>().findById(widget.aptId);
 
     // Apartment-level total = sum of each bill's totalAmount
     final aptTotal =
@@ -54,7 +79,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(summary.month,
+        title: Text(widget.summary.month,
             style: AppTextStyles.heading3(color: Colors.white)),
         flexibleSpace: Container(
           decoration: BoxDecoration(
@@ -622,7 +647,7 @@ class ResidentMonthlyBillDetailScreen extends StatelessWidget {
                       onPressed: () => showUpiPaymentSheet(
                         context,
                         summary: fresh,
-                        aptId: aptId,
+                        aptId: widget.aptId,
                       ),
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF2563EB),

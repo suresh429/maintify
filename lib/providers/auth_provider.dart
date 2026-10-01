@@ -94,6 +94,7 @@ class AuthProvider extends ChangeNotifier {
       FcmService().init(_currentUser!.id).catchError((e) {
         debugPrint('[FCM] init error for ${_currentUser?.id}: $e');
       });
+
     }
 
     return true;

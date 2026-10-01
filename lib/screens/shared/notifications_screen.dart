@@ -23,21 +23,10 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _showUnreadOnly = false;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = context.read<AuthProvider>();
-      final userId = auth.currentUser?.id;
-      // Resident and President use tap-based read marking (grouped complaint UX).
-      // Admin auto-marks all read on screen open (existing behaviour).
-      final skipAutoRead = auth.role == UserRole.resident ||
-          auth.role == UserRole.president;
-      if (userId != null && !skipAutoRead) {
-        context.read<NotificationProvider>().markAllRead(userId);
-      }
-    });
-  }
+  // initState intentionally has no auto-mark-all-read logic.
+  // Notifications are marked read only when the user explicitly taps them
+  // (see _NotificationTile._handleTap and _GroupedComplaintTile._handleTap).
+  // The "Mark all read" action button in the AppBar handles bulk marking.
 
   @override
   Widget build(BuildContext context) {
@@ -361,6 +350,11 @@ class _NotificationTile extends StatelessWidget {
     debugPrint('[NOTIF-TAP] type: $type');
     debugPrint('[NOTIF-TAP] referenceId: $refId');
     debugPrint('[NOTIF-TAP]   role:  $role');
+
+    // Mark this notification as read immediately (optimistic).
+    // For grouped complaint tiles this is handled by markComplaintGroupRead;
+    // for all single/flat-list tiles this call is the sole read trigger.
+    context.read<NotificationProvider>().markRead(notification.id);
 
     // Complaint types → ChatScreen (read-only for admin, interactive for resident)
     if (type == NotificationType.complaint ||

@@ -6,6 +6,7 @@ import '../models/flat_model.dart';
 import '../models/notification_model.dart';
 import '../models/user_model.dart';
 import '../core/services/firestore_service.dart';
+import '../core/services/notification_push_service.dart';
 import 'notification_provider.dart';
 
 // ── Monthly grouping data classes (unchanged — UI depends on these) ───────────
@@ -577,20 +578,33 @@ class BillProvider extends ChangeNotifier {
     }
 
     if (submitted) {
+      // Use the first bill's ID as referenceId (month-level submission).
+      final firstBillId = monthBills.isNotEmpty ? monthBills.first.id : '';
       try {
         await _fs.addNotification({
-          'userId':      presidentId,
-          'senderId':    userId,
-          'apartmentId': aptId,
-          'title':       'New Payment Request',
-          'body':        'Flat $unitNumber has submitted a payment for approval.',
-          'type':        NotificationType.paymentReceived,
-          'createdAt':   FieldValue.serverTimestamp(),
-          'isRead':      false,
+          'userId':        presidentId,
+          'senderId':      userId,
+          'apartmentId':   aptId,
+          'title':         'New Payment Request',
+          'body':          'Flat $unitNumber has submitted a payment for approval.',
+          'type':          NotificationType.paymentReceived,
+          'referenceId':   firstBillId,
+          'referenceType': 'payment',
+          'createdAt':     FieldValue.serverTimestamp(),
+          'isRead':        false,
         });
       } catch (e) {
         debugPrint('[BillProvider] Submit notification failed: $e');
       }
+      // FCM push via Render server (fire-and-forget)
+      NotificationPushService.instance.sendPush(
+        recipientUids: [presidentId],
+        title:         'New Payment Request',
+        body:          'Flat $unitNumber has submitted a payment for approval.',
+        type:          NotificationType.paymentReceived,
+        referenceId:   firstBillId,
+        referenceType: 'payment',
+      );
     }
 
     MockBillData.replaceAll(_bills, _payments);
@@ -654,18 +668,29 @@ class BillProvider extends ChangeNotifier {
 
     try {
       await _fs.addNotification({
-        'userId':      presidentId,
-        'senderId':    userId,
-        'apartmentId': aptId,
-        'title':       'UPI Payment Submitted',
-        'body':        'Flat $unitNumber submitted a UPI payment (Ref: $upiRef) awaiting verification.',
-        'type':        NotificationType.paymentReceived,
-        'createdAt':   FieldValue.serverTimestamp(),
-        'isRead':      false,
+        'userId':        presidentId,
+        'senderId':      userId,
+        'apartmentId':   aptId,
+        'title':         'UPI Payment Submitted',
+        'body':          'Flat $unitNumber submitted a UPI payment (Ref: $upiRef) awaiting verification.',
+        'type':          NotificationType.paymentReceived,
+        'referenceId':   billId,
+        'referenceType': 'payment',
+        'createdAt':     FieldValue.serverTimestamp(),
+        'isRead':        false,
       });
     } catch (e) {
       debugPrint('[BillProvider] UPI submit notification failed: $e');
     }
+    // FCM push via Render server (fire-and-forget)
+    NotificationPushService.instance.sendPush(
+      recipientUids: [presidentId],
+      title:         'UPI Payment Submitted',
+      body:          'Flat $unitNumber submitted a UPI payment (Ref: $upiRef) awaiting verification.',
+      type:          NotificationType.paymentReceived,
+      referenceId:   billId,
+      referenceType: 'payment',
+    );
 
     MockBillData.replaceAll(_bills, _payments);
     _isLoading = false;
@@ -716,20 +741,32 @@ class BillProvider extends ChangeNotifier {
       }
     }
 
+    final firstApprovedBillId = monthBills.isNotEmpty ? monthBills.first.id : '';
     try {
       await _fs.addNotification({
-        'userId':      userId,
-        'senderId':    presidentId,
-        'apartmentId': aptId,
-        'title':       'Payment Approved',
-        'body':        'Your maintenance payment has been approved by the President.',
-        'type':        NotificationType.paymentApproved,
-        'createdAt':   FieldValue.serverTimestamp(),
-        'isRead':      false,
+        'userId':        userId,
+        'senderId':      presidentId,
+        'apartmentId':   aptId,
+        'title':         'Payment Approved',
+        'body':          'Your maintenance payment has been approved by the President.',
+        'type':          NotificationType.paymentApproved,
+        'referenceId':   firstApprovedBillId,
+        'referenceType': 'payment',
+        'createdAt':     FieldValue.serverTimestamp(),
+        'isRead':        false,
       });
     } catch (e) {
       debugPrint('[BillProvider] Approve notification failed: $e');
     }
+    // FCM push via Render server (fire-and-forget)
+    NotificationPushService.instance.sendPush(
+      recipientUids: [userId],
+      title:         'Payment Approved',
+      body:          'Your maintenance payment has been approved by the President.',
+      type:          NotificationType.paymentApproved,
+      referenceId:   firstApprovedBillId,
+      referenceType: 'payment',
+    );
 
     MockBillData.replaceAll(_bills, _payments);
     _isLoading = false;
@@ -791,20 +828,32 @@ class BillProvider extends ChangeNotifier {
       }
     }
 
+    final firstRejectedBillId = monthBills.isNotEmpty ? monthBills.first.id : '';
     try {
       await _fs.addNotification({
-        'userId':      userId,
-        'senderId':    presidentId,
-        'apartmentId': aptId,
-        'title':       'Payment Rejected',
-        'body':        'Your payment request was rejected by the President. Please contact them for clarification.',
-        'type':        NotificationType.paymentRejected,
-        'createdAt':   FieldValue.serverTimestamp(),
-        'isRead':      false,
+        'userId':        userId,
+        'senderId':      presidentId,
+        'apartmentId':   aptId,
+        'title':         'Payment Rejected',
+        'body':          'Your payment request was rejected by the President. Please contact them for clarification.',
+        'type':          NotificationType.paymentRejected,
+        'referenceId':   firstRejectedBillId,
+        'referenceType': 'payment',
+        'createdAt':     FieldValue.serverTimestamp(),
+        'isRead':        false,
       });
     } catch (e) {
       debugPrint('[BillProvider] Reject notification failed: $e');
     }
+    // FCM push via Render server (fire-and-forget)
+    NotificationPushService.instance.sendPush(
+      recipientUids: [userId],
+      title:         'Payment Rejected',
+      body:          'Your payment request was rejected by the President. Please contact them for clarification.',
+      type:          NotificationType.paymentRejected,
+      referenceId:   firstRejectedBillId,
+      referenceType: 'payment',
+    );
 
     MockBillData.replaceAll(_bills, _payments);
     _isLoading = false;
@@ -953,16 +1002,29 @@ class BillProvider extends ChangeNotifier {
     try {
       await Future.wait(
         notifyIds.map((uid) => _fs.addNotification({
-              'userId': uid,
-              'apartmentId': apartmentId,
-              'title': 'New Bill for $month',
-              'body': 'Your due amount is ₹${paymentEntries[uid]!.amount.toStringAsFixed(0)} — due by $dueDateStr.',
-              'type': NotificationType.bill,
-              'createdAt': FieldValue.serverTimestamp(),
-              'isRead': false,
+              'userId':        uid,
+              'apartmentId':   apartmentId,
+              'title':         'New Bill for $month',
+              'body':          'Your due amount is ₹${paymentEntries[uid]!.amount.toStringAsFixed(0)} — due by $dueDateStr.',
+              'type':          NotificationType.bill,
+              'referenceId':   billId,
+              'referenceType': 'bill',
+              'createdAt':     FieldValue.serverTimestamp(),
+              'isRead':        false,
             })),
       );
       debugPrint('[FLOW] ${notifyIds.length} notifications written');
+      // FCM push via Render server (fire-and-forget, one batch for all residents)
+      if (notifyIds.isNotEmpty) {
+        NotificationPushService.instance.sendPush(
+          recipientUids: notifyIds,
+          title:         'New Bill for $month',
+          body:          'Your maintenance bill is ready. Due by $dueDateStr.',
+          type:          NotificationType.bill,
+          referenceId:   billId,
+          referenceType: 'bill',
+        );
+      }
     } catch (e) {
       debugPrint('[WARN] Bill notifications partially failed: $e');
     }

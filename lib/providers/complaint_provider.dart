@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/complaint_model.dart';
-import '../models/notification_model.dart';
 import '../core/services/firestore_service.dart';
 import '../core/theme/role_theme.dart';
+import '../models/notification_model.dart';
 import 'notification_provider.dart';
 
 class ComplaintProvider extends ChangeNotifier {
@@ -152,6 +152,17 @@ class ComplaintProvider extends ChangeNotifier {
         'lastActivityAt': Timestamp.fromDate(now),
       });
 
+      // Notify apartment president via Render (Firestore write + FCM push).
+      notificationProvider.addAndPersistNotification(
+        title: category,
+        body: 'New complaint from $unit: $title',
+        type: NotificationType.complaint,
+        targetRole: UserRole.president,
+        aptId: apartmentId,
+        referenceId: id,
+        referenceType: 'complaint',
+      );
+
       // Optimistic: insert into _userComplaints immediately so the list
       // updates before the Firestore stream fires its next snapshot.
       final complaint = ComplaintModel(
@@ -169,38 +180,6 @@ class ComplaintProvider extends ChangeNotifier {
       );
       _userComplaints = [complaint, ..._userComplaints];
       MockComplaints.addComplaint(complaint);
-
-      // Notify admin(s) of this apartment.
-      // Wrapped in its own try/catch — notification failure (e.g. PERMISSION_DENIED)
-      // must never block a successful complaint creation.
-      try {
-        debugPrint(
-            '[FLOW] Complaint created — triggering notification to admin (apt: $apartmentId)');
-        debugPrint('[NOTIF-SERVER] Creating complaint notification');
-        debugPrint('[NOTIF-SERVER] complaintId/referenceId: $id');
-        // Notify president
-        await notificationProvider.addAndPersistNotification(
-          title: 'New Complaint',
-          body: 'A new complaint has been reported in your apartment.',
-          type: NotificationType.complaint,
-          targetRole: UserRole.president,
-          aptId: apartmentId,
-          referenceId: id,
-          referenceType: 'complaint',
-        );
-        // Notify all residents in the apartment
-        await notificationProvider.addAndPersistNotification(
-          title: 'New Apartment Complaint',
-          body: 'A new complaint has been reported in your apartment.',
-          type: NotificationType.complaint,
-          targetRole: UserRole.resident,
-          aptId: apartmentId,
-          referenceId: id,
-          referenceType: 'complaint',
-        );
-      } catch (notifErr) {
-        debugPrint('[WARN] createComplaint notification failed (non-fatal): $notifErr');
-      }
     } catch (e) {
       debugPrint('[ERROR] createComplaint: $e');
       rethrow; // surface to UI so the caller can show an error snackbar
@@ -235,6 +214,35 @@ class ComplaintProvider extends ChangeNotifier {
         'lastActivityAt': Timestamp.fromDate(now),
       });
 
+      // Notify the other party via Render (Firestore write + FCM push).
+      final complaint = _findComplaint(complaintId);
+      if (complaint != null) {
+        final truncatedBody = '$senderName: ${content.length > 80 ? "${content.substring(0, 80)}…" : content}';
+        if (isFromAdmin) {
+          // Admin replied → notify the resident who filed the complaint.
+          notificationProvider.addAndPersistNotification(
+            title: complaint.category,
+            body: truncatedBody,
+            type: NotificationType.complaint,
+            targetRole: UserRole.resident,
+            targetUserIds: [complaint.userId],
+            referenceId: complaintId,
+            referenceType: 'complaint',
+          );
+        } else {
+          // Resident replied → notify the apartment president.
+          notificationProvider.addAndPersistNotification(
+            title: complaint.category,
+            body: truncatedBody,
+            type: NotificationType.complaint,
+            targetRole: UserRole.president,
+            aptId: complaint.apartmentId,
+            referenceId: complaintId,
+            referenceType: 'complaint',
+          );
+        }
+      }
+
       // Optimistic mock update so lists show the latest message
       final msg = ComplaintMessage(
         id: 'msg${now.millisecondsSinceEpoch}',
@@ -246,51 +254,6 @@ class ComplaintProvider extends ChangeNotifier {
         timestamp: now,
       );
       MockComplaints.addMessage(complaintId, msg);
-
-      // In-app notification to the other party.
-      // Wrapped in its own try/catch — notification failure (e.g. PERMISSION_DENIED)
-      // must never block a successfully sent message.
-      try {
-        final complaint = _findComplaint(complaintId);
-        final aptId = complaint?.apartmentId;
-        if (isFromAdmin) {
-          final targetUserId = complaint?.userId;
-          debugPrint('[FLOW] Admin replied — notifying user: $targetUserId');
-          debugPrint('[NOTIF-SERVER] Creating complaint reply notification');
-          debugPrint('[NOTIF-SERVER] complaintId/referenceId: $complaintId');
-          if (targetUserId != null) {
-            await notificationProvider.addAndPersistNotification(
-              title: 'Reply on Your Complaint',
-              body: 'The admin has replied to your complaint'
-                  '${complaint != null ? ': "${complaint.title}"' : '.'}',
-              type: NotificationType.complaint,
-              targetRole: UserRole.resident,
-              aptId: aptId,
-              targetUserIds: [targetUserId],
-              referenceId: complaintId,
-              referenceType: 'complaint',
-            );
-          }
-        } else {
-          debugPrint(
-              '[FLOW] User sent message — notifying admin(s) of apt: $aptId');
-          debugPrint('[NOTIF-SERVER] Creating complaint message notification');
-          debugPrint('[NOTIF-SERVER] complaintId/referenceId: $complaintId');
-          final truncated =
-              content.length > 80 ? '${content.substring(0, 80)}…' : content;
-          await notificationProvider.addAndPersistNotification(
-            title: 'New Message on Complaint',
-            body: '$senderName: $truncated',
-            type: NotificationType.complaint,
-            targetRole: UserRole.president,
-            aptId: aptId,
-            referenceId: complaintId,
-            referenceType: 'complaint',
-          );
-        }
-      } catch (notifErr) {
-        debugPrint('[WARN] sendMessage notification failed (non-fatal): $notifErr');
-      }
     } catch (e) {
       debugPrint('[ERROR] sendMessage: $e');
       rethrow;
@@ -299,9 +262,33 @@ class ComplaintProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateStatus(String complaintId, String status) async {
+  Future<void> updateStatus(
+    String complaintId,
+    String status, {
+    NotificationProvider? notificationProvider,
+  }) async {
     await _fs.updateComplaint(complaintId, {'status': status});
     MockComplaints.updateStatus(complaintId, status);
+
+    // Notify the resident who filed the complaint via Render.
+    final complaint = _findComplaint(complaintId);
+    if (complaint != null && notificationProvider != null) {
+      final statusLabel = status == ComplaintStatus.resolved
+          ? 'Resolved'
+          : status == ComplaintStatus.inProgress
+              ? 'In Progress'
+              : status;
+      notificationProvider.addAndPersistNotification(
+        title: 'Complaint $statusLabel',
+        body: 'Your complaint "${complaint.title}" has been marked as $statusLabel.',
+        type: NotificationType.complaint,
+        targetRole: UserRole.resident,
+        targetUserIds: [complaint.userId],
+        referenceId: complaintId,
+        referenceType: 'complaint',
+      );
+    }
+
     notifyListeners();
   }
 }

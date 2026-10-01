@@ -5,13 +5,14 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/bill_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import 'edit_bill_sheet.dart';
 
-class MonthlyBillDetailScreen extends StatelessWidget {
+class MonthlyBillDetailScreen extends StatefulWidget {
   final MonthlyBillSummary summary;
   final String aptId;
 
@@ -22,13 +23,40 @@ class MonthlyBillDetailScreen extends StatelessWidget {
   });
 
   @override
+  State<MonthlyBillDetailScreen> createState() =>
+      _MonthlyBillDetailScreenState();
+}
+
+class _MonthlyBillDetailScreenState extends State<MonthlyBillDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Mark all unread bill/payment notifications for every bill in this
+      // monthly summary as read.
+      final notifProvider = context.read<NotificationProvider>();
+      for (final bill in widget.summary.bills) {
+        notifProvider.markNotificationsReadByReference(
+          referenceType: 'bill',
+          referenceId: bill.id,
+        );
+        // Payment notifications use referenceType='payment' with the same billId.
+        notifProvider.markNotificationsReadByReference(
+          referenceType: 'payment',
+          referenceId: bill.id,
+        );
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = RoleTheme.of(UserRole.president);
     final billProvider = context.watch<BillProvider>();
 
-    final fresh = billProvider.monthlyBillsForApartment(aptId).firstWhere(
-          (s) => s.month == summary.month,
-          orElse: () => summary,
+    final fresh = billProvider.monthlyBillsForApartment(widget.aptId).firstWhere(
+          (s) => s.month == widget.summary.month,
+          orElse: () => widget.summary,
         );
     final flats = fresh.flatList;
 
@@ -48,7 +76,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
         ? context.read<BillProvider>().rawBillById(rawBillId)
         : null;
     final residents =
-        context.read<UserProvider>().membersForApartment(aptId);
+        context.read<UserProvider>().membersForApartment(widget.aptId);
 
     return Scaffold(
       appBar: AppBar(
@@ -58,7 +86,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(summary.month,
+        title: Text(widget.summary.month,
             style: AppTextStyles.heading3(color: Colors.white)),
         actions: [
           if (rawBill != null)
@@ -67,7 +95,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
               onPressed: () => _showDetailBillActions(
                 context,
                 rawBill: rawBill,
-                summary: summary,
+                summary: widget.summary,
                 residents: residents,
                 billProvider: context.read<BillProvider>(),
               ),
@@ -180,8 +208,8 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                             await context
                                 .read<BillProvider>()
                                 .presidentApprovePaymentForFlat(
-                                  month: summary.month,
-                                  aptId: aptId,
+                                  month: widget.summary.month,
+                                  aptId: widget.aptId,
                                   userId: flat.userId,
                                   presidentId: presidentId,
                                   unitNumber: flat.unitNumber,
@@ -199,8 +227,8 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                             await context
                                 .read<BillProvider>()
                                 .presidentRejectPaymentForFlat(
-                                  month: summary.month,
-                                  aptId: aptId,
+                                  month: widget.summary.month,
+                                  aptId: widget.aptId,
                                   userId: flat.userId,
                                   presidentId: presidentId,
                                   unitNumber: flat.unitNumber,
@@ -219,7 +247,7 @@ class MonthlyBillDetailScreen extends StatelessWidget {
                             await context
                                 .read<BillProvider>()
                                 .adminMarkMonthPaid(
-                                    summary.month, aptId, flat.userId);
+                                    widget.summary.month, widget.aptId, flat.userId);
                             if (!ctx.mounted) return;
                             AppUtils.showSnackBar(
                               ctx,
