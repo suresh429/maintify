@@ -200,6 +200,7 @@ apartments/{id}:
 | `FcmService` | FCM token registration (saves to `users/{uid}.fcmToken`). Uses `flutter_local_notifications` to display foreground messages. Uses `navigatorKey` for out-of-tree navigation on notification tap. |
 | `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded_v5`. **DEV flavor only** — `bootstrap()` skips seeding when `AppConfig.isProduction`. Creates admin, demo president, demo resident, demo apartment (Green Valley Residency / `GRVL1234`), one maintenance bill, one open complaint, and one scheduled meeting. On subsequent launches with the guard present, only repairs the admin user doc if accidentally deleted. |
 | `VersionService` | Zero-UI version logic in `lib/core/services/version/version_service.dart`. `fetchVersionInfo()` fetches Remote Config (8-second timeout, safe defaults on failure); `determineUpdateStatus(AppVersionModel)` compares installed vs latest via `VersionCompare`; `openStore(AppVersionModel)` opens Play Store URL via `url_launcher`. Used by `VersionProvider`. |
+| `WidgetDataService` | iOS Home Screen widget bridge (`lib/core/services/widget_data_service.dart`). Pushes data to the native MaintifyWidget extension via `MethodChannel('com.maintify.app/widget')`. `update(...)` writes login state, apartment name, role, pending bill count, and amount; `clear()` resets to logged-out state. No-ops on Android and web — safe to call from shared code. |
 
 **`AppUtils`** (`lib/core/utils/app_utils.dart`): Static helpers — `formatCurrency`, `formatDate`, `formatMonthYear`, `formatDateTime`, `timeAgo`, `showSnackBar` (accepts optional `color` override), `displayFirstName`, `showConfirmDialog`, `launchPrivacyPolicy`. `showConfirmDialog` renders a bottom-sheet style confirmation with customizable `confirmColor`. `launchPrivacyPolicy` opens the privacy policy in Chrome Custom Tabs (Android) or Safari (iOS).
 
@@ -234,9 +235,10 @@ screens/
 ├── admin/                         ← 9 screens: dashboard, apartments, reports, assign-admin,
 │                                    assign-president, create-apartment, ad-management,
 │                                    web-ad-management, advertising-settings (super-admin role)
-├── president/                     ← 10 screens: dashboard, create-bill, edit-bill-sheet, complaints,
+├── president/                     ← 11 screens: dashboard, create-bill, edit-bill-sheet, complaints,
 │                                    manage-users, mark-paid, monthly-bill-detail, transfer-president,
-│                                    president-profile, president-advertising (read-only ad status)
+│                                    president-profile, president-advertising (read-only ad status),
+│                                    upi-settings (UPI ID config + enable/disable toggle)
 ├── resident/                      ← 8 screens: dashboard, bills, monthly-bill-detail,
 │                                    payment-history, i-paid, complaints (community board), directory, profile
 └── shared/
