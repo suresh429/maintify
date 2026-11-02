@@ -201,6 +201,7 @@ apartments/{id}:
 | `DbSeeder` | Seeds Firestore test data on first launch, guarded by `_meta/seeded_v5`. **DEV flavor only** — `bootstrap()` skips seeding when `AppConfig.isProduction`. Creates admin, demo president, demo resident, demo apartment (Green Valley Residency / `GRVL1234`), one maintenance bill, one open complaint, and one scheduled meeting. On subsequent launches with the guard present, only repairs the admin user doc if accidentally deleted. |
 | `VersionService` | Zero-UI version logic in `lib/core/services/version/version_service.dart`. `fetchVersionInfo()` fetches Remote Config (8-second timeout, safe defaults on failure); `determineUpdateStatus(AppVersionModel)` compares installed vs latest via `VersionCompare`; `openStore(AppVersionModel)` opens Play Store URL via `url_launcher`. Used by `VersionProvider`. |
 | `WidgetDataService` | iOS Home Screen widget bridge (`lib/core/services/widget_data_service.dart`). Pushes data to the native MaintifyWidget extension via `MethodChannel('com.maintify.app/widget')`. `update(...)` writes login state, apartment name, role, pending bill count, and amount; `clear()` resets to logged-out state. No-ops on Android and web — safe to call from shared code. |
+| `NotificationPushService` | Singleton (`lib/core/services/notification_push_service.dart`). POSTs to the Render notification server (`https://maintify-notification-server.onrender.com/send-notification`) with a Firebase Auth ID token (never FCM tokens). Fire-and-forget — never throws; push failure doesn't block the caller. Render Free tier may take up to 30 s to wake on first request (30 s timeout is set). |
 
 **`AppUtils`** (`lib/core/utils/app_utils.dart`): Static helpers — `formatCurrency`, `formatDate`, `formatMonthYear`, `formatDateTime`, `timeAgo`, `showSnackBar` (accepts optional `color` override), `displayFirstName`, `showConfirmDialog`, `launchPrivacyPolicy`. `showConfirmDialog` renders a bottom-sheet style confirmation with customizable `confirmColor`. `launchPrivacyPolicy` opens the privacy policy in Chrome Custom Tabs (Android) or Safari (iOS).
 
@@ -392,6 +393,20 @@ firebase functions:secrets:set GMAIL_APP_PASSWORD
 ### In-App Notifications
 
 `writeNotification(title, body, type, targetRole)` writes to the `notifications` Firestore collection. `NotificationProvider` streams pick these up automatically. Only called by `onPaymentUpdated` (Cases A and B).
+
+## Render Notification Server (`notification-server/`)
+
+A standalone Express/Node.js server deployed on Render Free tier as a fallback for FCM delivery from Flutter clients (used for complaints and chat messages, where the trigger originates from a mobile client rather than a Cloud Function).
+
+**Entry points:** `notification-server/server.js` (Express app) + `notification-server/notification.js` (Firebase Admin helpers).
+
+**Single route:** `POST /send-notification` — accepts `{ recipientUids, title, body, type, referenceId, referenceType }`. The caller must include a valid Firebase Auth ID token in `Authorization: Bearer <token>`. The server verifies the token, looks up FCM tokens for each recipient UID, and sends via Firebase Admin SDK.
+
+**Security model:** Flutter clients send Auth ID tokens only — never FCM registration tokens. The server resolves UID → FCM token server-side. Private keys are environment variables on Render, never in code.
+
+**Flutter client:** `NotificationPushService` (see Service Layer above). Always fire-and-forget — in-app Firestore notifications are already written before the push is attempted.
+
+**Deployment:** Push `notification-server/` to Render as a Node.js web service. Set `FIREBASE_SERVICE_ACCOUNT_JSON` env var with the service account JSON.
 
 ## UPI Payment Flow
 

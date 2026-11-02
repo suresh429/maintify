@@ -2,7 +2,7 @@ name: maintify
 description: "Maintify - Manage. Maintain. Simplify."
 publish_to: 'none'
 
-version: 1.0.4+6
+version: 1.0.5+7
 
 
 environment:
