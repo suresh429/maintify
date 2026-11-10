@@ -149,6 +149,26 @@ class _MonthlyCard extends StatelessWidget {
     final total = summary.totalFlats;
     final progress = total == 0 ? 0.0 : paidCount / total;
 
+    // Use actual payment amounts (not perFlatShare) for accurate collected/pending.
+    final collectedAmt = summary.allPayments
+        .where((p) => p.isPaid)
+        .fold(0.0, (s, p) {
+          final bill = summary.bills.firstWhere(
+            (b) => b.id == p.billId,
+            orElse: () => summary.bills.first,
+          );
+          return s + (p.amount ?? bill.amountForUser(p.userId));
+        });
+    final pendingAmt = summary.allPayments
+        .where((p) => !p.isPaid)
+        .fold(0.0, (s, p) {
+          final bill = summary.bills.firstWhere(
+            (b) => b.id == p.billId,
+            orElse: () => summary.bills.first,
+          );
+          return s + (p.amount ?? bill.amountForUser(p.userId));
+        });
+
     Color statusColor;
     String statusLabel;
     switch (summary.overallStatus) {
@@ -298,14 +318,12 @@ class _MonthlyCard extends StatelessWidget {
                     children: [
                       _StatPill(
                         label: 'Collected',
-                        value: AppUtils.formatCurrency(
-                            paidCount * summary.perFlatShare),
+                        value: AppUtils.formatCurrency(collectedAmt),
                         color: AppColors.green,
                       ),
                       _StatPill(
                         label: 'Pending',
-                        value: AppUtils.formatCurrency(
-                            (total - paidCount) * summary.perFlatShare),
+                        value: AppUtils.formatCurrency(pendingAmt),
                         color: AppColors.overdue,
                       ),
                       Row(

@@ -177,12 +177,18 @@ class _MonthlyBillDetailScreenState extends State<MonthlyBillDetailScreen> {
 
                 // Use the stored payment amount — single source of truth.
                 final billById = {for (final b in fresh.bills) b.id: b};
-                final userAmount = fresh.allPayments
+                final userPaymentsForFlat = fresh.allPayments
                     .where((p) => p.userId == flat.userId)
-                    .fold<double>(
-                      0.0,
-                      (sum, p) => sum + (p.amount ?? (billById[p.billId]?.perFlatShare ?? 0.0)),
-                    );
+                    .toList();
+                final userAmount = userPaymentsForFlat.fold<double>(
+                  0.0,
+                  (sum, p) => sum + (p.amount ?? (billById[p.billId]?.perFlatShare ?? 0.0)),
+                );
+                // Carry-forward is stored on each payment; sum across bills in month.
+                final flatCarryForward = userPaymentsForFlat.fold<double>(
+                  0.0,
+                  (sum, p) => sum + p.carryForwardAmount,
+                );
 
                 final presidentId = ctx
                         .read<AuthProvider>()
@@ -201,6 +207,7 @@ class _MonthlyBillDetailScreenState extends State<MonthlyBillDetailScreen> {
                     submittedAt: submittedAt,
                     paidDate: paidDate,
                     amount: userAmount,
+                    carryForwardAmount: flatCarryForward,
                     theme: theme,
                     isLoading: billProvider.isLoading,
                     onApprove: isPendingApproval
@@ -969,6 +976,7 @@ class _FlatPaymentCard extends StatelessWidget {
   final DateTime? submittedAt;
   final DateTime? paidDate;
   final double amount;
+  final double carryForwardAmount;
   final RoleTheme theme;
   final bool isLoading;
   final VoidCallback? onMarkPaid;
@@ -983,6 +991,7 @@ class _FlatPaymentCard extends StatelessWidget {
     this.submittedAt,
     this.paidDate,
     required this.amount,
+    this.carryForwardAmount = 0.0,
     required this.theme,
     required this.isLoading,
     this.onMarkPaid,
@@ -1064,9 +1073,8 @@ class _FlatPaymentCard extends StatelessWidget {
                             ),
                             child: Text(
                               AppUtils.formatCurrency(amount),
-                              style:
-                                  AppTextStyles.caption(color: adminAccent)
-                                      .copyWith(fontWeight: FontWeight.w700),
+                              style: AppTextStyles.caption(color: adminAccent)
+                                  .copyWith(fontWeight: FontWeight.w700),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -1097,6 +1105,43 @@ class _FlatPaymentCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      if (carryForwardAmount > 0) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: AppColors.overdue.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppColors.overdue.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.history_rounded,
+                                  color: AppColors.overdue, size: 11),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Previous Dues',
+                                style: AppTextStyles.caption(
+                                        color: AppColors.overdue)
+                                    .copyWith(fontSize: 10),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                AppUtils.formatCurrency(carryForwardAmount),
+                                style: AppTextStyles.caption(
+                                        color: AppColors.overdue)
+                                    .copyWith(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

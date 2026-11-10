@@ -113,8 +113,19 @@ class UserMonthlySummary {
 
   // Uses precomputed per-category amount when available, else payment.amount
   // or bill.perFlatShare for legacy bills.
-  double get totalAmount =>
-      views.fold(0.0, (s, v) => s + v.userAmount);
+  // carry-forward is stored once on the payment doc (not per-category), so we
+  // add it once per unique payment to avoid double-counting in multi-category bills.
+  double get totalAmount {
+    double total = 0;
+    final seenPaymentIds = <String>{};
+    for (final v in views) {
+      total += v.userAmount;
+      if (seenPaymentIds.add(v.payment.id)) {
+        total += v.payment.carryForwardAmount;
+      }
+    }
+    return total;
+  }
 
   bool get isFullyPaid =>
       views.isNotEmpty && views.every((v) => v.payment.isPaid);
@@ -374,17 +385,31 @@ class BillProvider extends ChangeNotifier {
   }
 
   /// Sum of all unpaid amounts for this user (across all bill categories).
+  /// carry-forward is added once per unique payment to avoid double-counting.
   double totalDueForUser(String userId) {
-    return userBillViews(userId)
-        .where((v) => !v.payment.isPaid)
-        .fold(0.0, (s, v) => s + v.userAmount);
+    final seenPaymentIds = <String>{};
+    double total = 0;
+    for (final v in userBillViews(userId).where((v) => !v.payment.isPaid)) {
+      total += v.userAmount;
+      if (seenPaymentIds.add(v.payment.id)) {
+        total += v.payment.carryForwardAmount;
+      }
+    }
+    return total;
   }
 
   /// Sum of all paid amounts for this user (across all bill categories).
+  /// carry-forward is added once per unique payment to avoid double-counting.
   double totalPaidForUser(String userId) {
-    return userBillViews(userId)
-        .where((v) => v.payment.isPaid)
-        .fold(0.0, (s, v) => s + v.userAmount);
+    final seenPaymentIds = <String>{};
+    double total = 0;
+    for (final v in userBillViews(userId).where((v) => v.payment.isPaid)) {
+      total += v.userAmount;
+      if (seenPaymentIds.add(v.payment.id)) {
+        total += v.payment.carryForwardAmount;
+      }
+    }
+    return total;
   }
 
   /// Count of unpaid bills (by unique bill document, not category expansions).
@@ -398,8 +423,9 @@ class BillProvider extends ChangeNotifier {
   double collectedForApartment(String aptId) {
     double total = 0;
     for (final bill in billsForApartment(aptId)) {
-      final paid = paymentsForBill(bill.id).where((p) => p.isPaid).length;
-      total += paid * bill.perFlatShare;
+      for (final p in paymentsForBill(bill.id)) {
+        if (p.isPaid) total += p.amount ?? bill.amountForUser(p.userId);
+      }
     }
     return total;
   }
@@ -407,9 +433,9 @@ class BillProvider extends ChangeNotifier {
   double pendingForApartment(String aptId) {
     double total = 0;
     for (final bill in billsForApartment(aptId)) {
-      final unpaid =
-          paymentsForBill(bill.id).where((p) => !p.isPaid).length;
-      total += unpaid * bill.perFlatShare;
+      for (final p in paymentsForBill(bill.id)) {
+        if (!p.isPaid) total += p.amount ?? bill.amountForUser(p.userId);
+      }
     }
     return total;
   }
@@ -978,19 +1004,91 @@ class BillProvider extends ChangeNotifier {
 
     debugPrint('[FLOW] Total payment docs to create: ${paymentEntries.length}');
 
+    // ── Step 2b: compute carry-forward and collect prior payment IDs ─────────
+    // For every user in paymentEntries, find all prior unpaid payments.
+    // - Carry-forward amount is baked INTO the new payment's amount.
+    // - Each prior unpaid payment is auto-marked paid (status=Paid,
+    //   transactionId='CF_<newBillId>') so it no longer shows as overdue.
+    final Map<String, double> carryForwardMap = {};
+    // userId → list of prior payment IDs to auto-mark paid
+    final Map<String, List<String>> priorPaymentsToClear = {};
+
+    for (final userId in paymentEntries.keys) {
+      double carryForward = 0.0;
+      final toClear = <String>[];
+
+      for (final p in _payments) {
+        if (p.userId != userId) continue;
+        if (p.isPaid || p.isPendingApproval) continue;
+        BillModel? priorBill;
+        try {
+          priorBill = _bills.firstWhere((b) => b.id == p.billId);
+        } catch (_) {
+          continue;
+        }
+        carryForward += p.amount ?? priorBill.amountForUser(userId);
+        toClear.add(p.id);
+      }
+
+      if (carryForward > 0) {
+        carryForwardMap[userId] = double.parse(carryForward.toStringAsFixed(2));
+        priorPaymentsToClear[userId] = toClear;
+        final entry = paymentEntries[userId]!;
+        paymentEntries[userId] = (
+          amount: double.parse((entry.amount + carryForward).toStringAsFixed(2)),
+          unit: entry.unit,
+        );
+        debugPrint('[FLOW] Carry-forward for $userId: ₹${carryForwardMap[userId]} '
+            '(clearing ${toClear.length} prior payment(s))');
+      }
+    }
+
+    // ── Step 2c: auto-mark prior payments as paid (carry-forward applied) ────
+    // Run in parallel for speed; each write is independent.
+    if (priorPaymentsToClear.isNotEmpty) {
+      final clearFutures = <Future<void>>[];
+      for (final entry in priorPaymentsToClear.entries) {
+        for (final paymentId in entry.value) {
+          clearFutures.add(_fs.updatePayment(paymentId, {
+            'status':        BillStatus.paid,
+            'paidDate':      Timestamp.fromDate(now),
+            'transactionId': 'CF_$billId', // CF = Carry-Forward; traces to new bill
+            'adminVerified': true,
+          }));
+          // Update local cache immediately so DashboardProvider is in sync.
+          final idx = _payments.indexWhere((p) => p.id == paymentId);
+          if (idx != -1) {
+            _payments[idx] = _payments[idx].copyWith(
+              status:        BillStatus.paid,
+              paidDate:      now,
+              transactionId: 'CF_$billId',
+              adminVerified: true,
+            );
+          }
+        }
+      }
+      await Future.wait(clearFutures);
+      MockBillData.replaceAll(_bills, _payments);
+      debugPrint('[FLOW] Auto-cleared ${priorPaymentsToClear.values.fold(0, (s, l) => s + l.length)} prior payment(s)');
+    }
+
     // ── Step 3: write all payment docs in parallel ────────────────────────────
     await Future.wait(
-      paymentEntries.entries.map((entry) => _fs.setPayment('${billId}_${entry.key}', {
-        'billId': billId,
-        'userId': entry.key,
-        'unitNumber': entry.value.unit,
-        'status': BillStatus.pending,
-        'amount': entry.value.amount,
-        'paidDate': null,
-        'transactionId': null,
-        'adminVerified': false,
-        'apartmentId': apartmentId,
-      })),
+      paymentEntries.entries.map((entry) {
+        final cf = carryForwardMap[entry.key] ?? 0.0;
+        return _fs.setPayment('${billId}_${entry.key}', {
+          'billId': billId,
+          'userId': entry.key,
+          'unitNumber': entry.value.unit,
+          'status': BillStatus.pending,
+          'amount': entry.value.amount,
+          'paidDate': null,
+          'transactionId': null,
+          'adminVerified': false,
+          'apartmentId': apartmentId,
+          if (cf > 0) 'carryForwardAmount': cf,
+        });
+      }),
     );
     debugPrint('[FLOW] All ${paymentEntries.length} payment docs written');
 
@@ -1001,17 +1099,23 @@ class BillProvider extends ChangeNotifier {
         .toList();
     try {
       await Future.wait(
-        notifyIds.map((uid) => _fs.addNotification({
-              'userId':        uid,
-              'apartmentId':   apartmentId,
-              'title':         'New Bill for $month',
-              'body':          'Your due amount is ₹${paymentEntries[uid]!.amount.toStringAsFixed(0)} — due by $dueDateStr.',
-              'type':          NotificationType.bill,
-              'referenceId':   billId,
-              'referenceType': 'bill',
-              'createdAt':     FieldValue.serverTimestamp(),
-              'isRead':        false,
-            })),
+        notifyIds.map((uid) {
+        final cf = carryForwardMap[uid] ?? 0.0;
+        final body = cf > 0
+            ? 'Your due is ₹${paymentEntries[uid]!.amount.toStringAsFixed(0)} (incl. ₹${cf.toStringAsFixed(0)} previous dues) — due by $dueDateStr.'
+            : 'Your due amount is ₹${paymentEntries[uid]!.amount.toStringAsFixed(0)} — due by $dueDateStr.';
+        return _fs.addNotification({
+          'userId':        uid,
+          'apartmentId':   apartmentId,
+          'title':         'New Bill for $month',
+          'body':          body,
+          'type':          NotificationType.bill,
+          'referenceId':   billId,
+          'referenceType': 'bill',
+          'createdAt':     FieldValue.serverTimestamp(),
+          'isRead':        false,
+        });
+      }),
       );
       debugPrint('[FLOW] ${notifyIds.length} notifications written');
       // FCM push via Render server (fire-and-forget, one batch for all residents)

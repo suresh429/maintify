@@ -160,11 +160,21 @@ class _UserMonthlyCard extends StatelessWidget {
     String statusLabel;
     IconData statusIcon;
 
+    // Check if this month was auto-paid via carry-forward
+    final txnId = summary.views.isNotEmpty
+        ? summary.views.first.payment.transactionId
+        : null;
+    final isCarryForward = summary.isFullyPaid &&
+        txnId != null &&
+        txnId.startsWith('CF_');
+
     switch (summary.status) {
       case 'Paid':
         statusColor = AppColors.paid;
-        statusLabel = 'Paid';
-        statusIcon = Icons.check_circle_rounded;
+        statusLabel = isCarryForward ? 'Carried Fwd' : 'Paid';
+        statusIcon = isCarryForward
+            ? Icons.swap_horiz_rounded
+            : Icons.check_circle_rounded;
         break;
       case 'Partial':
         statusColor = AppColors.pending;
@@ -230,10 +240,14 @@ class _UserMonthlyCard extends StatelessWidget {
                     '${summary.views.length} categor${summary.views.length == 1 ? 'y' : 'ies'} · ${AppUtils.formatCurrency(summary.totalAmount)}',
                     style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                   ),
-                  if (summary.isFullyPaid && summary.paidDate != null) ...[
+                  if (summary.isFullyPaid) ...[
                     const SizedBox(height: 3),
                     Text(
-                      'Paid on ${AppUtils.formatDateTime(summary.paidDate!)}',
+                      isCarryForward
+                          ? 'Merged into next month\'s bill'
+                          : (summary.paidDate != null
+                              ? 'Paid on ${AppUtils.formatDateTime(summary.paidDate!)}'
+                              : 'Paid'),
                       style: AppTextStyles.caption(color: AppColors.paid),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

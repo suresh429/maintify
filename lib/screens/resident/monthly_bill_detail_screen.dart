@@ -120,6 +120,9 @@ class _ResidentMonthlyBillDetailScreenState
     double aptTotal,
     String statusLabel,
   ) {
+    final carryForward = fresh.views.isNotEmpty
+        ? fresh.views.first.payment.carryForwardAmount
+        : 0.0;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -196,6 +199,47 @@ class _ResidentMonthlyBillDetailScreenState
                         letterSpacing: -0.5,
                       ),
                     ),
+                    if (carryForward > 0) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.history_rounded,
+                                color: Colors.white, size: 13),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Previous Dues',
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 11,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              AppUtils.formatCurrency(carryForward),
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 12,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -291,6 +335,11 @@ class _ResidentMonthlyBillDetailScreenState
     ColorScheme cs,
     bool isDark,
   ) {
+    // Carry-forward is stored on the payment (all categories share one payment doc).
+    final carryForward = fresh.views.isNotEmpty
+        ? fresh.views.first.payment.carryForwardAmount
+        : 0.0;
+    final thisMonthAmount = fresh.totalAmount - carryForward;
     return Container(
       decoration: BoxDecoration(
         color: cs.surface,
@@ -439,6 +488,50 @@ class _ResidentMonthlyBillDetailScreenState
             );
           }),
 
+          // ── Previous Dues row (carry-forward) ─────────────────────────────
+          if (carryForward > 0) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.overdue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.history_rounded,
+                        color: AppColors.overdue, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Previous Dues',
+                            style: AppTextStyles.bodyMedium(color: cs.onSurface)
+                                .copyWith(fontWeight: FontWeight.w500)),
+                        Text('Carried forward from prior bills',
+                            style: AppTextStyles.caption(
+                                color: AppColors.overdue)),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    width: 60,
+                    child: Text(
+                      AppUtils.formatCurrency(carryForward),
+                      style: AppTextStyles.bodySmall(color: AppColors.overdue)
+                          .copyWith(fontWeight: FontWeight.w700),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const Divider(height: 1),
 
           // Totals footer
@@ -460,6 +553,34 @@ class _ResidentMonthlyBillDetailScreenState
                     ),
                   ],
                 ),
+                if (carryForward > 0) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('This Month',
+                          style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
+                      Text(
+                        AppUtils.formatCurrency(thisMonthAmount),
+                        style: AppTextStyles.caption(color: cs.onSurface)
+                            .copyWith(fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Previous Dues',
+                          style: AppTextStyles.caption(color: AppColors.overdue)),
+                      Text(
+                        '+ ${AppUtils.formatCurrency(carryForward)}',
+                        style: AppTextStyles.caption(color: AppColors.overdue)
+                            .copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 6),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -529,45 +650,64 @@ class _ResidentMonthlyBillDetailScreenState
           const SizedBox(height: 14),
 
           if (fresh.isFullyPaid) ...[
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.paid.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.paid.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded,
-                      color: AppColors.paid, size: 28),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Payment Received',
-                            style: AppTextStyles.subheading(
-                                color: AppColors.paid)),
-                        if (fresh.paidDate != null)
-                          Text(
-                            'Paid on ${AppUtils.formatDateTime(fresh.paidDate!)}',
-                            style:
-                                AppTextStyles.caption(color: AppColors.paid),
-                          ),
-                        if (fresh.views.isNotEmpty &&
-                            fresh.views.last.payment.referenceLast4 != null)
-                          Text(
-                            'UPI Ref: •••• ${fresh.views.last.payment.referenceLast4}',
-                            style: AppTextStyles.caption(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
+            Builder(builder: (context) {
+              // Check if this bill was auto-paid via carry-forward
+              final txnId = fresh.views.isNotEmpty
+                  ? fresh.views.first.payment.transactionId
+                  : null;
+              final isCarryForward = txnId != null && txnId.startsWith('CF_');
+              return Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.paid.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.paid.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isCarryForward
+                          ? Icons.swap_horiz_rounded
+                          : Icons.check_circle_rounded,
+                      color: AppColors.paid,
+                      size: 28,
                     ),
-                  ),
-                ],
-              ),
-            ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isCarryForward
+                                ? 'Carried Forward'
+                                : 'Payment Received',
+                            style: AppTextStyles.subheading(
+                                color: AppColors.paid),
+                          ),
+                          Text(
+                            isCarryForward
+                                ? 'This bill was merged into the next month\'s bill.'
+                                : (fresh.paidDate != null
+                                    ? 'Paid on ${AppUtils.formatDateTime(fresh.paidDate!)}'
+                                    : ''),
+                            style: AppTextStyles.caption(color: AppColors.paid),
+                          ),
+                          if (!isCarryForward &&
+                              fresh.views.isNotEmpty &&
+                              fresh.views.last.payment.referenceLast4 != null)
+                            Text(
+                              'UPI Ref: •••• ${fresh.views.last.payment.referenceLast4}',
+                              style: AppTextStyles.caption(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
           ] else if (fresh.status == BillStatus.pendingApproval) ...[
             Container(
               padding: const EdgeInsets.all(14),

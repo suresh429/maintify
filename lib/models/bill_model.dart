@@ -236,7 +236,7 @@ class BillModel {
       payments.where((p) => p.isPaid).length;
 
   double collectedAmount(List<BillPayment> payments) =>
-      paidFlats(payments) * perFlatShare;
+      payments.where((p) => p.isPaid).fold(0.0, (s, p) => s + (p.amount ?? amountForUser(p.userId)));
 }
 
 /// One payment record per (bill, flat/user) pair.
@@ -269,6 +269,12 @@ class BillPayment {
   /// manual verification by the president. Display as "•••• XXXX".
   String? referenceLast4;
 
+  // ── Carry-forward field ────────────────────────────────────────────────────
+  /// Amount rolled over from prior unpaid bills and baked into [amount].
+  /// 0.0 means no carry-forward for this payment.
+  /// UI: show breakdown as "This Month: amount-carryForwardAmount" + "Previous Dues: carryForwardAmount".
+  final double carryForwardAmount;
+
   BillPayment({
     required this.id,
     required this.billId,
@@ -288,6 +294,7 @@ class BillPayment {
     this.paymentMethod,
     this.upiIdUsed,
     this.referenceLast4,
+    this.carryForwardAmount = 0.0,
   });
 
   bool get isPaid            => status == BillStatus.paid;
@@ -321,9 +328,10 @@ class BillPayment {
       approvedBy:    d['approvedBy']    as String?,
       rejectedAt:    (d['rejectedAt']   as Timestamp?)?.toDate(),
       rejectedBy:    d['rejectedBy']    as String?,
-      paymentMethod:  d['paymentMethod']  as String?,
-      upiIdUsed:      d['upiIdUsed']      as String?,
-      referenceLast4: d['referenceLast4'] as String?,
+      paymentMethod:       d['paymentMethod']       as String?,
+      upiIdUsed:           d['upiIdUsed']           as String?,
+      referenceLast4:      d['referenceLast4']      as String?,
+      carryForwardAmount: (d['carryForwardAmount'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -343,9 +351,10 @@ class BillPayment {
         'approvedBy':    approvedBy,
         'rejectedAt':    rejectedAt   != null ? Timestamp.fromDate(rejectedAt!)  : null,
         'rejectedBy':    rejectedBy,
-        'paymentMethod':  paymentMethod,
-        'upiIdUsed':      upiIdUsed,
-        'referenceLast4': referenceLast4,
+        'paymentMethod':      paymentMethod,
+        'upiIdUsed':          upiIdUsed,
+        'referenceLast4':     referenceLast4,
+        if (carryForwardAmount > 0) 'carryForwardAmount': carryForwardAmount,
       };
 
   BillPayment copyWith({
@@ -364,24 +373,25 @@ class BillPayment {
     String?   referenceLast4,
   }) {
     return BillPayment(
-      id:             id,
-      billId:         billId,
-      userId:         userId,
-      unitNumber:     unitNumber,
-      amount:         amount,
-      status:         status         ?? this.status,
-      paidDate:       paidDate       ?? this.paidDate,
-      transactionId:  transactionId  ?? this.transactionId,
-      adminVerified:  adminVerified  ?? this.adminVerified,
-      submittedAt:    submittedAt,    // nullable — explicit null clears the field
-      submittedBy:    submittedBy,
-      approvedAt:     approvedAt     ?? this.approvedAt,
-      approvedBy:     approvedBy     ?? this.approvedBy,
-      rejectedAt:     rejectedAt     ?? this.rejectedAt,
-      rejectedBy:     rejectedBy     ?? this.rejectedBy,
-      paymentMethod:  paymentMethod  ?? this.paymentMethod,
-      upiIdUsed:      upiIdUsed      ?? this.upiIdUsed,
-      referenceLast4: referenceLast4 ?? this.referenceLast4,
+      id:                 id,
+      billId:             billId,
+      userId:             userId,
+      unitNumber:         unitNumber,
+      amount:             amount,
+      carryForwardAmount: carryForwardAmount,
+      status:             status         ?? this.status,
+      paidDate:           paidDate       ?? this.paidDate,
+      transactionId:      transactionId  ?? this.transactionId,
+      adminVerified:      adminVerified  ?? this.adminVerified,
+      submittedAt:        submittedAt,    // nullable — explicit null clears the field
+      submittedBy:        submittedBy,
+      approvedAt:         approvedAt     ?? this.approvedAt,
+      approvedBy:         approvedBy     ?? this.approvedBy,
+      rejectedAt:         rejectedAt     ?? this.rejectedAt,
+      rejectedBy:         rejectedBy     ?? this.rejectedBy,
+      paymentMethod:      paymentMethod  ?? this.paymentMethod,
+      upiIdUsed:          upiIdUsed      ?? this.upiIdUsed,
+      referenceLast4:     referenceLast4 ?? this.referenceLast4,
     );
   }
 }

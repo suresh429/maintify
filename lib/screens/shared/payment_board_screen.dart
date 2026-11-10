@@ -111,8 +111,11 @@ class _PaymentBoardScreenState extends State<PaymentBoardScreen> {
 
                     final name =
                         userProv.findById(flat.userId)?.name ?? 'Resident';
-                    final userAmount = selected.bills.fold(
-                        0.0, (s, b) => s + b.amountForUser(flat.userId));
+                    // Use actual payment.amount (includes carry-forward) when available.
+                    final userAmount = payments.isNotEmpty
+                        ? payments.fold<double>(
+                            0.0, (s, p) => s + (p.amount ?? selected.bills.fold(0.0, (s2, b) => s2 + b.amountForUser(flat.userId))))
+                        : selected.bills.fold(0.0, (s, b) => s + b.amountForUser(flat.userId));
                     return _FlatPaymentRow(
                       unitNumber: flat.unitNumber,
                       residentName: name,
