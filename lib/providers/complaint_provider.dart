@@ -163,8 +163,9 @@ class ComplaintProvider extends ChangeNotifier {
         referenceType: 'complaint',
       );
 
-      // Optimistic: insert into _userComplaints immediately so the list
-      // updates before the Firestore stream fires its next snapshot.
+      // Optimistic: insert immediately so the list updates before the Firestore
+      // stream fires its next snapshot. Update both caches — _userComplaints for
+      // the per-user view and _aptComplaints for the community complaint board.
       final complaint = ComplaintModel(
         id: id,
         apartmentId: apartmentId,
@@ -179,6 +180,7 @@ class ComplaintProvider extends ChangeNotifier {
         lastActivityAt: now,
       );
       _userComplaints = [complaint, ..._userComplaints];
+      _aptComplaints  = [complaint, ..._aptComplaints];
       MockComplaints.addComplaint(complaint);
     } catch (e) {
       debugPrint('[ERROR] createComplaint: $e');

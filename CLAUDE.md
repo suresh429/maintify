@@ -275,7 +275,7 @@ The app supports Flutter Web. Web uses path-based URL strategy (no `#`). Web-spe
 | `WebPageContainer` | Page content wrapper |
 | `AuthWebLayout` | Auth page layout for web |
 
-Web title management uses conditional imports: `web_title.dart` → `web_title_web.dart` (web) or `web_title_stub.dart` (mobile/desktop).
+Web title management uses conditional imports: `web_title.dart` → `web_title_web.dart` (web) or `web_title_stub.dart` (mobile/desktop). The PWA install banner follows the same pattern: `pwa_install_banner.dart` → `pwa_install_banner_web.dart` (web) or `pwa_install_banner_stub.dart` (mobile).
 
 ### Widget Library (`lib/widgets/`)
 
@@ -302,6 +302,8 @@ Always check before building a new component:
 | `UpdateDialog` | Force/soft update dialog driven by `VersionProvider`; shown from `SplashScreen` |
 | `MaintifyBannerAd` | Adaptive banner ad; reads `AdsProvider.effectiveBannerEnabled`; no-ops on web. Drop-in — no params needed. |
 | `MaintifyNativeAd` | Native ad widget (Phase 3 — `nativeEnabled` gate). |
+| `GlobalConnectivityOverlay` | Injected via `MaterialApp.builder`; slides a floating banner in from the top when offline. Only widget that consumes `ConnectivityProvider`. |
+| `PwaInstallBanner` | Conditional import (`pwa_install_banner.dart` → web or stub). Wraps the app in `main.dart` (outside `GlobalConnectivityOverlay`). On web, prompts Android Chrome install via `beforeinstallprompt` and shows iOS Safari "Add to Home Screen" instructions. Dismissal persisted with key `maintify_pwa_banner_v2`. Only shows on `/login` and `/signup` routes. |
 
 ### Bottom Sheet Rules
 

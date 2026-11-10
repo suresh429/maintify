@@ -26,21 +26,34 @@ void showEditBillSheet(
 
 class _EditLineItem {
   final TextEditingController amountCtrl;
+  /// Holds the custom name when [category] == 'Other'.
+  /// Pre-populated when editing a bill whose stored name isn't in the list.
+  final TextEditingController customCategoryCtrl;
   String category;
   String type; // 'common' | 'hybrid'
   Set<String> applicableResidentIds;
+
+  /// The effective name stored in Firestore and shown to residents.
+  String get effectiveName =>
+      category == 'Other' && customCategoryCtrl.text.trim().isNotEmpty
+          ? customCategoryCtrl.text.trim()
+          : category;
 
   _EditLineItem({
     required double amount,
     required this.category,
     required this.type,
+    String? customCategory,
     Set<String>? applicableResidentIds,
   })  : amountCtrl = TextEditingController(
             text: amount == 0 ? '' : amount.toStringAsFixed(0)),
+        customCategoryCtrl =
+            TextEditingController(text: customCategory ?? ''),
         applicableResidentIds = applicableResidentIds ?? {};
 
   void dispose() {
     amountCtrl.dispose();
+    customCategoryCtrl.dispose();
   }
 }
 
@@ -65,15 +78,13 @@ class _EditBillPageState extends State<_EditBillPage> {
     'Maintenance',
     'Electricity Bill',
     'Water Bill',
-    'GHMC Garbage',
-    'Watchman Salary',
     'Lift Maintenance',
+    'Watchman Salary',
     'CCTV Bill',
-    'Security',
+    'GHMC Garbage',
     'Parking',
     'Amenities',
     'Internet',
-    'Garbage',
     'Other',
   ];
 
@@ -85,7 +96,12 @@ class _EditBillPageState extends State<_EditBillPage> {
 
     if (widget.bill.categories.isNotEmpty) {
       _lineItems = widget.bill.categories.map((cat) {
-        final catName = _categories.contains(cat.name) ? cat.name : 'Other';
+        final isKnown = _categories.contains(cat.name);
+        final catName = isKnown ? cat.name : 'Other';
+        // If the stored name isn't in the list (e.g. a previously entered
+        // custom "Other" name), pre-fill the custom field so the president
+        // can see and edit it.
+        final customName = isKnown ? null : cat.name;
         Set<String>? applicable;
         if (cat.type == 'hybrid') {
           applicable = cat.applicableResidentIds.isNotEmpty
@@ -96,6 +112,7 @@ class _EditBillPageState extends State<_EditBillPage> {
           amount: cat.type == 'common' ? cat.totalAmount : cat.defaultAmount,
           category: catName,
           type: cat.type == 'hybrid' ? 'hybrid' : 'common',
+          customCategory: customName,
           applicableResidentIds: applicable,
         );
       }).toList();
@@ -174,10 +191,11 @@ class _EditBillPageState extends State<_EditBillPage> {
     final categories = <BillCategory>[];
     for (final item in _lineItems) {
       final amount = double.parse(item.amountCtrl.text.trim());
+      final name = item.effectiveName;
 
       if (item.type == 'common') {
         categories.add(BillCategory(
-          name: item.category,
+          name: name,
           type: 'common',
           totalAmount: amount,
         ));
@@ -187,7 +205,7 @@ class _EditBillPageState extends State<_EditBillPage> {
             .toList();
         final hybridTotal = applicableNonExcluded.length * amount;
         categories.add(BillCategory(
-          name: item.category,
+          name: name,
           type: 'hybrid',
           totalAmount: hybridTotal,
           defaultAmount: amount,
@@ -544,6 +562,29 @@ class _EditBillPageState extends State<_EditBillPage> {
                   ],
                 ),
                 const SizedBox(height: 12),
+
+                // ── Custom category name (only when "Other" is selected) ──────
+                if (item.category == 'Other') ...[
+                  TextFormField(
+                    controller: item.customCategoryCtrl,
+                    style: AppTextStyles.bodyLarge(color: cs.onSurface),
+                    onChanged: (_) => setState(() {}),
+                    decoration: _inputDecor(
+                      hint: 'Enter category name (shown to residents)',
+                      icon: Icons.edit_outlined,
+                      cs: cs,
+                      accent: accent,
+                    ),
+                    validator: (v) {
+                      if (item.category != 'Other') return null;
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Enter a name for this category';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                ],
 
                 // ── Amount ───────────────────────────────────────────────────
                 TextFormField(

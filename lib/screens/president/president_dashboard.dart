@@ -294,9 +294,6 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
   PreferredSizeWidget _buildAppBar(RoleTheme theme) {
     final unread =
         context.watch<NotificationProvider>().unreadCount(UserRole.president);
-    final user = context.read<AuthProvider>().currentUser;
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     const iconColor = Colors.white;
 
     return AppBar(
@@ -349,35 +346,6 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
                   ),
                 ),
             ],
-          ),
-        ),
-        // Profile avatar — tap to jump to Profile tab
-        Padding(
-          padding: const EdgeInsets.only(right: 14),
-          child: GestureDetector(
-            onTap: () => setState(() => _currentIndex = 4),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.2),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    width: 1.5),
-              ),
-              child: Center(
-                child: Text(
-                  user?.avatarInitials ?? 'A',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-              ),
-            ),
           ),
         ),
       ],
@@ -841,7 +809,12 @@ class _PresidentHome extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(bill.title,
+                            Text(() {
+                                final parts = bill.month.split(' ');
+                                final mon = parts.first.substring(0, 3);
+                                final yr  = parts.length > 1 ? parts.last : '';
+                                return '$mon $yr Maintenance';
+                              }(),
                                 style: AppTextStyles.subheading(color: cs.onSurface),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),

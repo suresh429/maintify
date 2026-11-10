@@ -54,14 +54,14 @@ class MonthlyBillSummary {
   /// Eligible flats = total - excluded.
   int get eligibleFlats {
     final n = totalFlats - allExcludedUserIds.length;
-    return n > 0 ? n : totalFlats;
+    return n.clamp(1, totalFlats);
   }
 
   int get pendingFlats => eligibleFlats - fullyPaidFlats;
 
   String get overallStatus {
     if (totalFlats == 0) return BillStatus.pending;
-    if (fullyPaidFlats == totalFlats) return BillStatus.paid;
+    if (eligibleFlats > 0 && fullyPaidFlats >= eligibleFlats) return BillStatus.paid;
     if (fullyPaidFlats == 0) return BillStatus.pending;
     return BillStatus.partiallyPaid;
   }

@@ -39,9 +39,9 @@ class DashboardProvider extends ChangeNotifier {
   double get totalRevenue {
     double total = 0;
     for (final bill in MockBillData.bills) {
-      final paid =
-          MockBillData.paymentsForBill(bill.id).where((p) => p.isPaid).length;
-      total += paid * bill.perFlatShare;
+      for (final p in MockBillData.paymentsForBill(bill.id)) {
+        if (p.isPaid) total += p.amount ?? bill.amountForUser(p.userId);
+      }
     }
     return total;
   }
@@ -49,9 +49,9 @@ class DashboardProvider extends ChangeNotifier {
   double get pendingRevenue {
     double total = 0;
     for (final bill in MockBillData.bills) {
-      final unpaid =
-          MockBillData.paymentsForBill(bill.id).where((p) => !p.isPaid).length;
-      total += unpaid * bill.perFlatShare;
+      for (final p in MockBillData.paymentsForBill(bill.id)) {
+        if (!p.isPaid) total += p.amount ?? bill.amountForUser(p.userId);
+      }
     }
     return total;
   }
@@ -86,9 +86,9 @@ class DashboardProvider extends ChangeNotifier {
         totalPayments++;
         if (p.isPaid) {
           paidPayments++;
-          collected += bill.perFlatShare;
+          collected += p.amount ?? bill.amountForUser(p.userId);
         } else {
-          pending += bill.perFlatShare;
+          pending += p.amount ?? bill.amountForUser(p.userId);
         }
       }
     }

@@ -141,6 +141,7 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final accent = RoleTheme.of(UserRole.resident).effectivePrimary(context);
     return Padding(
       padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -168,12 +169,12 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
                           horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                         color: selected
-                            ? AppColors.paid.withValues(alpha: 0.12)
+                            ? accent.withValues(alpha: 0.12)
                             : Theme.of(context).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: selected
-                              ? AppColors.paid
+                              ? accent
                               : Theme.of(context).colorScheme.outlineVariant,
                           width: 1.5,
                         ),
@@ -187,7 +188,7 @@ class _NewComplaintSheetState extends State<_NewComplaintSheet> {
                               ? FontWeight.w600
                               : FontWeight.w400,
                           color: selected
-                              ? AppColors.paid
+                              ? accent
                               : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),

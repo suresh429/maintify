@@ -29,20 +29,32 @@ class _LineItem {
 
   // common → total amount; hybrid → default per-applicable-flat amount
   final TextEditingController amountCtrl;
+  /// Only used when [category] == 'Other'. Holds the custom name entered by
+  /// the president, which is what residents will see on their bill.
+  final TextEditingController customCategoryCtrl;
   String category;
   String type; // 'common' | 'hybrid'
   // For hybrid: which resident/flat IDs are applicable (pay defaultAmount).
   // Others pay ₹0. Empty set = none selected yet.
   Set<String> applicableResidentIds;
 
+  /// The effective name stored in Firestore and shown to residents.
+  /// Returns the custom name when category is 'Other', otherwise the category.
+  String get effectiveName =>
+      category == 'Other' && customCategoryCtrl.text.trim().isNotEmpty
+          ? customCategoryCtrl.text.trim()
+          : category;
+
   _LineItem({String? category, String? type})
       : amountCtrl = TextEditingController(),
+        customCategoryCtrl = TextEditingController(),
         category = category ?? 'Maintenance',
         type = type ?? 'common',
         applicableResidentIds = {};
 
   void dispose() {
     amountCtrl.dispose();
+    customCategoryCtrl.dispose();
   }
 }
 
@@ -61,15 +73,13 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     'Maintenance',
     'Electricity Bill',
     'Water Bill',
-    'GHMC Garbage',
-    'Watchman Salary',
     'Lift Maintenance',
+    'Watchman Salary',
     'CCTV Bill',
-    'Security',
+    'GHMC Garbage',
     'Parking',
     'Amenities',
     'Internet',
-    'Garbage',
     'Other',
   ];
 
@@ -306,10 +316,11 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
     }
 
     // Build BillCategory list from line items.
-    // The category dropdown value IS the bill name — no separate description needed.
+    // effectiveName is the custom text when "Other" is selected, otherwise the
+    // dropdown value — this is what residents see on their bill.
     final categories = <BillCategory>[];
     for (final item in _lineItems) {
-      final name = item.category; // dropdown is the single source of truth
+      final name = item.effectiveName;
       final amount = double.parse(item.amountCtrl.text.trim());
 
       if (item.type == 'common') {
@@ -850,6 +861,56 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
+
+                // ── Custom category name (only when "Other" is selected) ──────
+                if (item.category == 'Other') ...[
+                  TextFormField(
+                    controller: item.customCategoryCtrl,
+                    style: AppTextStyles.bodyLarge(color: cs.onSurface),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'Enter category name (shown to residents)',
+                      hintStyle:
+                          AppTextStyles.bodyMedium(color: cs.onSurfaceVariant),
+                      prefixIcon: Icon(Icons.edit_outlined,
+                          size: 18, color: cs.onSurfaceVariant),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      filled: true,
+                      fillColor: cs.surfaceContainerHighest,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: primary, width: 1.5),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide:
+                            const BorderSide(color: AppColors.overdue),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide:
+                            const BorderSide(color: AppColors.overdue),
+                      ),
+                    ),
+                    validator: (v) {
+                      if (item.category != 'Other') return null;
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Enter a name for this category';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                ],
 
                 // ── Amount field ─────────────────────────────────────────────
                 TextFormField(

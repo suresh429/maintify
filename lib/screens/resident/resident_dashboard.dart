@@ -372,7 +372,12 @@ class _ResidentHome extends StatelessWidget {
     final allMonthlySummaries = billProvider.userMonthlySummaries(userId);
     final pendingMonths =
         allMonthlySummaries.where((s) => !s.isFullyPaid).toList();
-    final overdueViews = allViews.where((v) => v.payment.isOverdue).toList();
+    // Count unique overdue months, not individual category views.
+    // userBillViews expands multi-category bills into one view per category,
+    // so using overdueMonths.length would inflate the count.
+    final overdueMonths = allMonthlySummaries
+        .where((s) => s.views.any((v) => v.payment.isOverdue))
+        .toList();
     final totalDue = billProvider.totalDueForUser(userId);
     final totalPaid = billProvider.totalPaidForUser(userId);
 
@@ -531,7 +536,7 @@ class _ResidentHome extends StatelessWidget {
               ),
             ),
 
-            if (overdueViews.isNotEmpty) ...[
+            if (overdueMonths.isNotEmpty) ...[
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.all(14),
@@ -548,7 +553,7 @@ class _ResidentHome extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        '${overdueViews.length} bill${overdueViews.length != 1 ? 's are' : ' is'} overdue! Pay now to avoid penalties.',
+                        '${overdueMonths.length} bill${overdueMonths.length != 1 ? 's are' : ' is'} overdue! Pay now to avoid penalties.',
                         style:
                             AppTextStyles.bodySmall(color: AppColors.overdue),
                       ),
@@ -590,7 +595,7 @@ class _ResidentHome extends StatelessWidget {
                 Expanded(
                   child: _QuickStat(
                     label: 'Overdue',
-                    value: '${overdueViews.length}',
+                    value: '${overdueMonths.length}',
                     color: AppColors.overdue,
                     icon: Icons.error_outline,
                   ),

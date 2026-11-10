@@ -191,7 +191,7 @@ class BillModel {
   /// Number of flats that actually owe this bill (total minus excluded).
   int get eligibleCount {
     final n = totalFlats - excludedUserIds.length;
-    return n > 0 ? n : totalFlats;
+    return n.clamp(1, totalFlats);
   }
 
   /// Per-flat share for display (sum of each category's per-flat contribution).
