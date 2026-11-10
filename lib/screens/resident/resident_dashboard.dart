@@ -408,132 +408,133 @@ class _ResidentHome extends StatelessWidget {
 
             // Hero card
             Container(
-              padding: const EdgeInsets.all(22),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: theme.gradient,
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: theme.primary.withValues(alpha: 0.3),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
+                    color: theme.primary.withValues(alpha: 0.25),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Top row: greeting + unit badge
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(greeting,
-                                style: AppTextStyles.bodySmall(
-                                    color: Colors.white.withValues(alpha: 0.8))),
                             Text(
-                              AppUtils.displayFirstName(
-                                  user?.name ?? 'Resident'),
-                              style:
-                                  AppTextStyles.heading2(color: Colors.white),
+                              greeting,
+                              style: AppTextStyles.caption(
+                                  color: Colors.white.withValues(alpha: 0.75)),
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(Icons.door_front_door_outlined,
-                                    color: Colors.white70, size: 14),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Unit ${user?.unit ?? '101'}',
-                                  style: AppTextStyles.bodySmall(
-                                      color: Colors.white.withValues(alpha: 0.85)),
-                                ),
-                              ],
+                            const SizedBox(height: 2),
+                            Text(
+                              AppUtils.displayFirstName(user?.name ?? 'Resident'),
+                              style: AppTextStyles.heading3(color: Colors.white),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
                       ),
                       Container(
-                        width: 54,
-                        height: 54,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Center(
-                          child: Text(
-                            user?.avatarInitials ?? 'RV',
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              fontSize: 20,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.door_front_door_outlined,
+                                color: Colors.white70, size: 12),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Unit ${user?.unit ?? '101'}',
+                              style: AppTextStyles.caption(
+                                  color: Colors.white.withValues(alpha: 0.9)),
                             ),
-                          ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Total Due',
-                                  style: AppTextStyles.caption(
-                                      color: Colors.white.withValues(alpha: 0.8))),
-                              const SizedBox(height: 4),
-                              Text(
+                  const SizedBox(height: 12),
+                  // Stats row: Total Due | divider | Paid
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Total Due',
+                              style: AppTextStyles.caption(
+                                  color: Colors.white.withValues(alpha: 0.7)),
+                            ),
+                            const SizedBox(height: 2),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
                                 AppUtils.formatCurrency(totalDue),
                                 style: const TextStyle(
                                   fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w700,
                                   color: Colors.white,
-                                  fontSize: 26,
+                                  fontSize: 18,
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${pendingMonths.length} month${pendingMonths.length != 1 ? 's' : ''} pending',
-                                style: AppTextStyles.caption(
-                                    color: Colors.white.withValues(alpha: 0.7)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text('Paid',
-                                style: AppTextStyles.caption(
-                                    color: Colors.white.withValues(alpha: 0.8))),
-                            const SizedBox(height: 4),
-                            Text(
-                              AppUtils.formatCurrency(totalPaid),
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                fontSize: 18,
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 32,
+                        margin: const EdgeInsets.symmetric(horizontal: 14),
+                        color: Colors.white.withValues(alpha: 0.25),
+                      ),
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Paid',
+                              style: AppTextStyles.caption(
+                                  color: Colors.white.withValues(alpha: 0.7)),
+                            ),
+                            const SizedBox(height: 2),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                AppUtils.formatCurrency(totalPaid),
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
