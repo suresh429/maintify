@@ -79,6 +79,14 @@
         { "fieldPath": "apartmentId", "order": "ASCENDING" },
         { "fieldPath": "role",        "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "fund_transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "apartmentId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt",   "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -9,6 +9,7 @@ import '../providers/meeting_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/ads_provider.dart';
+import '../providers/community_fund_provider.dart';
 import '../core/theme/role_theme.dart';
 import '../core/services/widget_data_service.dart';
 import '../core/utils/app_utils.dart';
@@ -185,11 +186,17 @@ class _StreamStarterState extends State<_StreamStarter> with WidgetsBindingObser
         case UserRole.president:
           context.read<BillProvider>().startListeningForApartment(aptId);
           context.read<ComplaintProvider>().startListeningForApartment(aptId);
+          if (aptId.isNotEmpty) {
+            context.read<CommunityFundProvider>().startListening(aptId);
+          }
         case UserRole.resident:
           context.read<BillProvider>().startListeningForApartment(aptId);
           context
               .read<ComplaintProvider>()
               .startListeningForApartment(aptId);
+          if (aptId.isNotEmpty) {
+            context.read<CommunityFundProvider>().startListening(aptId);
+          }
       }
 
       // Push initial widget snapshot after streams are started.

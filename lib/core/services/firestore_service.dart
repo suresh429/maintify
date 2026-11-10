@@ -10,6 +10,7 @@ import '../../models/complaint_model.dart';
 import '../../models/meeting_model.dart';
 import '../../models/notification_model.dart';
 import '../../models/president_invitation_model.dart';
+import '../../models/fund_model.dart';
 import '../../core/theme/role_theme.dart';
 
 /// Central Firestore service — all collection reads/writes go through here.
@@ -769,6 +770,152 @@ class FirestoreService {
         .catchError((e, st) {
       debugPrint('[FirestoreService] updateApartmentAdsEnabled() FAILED: $e\n$st');
       throw e;
+    });
+  }
+
+  // ─────────────────────────────── COMMUNITY FUND ──────────────────────────────
+
+  /// Streams the fund summary for an apartment (null if not yet initialized).
+  Stream<FundSummary?> streamFundSummary(String aptId) => _db
+      .collection('fund_summary')
+      .doc(aptId)
+      .snapshots()
+      .map((doc) => doc.exists ? FundSummary.fromFirestore(doc) : null);
+
+  /// Streams the last [limit] fund transactions for an apartment, newest first.
+  Stream<List<FundTransaction>> streamFundTransactions(String aptId, {int limit = 50}) => _db
+      .collection('fund_transactions')
+      .where('apartmentId', isEqualTo: aptId)
+      .orderBy('createdAt', descending: true)
+      .limit(limit)
+      .snapshots()
+      .map((s) => s.docs.map(FundTransaction.fromFirestore).toList());
+
+  /// Initializes the community fund for an apartment (creates the summary doc).
+  /// Throws if already initialized.
+  Future<void> initializeFund({required String aptId, required String createdBy}) async {
+    final ref = _db.collection('fund_summary').doc(aptId);
+    final existing = await ref.get();
+    if (existing.exists) throw Exception('Community Fund already initialized');
+    final now = DateTime.now();
+    await ref.set({
+      'apartmentId': aptId,
+      'balancePaise': 0,
+      'totalCollectedPaise': 0,
+      'totalExpensedPaise': 0,
+      'transactionCount': 0,
+      'createdAt': Timestamp.fromDate(now),
+      'lastUpdatedAt': Timestamp.fromDate(now),
+      'createdBy': createdBy,
+    });
+  }
+
+  /// Atomically adds a collection (income) entry and updates the summary balance.
+  Future<String> addFundCollection({
+    required String aptId,
+    required int amountPaise,
+    required String description,
+    required String createdBy,
+    required String createdByName,
+    String? receiptNote,
+  }) async {
+    final now = DateTime.now();
+    final txnRef = _db.collection('fund_transactions').doc();
+    final summaryRef = _db.collection('fund_summary').doc(aptId);
+
+    await _db.runTransaction((tx) async {
+      final summarySnap = await tx.get(summaryRef);
+      if (!summarySnap.exists) throw Exception('Community Fund not initialized');
+
+      tx.set(txnRef, {
+        'apartmentId': aptId,
+        'type': FundTxnType.collection,
+        'amountPaise': amountPaise,
+        'description': description.trim(),
+        'category': FundCategory.general,
+        'createdBy': createdBy,
+        'createdByName': createdByName,
+        'createdAt': Timestamp.fromDate(now),
+        if (receiptNote != null && receiptNote.isNotEmpty) 'receiptNote': receiptNote,
+      });
+
+      tx.update(summaryRef, {
+        'balancePaise': FieldValue.increment(amountPaise),
+        'totalCollectedPaise': FieldValue.increment(amountPaise),
+        'transactionCount': FieldValue.increment(1),
+        'lastUpdatedAt': Timestamp.fromDate(now),
+      });
+    });
+
+    return txnRef.id;
+  }
+
+  /// Atomically adds an expense entry and updates the summary balance.
+  Future<String> addFundExpense({
+    required String aptId,
+    required int amountPaise,
+    required String description,
+    required String category,
+    required String createdBy,
+    required String createdByName,
+    String? receiptNote,
+  }) async {
+    final now = DateTime.now();
+    final txnRef = _db.collection('fund_transactions').doc();
+    final summaryRef = _db.collection('fund_summary').doc(aptId);
+
+    await _db.runTransaction((tx) async {
+      final summarySnap = await tx.get(summaryRef);
+      if (!summarySnap.exists) throw Exception('Community Fund not initialized');
+      final currentBalance = (summarySnap.data()!['balancePaise'] as num?)?.toInt() ?? 0;
+      if (currentBalance < amountPaise) throw Exception('Insufficient fund balance');
+
+      tx.set(txnRef, {
+        'apartmentId': aptId,
+        'type': FundTxnType.expense,
+        'amountPaise': amountPaise,
+        'description': description.trim(),
+        'category': category,
+        'createdBy': createdBy,
+        'createdByName': createdByName,
+        'createdAt': Timestamp.fromDate(now),
+        if (receiptNote != null && receiptNote.isNotEmpty) 'receiptNote': receiptNote,
+      });
+
+      tx.update(summaryRef, {
+        'balancePaise': FieldValue.increment(-amountPaise),
+        'totalExpensedPaise': FieldValue.increment(amountPaise),
+        'transactionCount': FieldValue.increment(1),
+        'lastUpdatedAt': Timestamp.fromDate(now),
+      });
+    });
+
+    return txnRef.id;
+  }
+
+  /// Deletes a fund transaction and reverses its effect on the summary.
+  Future<void> deleteFundTransaction({
+    required String txnId,
+    required String aptId,
+    required int amountPaise,
+    required String type, // FundTxnType.collection | FundTxnType.expense
+  }) async {
+    final txnRef = _db.collection('fund_transactions').doc(txnId);
+    final summaryRef = _db.collection('fund_summary').doc(aptId);
+
+    await _db.runTransaction((tx) async {
+      tx.delete(txnRef);
+      // Reverse the balance effect
+      final balanceDelta = type == FundTxnType.collection ? -amountPaise : amountPaise;
+      final collectedDelta = type == FundTxnType.collection ? -amountPaise : 0;
+      final expensedDelta = type == FundTxnType.expense ? -amountPaise : 0;
+      tx.update(summaryRef, {
+        'balancePaise': FieldValue.increment(balanceDelta),
+        if (collectedDelta != 0) 'totalCollectedPaise': FieldValue.increment(collectedDelta),
+        if (expensedDelta != 0) 'totalExpensedPaise': FieldValue.increment(expensedDelta),
+        'transactionCount': FieldValue.increment(-1),
+        'lastUpdatedAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 }

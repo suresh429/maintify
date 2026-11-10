@@ -4,9 +4,10 @@ import '../../core/theme/role_theme.dart';
 import '../../widgets/maintify_banner_ad.dart';
 import '../resident/complaints_screen.dart';
 import '../resident/directory_screen.dart';
+import '../resident/community_fund_summary_screen.dart';
 import 'payment_board_screen.dart';
 
-/// Community screen — three tabs: Payment Board, Complaints, Directory.
+/// Community screen — four tabs: Payment Board, Complaints, Directory, Fund.
 class CommunityScreen extends StatelessWidget {
   const CommunityScreen({super.key});
 
@@ -17,7 +18,7 @@ class CommunityScreen extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Column(
         children: [
           const Padding(
@@ -32,6 +33,8 @@ class CommunityScreen extends StatelessWidget {
               unselectedLabelColor: cs.onSurfaceVariant,
               indicatorColor: accent,
               indicatorWeight: 2.5,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
               labelStyle: AppTextStyles.caption(color: accent)
                   .copyWith(fontWeight: FontWeight.w600, fontSize: 11),
               unselectedLabelStyle:
@@ -54,6 +57,11 @@ class CommunityScreen extends StatelessWidget {
                   text: 'Directory',
                   iconMargin: EdgeInsets.only(bottom: 4),
                 ),
+                Tab(
+                  icon: Icon(Icons.account_balance_wallet_outlined, size: 18),
+                  text: 'Fund',
+                  iconMargin: EdgeInsets.only(bottom: 4),
+                ),
               ],
             ),
           ),
@@ -68,6 +76,7 @@ class CommunityScreen extends StatelessWidget {
                 PaymentBoardScreen(),
                 _CommunityComplaintView(),
                 DirectoryScreen(),
+                CommunityFundSummaryScreen(),
               ],
             ),
           ),

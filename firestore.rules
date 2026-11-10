@@ -213,5 +213,26 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isSuperAdmin();
     }
+
+    // ── Community Fund Summary ────────────────────────────────────────────────
+    // fund_summary/{aptId}: one doc per apartment.
+    // Members of the apartment may read; president initializes/updates.
+    // Writes use Firestore transactions (runTransaction) — still subject to rules.
+    match /fund_summary/{aptId} {
+      allow read: if isMemberOfApartment(aptId) || isSuperAdmin();
+      allow create: if isAdminForApartment(aptId) || isSuperAdmin();
+      allow update: if isAdminForApartment(aptId) || isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // ── Community Fund Transactions ───────────────────────────────────────────
+    // fund_transactions/{txnId}: each doc has an apartmentId field.
+    // Members may read; president may create/delete.
+    match /fund_transactions/{txnId} {
+      allow read: if isMemberOfApartment(resource.data.apartmentId) || isSuperAdmin();
+      allow create: if isAdminForApartment(request.resource.data.apartmentId) || isSuperAdmin();
+      allow update: if false; // transactions are immutable
+      allow delete: if isAdminForApartment(resource.data.apartmentId) || isSuperAdmin();
+    }
   }
 }

@@ -25,6 +25,7 @@ import '../../providers/ads_provider.dart';
 import '../../core/ads/interstitial_manager.dart';
 import '../../widgets/maintify_native_ad.dart';
 import '../../providers/complaint_provider.dart';
+import '../../providers/community_fund_provider.dart';
 import '../shared/chat_screen.dart';
 
 class ResidentDashboard extends StatefulWidget {
@@ -384,6 +385,7 @@ class _ResidentHome extends StatelessWidget {
     final apt = aptProvider.findById(aptId);
     final upcomingMeetings =
         context.watch<MeetingProvider>().upcomingMeetings(aptId);
+    final fundSummary = context.watch<CommunityFundProvider>().summary;
 
     final isWeb = MediaQuery.sizeOf(context).width >= 600;
 
@@ -399,6 +401,7 @@ class _ResidentHome extends StatelessWidget {
               apartmentName: apt?.name ?? 'My Apartment',
               presidentName: apt?.presidentName ?? 'Unassigned',
               role: UserRole.resident,
+              fundSummary: fundSummary,
             ),
 
            // const SizedBox(height: 10),

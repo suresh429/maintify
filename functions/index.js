@@ -554,6 +554,59 @@ exports.onComplaintMessage = onDocumentCreated(
 //   Case C: Admin rejected payment      → FCM + notification to resident
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// FCM — Community Fund: collection added
+//   Notifies all residents when the president adds a fund collection entry.
+// ─────────────────────────────────────────────────────────────────────────────
+
+exports.onFundCollectionAdded = onDocumentCreated('fund_transactions/{txnId}', async (event) => {
+  const txn = event.data.data();
+  if (!txn || txn.type !== 'collection') return;
+
+  const aptId = txn.apartmentId;
+  if (!aptId) return;
+
+  const amount = txn.amountPaise ? `₹${(txn.amountPaise / 100).toFixed(2)}` : '';
+  const desc   = txn.description ? _truncate(txn.description, 60) : 'Fund updated';
+
+  await sendToApartment(aptId, 'resident', {
+    title:        `Community Fund: ${amount} Added`,
+    body:         desc,
+    type:         'fund_collection',
+    referenceId:  event.params.txnId,
+    referenceType: 'fund_transaction',
+    aptId,
+    saveToFirestore: false,
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FCM — Community Fund: expense recorded
+//   Notifies all residents when the president records an expense.
+// ─────────────────────────────────────────────────────────────────────────────
+
+exports.onFundExpenseAdded = onDocumentCreated('fund_transactions/{txnId}', async (event) => {
+  const txn = event.data.data();
+  if (!txn || txn.type !== 'expense') return;
+
+  const aptId = txn.apartmentId;
+  if (!aptId) return;
+
+  const amount   = txn.amountPaise ? `₹${(txn.amountPaise / 100).toFixed(2)}` : '';
+  const category = txn.category || 'General';
+  const desc     = txn.description ? _truncate(txn.description, 50) : 'Expense recorded';
+
+  await sendToApartment(aptId, 'resident', {
+    title:        `Community Fund: ${amount} Expense (${category})`,
+    body:         desc,
+    type:         'fund_expense',
+    referenceId:  event.params.txnId,
+    referenceType: 'fund_transaction',
+    aptId,
+    saveToFirestore: false,
+  });
+});
+
 exports.onPaymentUpdated = onDocumentUpdated('payments/{paymentId}', async (event) => {
   const before    = event.data.before.data();
   const after     = event.data.after.data();
