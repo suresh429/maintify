@@ -470,96 +470,107 @@ class _PresidentHome extends StatelessWidget {
 
             // Hero banner
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: theme.gradient,
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
                     color: theme.primary.withValues(alpha: 0.25),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Top row: greeting + name | president badge
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(greeting,
-                                style: AppTextStyles.caption(
-                                    color: Colors.white.withValues(alpha: 0.8))),
+                            Text(
+                              greeting,
+                              style: AppTextStyles.caption(
+                                  color: Colors.white.withValues(alpha: 0.75)),
+                            ),
+                            const SizedBox(height: 2),
                             Text(
                               AppUtils.displayFirstName(
                                   auth.currentUser?.name ?? 'Admin'),
-                              style:
-                                  AppTextStyles.heading2(color: Colors.white),
+                              style: AppTextStyles.heading3(color: Colors.white),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(14),
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Icon(Icons.manage_accounts_outlined,
-                            color: Colors.white, size: 28),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.manage_accounts_outlined,
+                                color: Colors.white70, size: 12),
+                            const SizedBox(width: 4),
+                            Text(
+                              'President',
+                              style: AppTextStyles.caption(
+                                  color: Colors.white.withValues(alpha: 0.9)),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _HeroBannerStat(
-                            label: 'Collected',
-                            value: AppUtils.formatCurrency(
-                                stats['collected'] as double),
-                            icon: Icons.trending_up,
-                          ),
+                  const SizedBox(height: 12),
+                  // Stats row: Collected | divider | Pending | divider | Residents
+                  Row(
+                    children: [
+                      Flexible(
+                        child: _MiniStat(
+                          label: 'Collected',
+                          value: AppUtils.formatCurrency(
+                              stats['collected'] as double),
                         ),
-                        Container(
-                            width: 1,
-                            height: 36,
-                            color: Colors.white.withValues(alpha: 0.2)),
-                        Expanded(
-                          child: _HeroBannerStat(
-                            label: 'Pending',
-                            value: AppUtils.formatCurrency(
-                                stats['pending'] as double),
-                            icon: Icons.schedule_outlined,
-                          ),
+                      ),
+                      Container(
+                          width: 1,
+                          height: 32,
+                          margin: const EdgeInsets.symmetric(horizontal: 10),
+                          color: Colors.white.withValues(alpha: 0.25)),
+                      Flexible(
+                        child: _MiniStat(
+                          label: 'Pending',
+                          value: AppUtils.formatCurrency(
+                              stats['pending'] as double),
                         ),
-                        Container(
-                            width: 1,
-                            height: 36,
-                            color: Colors.white.withValues(alpha: 0.2)),
-                        Expanded(
-                          child: _HeroBannerStat(
-                            label: 'Residents',
-                            value: '${stats['totalResidents']}',
-                            icon: Icons.people_outline,
-                          ),
+                      ),
+                      Container(
+                          width: 1,
+                          height: 32,
+                          margin: const EdgeInsets.symmetric(horizontal: 10),
+                          color: Colors.white.withValues(alpha: 0.25)),
+                      Flexible(
+                        child: _MiniStat(
+                          label: 'Residents',
+                          value: '${stats['totalResidents']}',
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1082,32 +1093,38 @@ class _MeetingCard extends StatelessWidget {
   }
 }
 
-class _HeroBannerStat extends StatelessWidget {
+class _MiniStat extends StatelessWidget {
   final String label;
   final String value;
-  final IconData icon;
-  const _HeroBannerStat(
-      {required this.label, required this.value, required this.icon});
+  const _MiniStat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: Colors.white70, size: 16),
-        const SizedBox(height: 4),
-        Text(value,
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 10,
+            color: Colors.white.withValues(alpha: 0.7),
+          ),
+        ),
+        const SizedBox(height: 2),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
             style: const TextStyle(
               fontFamily: 'Poppins',
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
               color: Colors.white,
-              fontSize: 14,
-            )),
-        Text(label,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 10,
-              color: Colors.white.withValues(alpha: 0.7),
-            )),
+              fontSize: 15,
+            ),
+          ),
+        ),
       ],
     );
   }
