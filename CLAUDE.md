@@ -109,6 +109,7 @@ All 12 providers registered at root in `main.dart`. All provider files live in `
 | `VersionProvider` | Checks Firebase Remote Config for app version via `VersionService`; exposes `UpdateStatus` (`upToDate`, `optionalUpdate`, `forceUpdate`) and `AppVersionModel` |
 | `ConnectivityProvider` | Wraps `ConnectivityService` (internet_connection_checker_plus); exposes `isConnected`/`isDisconnected`. Only `GlobalConnectivityOverlay` consumes it — no screen should subscribe directly. |
 | `AdsProvider` | Streams `AdConfig` from `systemConfig/adManagement` and apartment-level `adsEnabled` flag. Exposes `effectiveBannerEnabled`, `effectiveInterstitialEnabled`, `effectiveNativeEnabled`. Called `startListening(aptId)` from `DashboardRouter`. Admin screens call `updateAdConfig()` / `setApartmentAdsEnabled()`. Always disabled on web. |
+| `CommunityFundProvider` | Community fund (maintenance pool) — streams `FundSummary` and `FundTransaction` list from Firestore. `initializeFund()` creates the summary doc if absent. `addCollection()`/`addExpense()` write transactions and update the summary atomically. `deleteTransaction()` reverses the summary delta. `startListening(aptId)` called from `DashboardRouter` for president and resident roles. |
 
 Providers that use Firestore streams call `startListening(...)` from `DashboardRouter` after login. They cache data locally and call `notifyListeners()` on stream updates.
 
@@ -129,6 +130,8 @@ All live data lives in Firestore. Mock statics (`MockUsers`, `MockApartments`, `
 - `complaints/{id}/messages/` — message subcollection; streamed per-complaint by `ComplaintProvider.subscribeToMessages()`
 - `flats/` — individual flat docs, auto-generated at apartment creation. Doc ID: `${aptId}_${flatNumber}`. Fields: `flatNumber`, `tower` (null for non-gated), `status` (`available`|`occupied`), `residentId`, `residentType` (`President`|`Resident`|null), `apartmentId`.
 - `resident_requests/` — written during resident signup (auth account created but not yet signed in); readable only by president/super admin.
+- `fund_summary/{aptId}` — one doc per apartment; tracks `balancePaise`, `totalCollectedPaise`, `totalExpensedPaise`, `transactionCount`. All monetary values stored in **paise** (integer) to avoid floating-point drift. Created lazily by `CommunityFundProvider.initializeFund()`.
+- `fund_transactions/` — all collection and expense transactions across all apartments; each doc has `apartmentId` for per-apartment queries. Type field: `FundTxnType.collection` or `FundTxnType.expense`. Adding/deleting a transaction updates the `fund_summary` atomically via a batch write.
 - `systemConfig/adManagement` — global `AdConfig` document (streamed by `AdsProvider`; writable only by super admin).
 - `settings/` — global app feature flags; readable by all signed-in users, writable only by super admin. `app_config/` is a legacy alias kept for backward compatibility.
 - `_meta/seeded_v5` — guards `DbSeeder` from re-running
@@ -236,12 +239,15 @@ screens/
 ├── admin/                         ← 9 screens: dashboard, apartments, reports, assign-admin,
 │                                    assign-president, create-apartment, ad-management,
 │                                    web-ad-management, advertising-settings (super-admin role)
-├── president/                     ← 11 screens: dashboard, create-bill, edit-bill-sheet, complaints,
+├── president/                     ← 14 screens: dashboard, create-bill, edit-bill-sheet, complaints,
 │                                    manage-users, mark-paid, monthly-bill-detail, transfer-president,
 │                                    president-profile, president-advertising (read-only ad status),
-│                                    upi-settings (UPI ID config + enable/disable toggle)
-├── resident/                      ← 8 screens: dashboard, bills, monthly-bill-detail,
-│                                    payment-history, i-paid, complaints (community board), directory, profile
+│                                    upi-settings (UPI ID config + enable/disable toggle),
+│                                    community-fund (fund overview + balance), add-fund-collection,
+│                                    add-fund-expense, fund-transactions (transaction history)
+├── resident/                      ← 9 screens: dashboard, bills, monthly-bill-detail,
+│                                    payment-history, i-paid, complaints (community board), directory, profile,
+│                                    community-fund-summary (read-only balance + totals)
 └── shared/
     ├── chat_screen.dart           ← Complaint message threads; `currentUserId` param enables read-only mode for non-owners
     ├── community_screen.dart      ← 3-tab container: Payment Board | Complaints | Directory (resident Community nav tab)
@@ -304,6 +310,24 @@ Always check before building a new component:
 | `MaintifyNativeAd` | Native ad widget (Phase 3 — `nativeEnabled` gate). |
 | `GlobalConnectivityOverlay` | Injected via `MaterialApp.builder`; slides a floating banner in from the top when offline. Only widget that consumes `ConnectivityProvider`. |
 | `PwaInstallBanner` | Conditional import (`pwa_install_banner.dart` → web or stub). Wraps the app in `main.dart` (outside `GlobalConnectivityOverlay`). On web, prompts Android Chrome install via `beforeinstallprompt` and shows iOS Safari "Add to Home Screen" instructions. Dismissal persisted with key `maintify_pwa_banner_v2`. Only shows on `/login` and `/signup` routes. |
+
+### Community Fund
+
+A maintenance/expense pool tracked per apartment. All monetary values stored in **paise** (integer) to avoid floating-point drift — always divide by 100 for display.
+
+**Firestore structure:**
+- `fund_summary/{aptId}` — single doc per apartment: `balancePaise`, `totalCollectedPaise`, `totalExpensedPaise`, `transactionCount`. Created lazily by `initializeFund()` on first collection or expense.
+- `fund_transactions/` — flat collection; each doc has `apartmentId` for per-apartment queries.
+
+**Transaction types (`FundTxnType`):** `collection` (income added to the fund) | `expense` (deducted from the fund).
+
+**Expense categories (`FundCategory`):** Electrical, Plumbing, Cleaning, Gardening, Security, Painting, Repairs, Equipment, General, Other.
+
+**Key method contracts:**
+- `addCollection()` / `addExpense()` — write transaction + update summary atomically in one batch; always call `initializeFund()` first if summary may not exist.
+- `deleteTransaction()` — reverses the summary delta atomically (increases balance for expense deletion, decreases for collection deletion).
+
+**Access model:** President can add collections and expenses; residents see a read-only `CommunityFundSummaryScreen` with balance and totals only. `CommunityFundProvider` streams are started for both roles from `DashboardRouter`.
 
 ### Bottom Sheet Rules
 

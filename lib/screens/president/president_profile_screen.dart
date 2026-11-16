@@ -19,7 +19,6 @@ import '../../widgets/change_password_sheet.dart';
 import '../../widgets/logout_sheet.dart';
 import '../shared/notifications_screen.dart';
 import 'transfer_president_screen.dart';
-import 'president_advertising_screen.dart';
 import 'upi_settings_screen.dart';
 
 class PresidentProfileScreen extends StatefulWidget {

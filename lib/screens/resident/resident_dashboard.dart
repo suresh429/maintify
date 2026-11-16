@@ -369,7 +369,6 @@ class _ResidentHome extends StatelessWidget {
             ? 'Good afternoon,'
             : 'Good evening,';
 
-    final allViews = billProvider.userBillViews(userId);
     final allMonthlySummaries = billProvider.userMonthlySummaries(userId);
     final pendingMonths =
         allMonthlySummaries.where((s) => !s.isFullyPaid).toList();

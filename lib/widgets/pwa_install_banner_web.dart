@@ -9,10 +9,6 @@ extension _NavigatorStandalone on web.Navigator {
   external bool? get standalone;
 }
 
-/// Touch-point count — used to detect iPadOS 13+ on a "desktop" UA.
-extension _NavigatorTouchPoints on web.Navigator {
-  external int get maxTouchPoints;
-}
 
 /// Captured beforeinstallprompt event stored by index.html / app.html.
 extension _WindowInstallPrompt on web.Window {
@@ -86,8 +82,8 @@ class _PwaInstallBannerState extends State<PwaInstallBanner>
     // User already dismissed.
     if (_wasDismissed) return;
 
-    final isiOS = _isIOS_device;
-    final isAndroid = _isAndroid_device;
+    final isiOS = _isIOSDevice;
+    final isAndroid = _isAndroidDevice;
 
     if (isiOS && _isSafari) {
       setState(() {
@@ -123,7 +119,7 @@ class _PwaInstallBannerState extends State<PwaInstallBanner>
     }
   }
 
-  bool get _isIOS_device {
+  bool get _isIOSDevice {
     final ua = web.window.navigator.userAgent.toLowerCase();
     if (ua.contains('iphone') || ua.contains('ipod') || ua.contains('ipad')) {
       return true;
@@ -136,7 +132,7 @@ class _PwaInstallBannerState extends State<PwaInstallBanner>
     return false;
   }
 
-  bool get _isAndroid_device {
+  bool get _isAndroidDevice {
     return web.window.navigator.userAgent.toLowerCase().contains('android');
   }
 

@@ -118,7 +118,10 @@ class ApartmentProvider extends ChangeNotifier {
             targetRole: UserRole.president,
             targetUserIds: [newPresidentId],
           )
-          .catchError((e) => debugPrint('[NOTIF] president_transfer new: $e'));
+          .catchError((e) {
+            debugPrint('[NOTIF] president_transfer new: $e');
+            return <String>[];
+          });
 
       if (oldPresidentId != null && oldPresidentId != newPresidentId) {
         notifProvider
@@ -129,7 +132,10 @@ class ApartmentProvider extends ChangeNotifier {
               targetRole: UserRole.resident,
               targetUserIds: [oldPresidentId],
             )
-            .catchError((e) => debugPrint('[NOTIF] president_transfer old: $e'));
+            .catchError((e) {
+              debugPrint('[NOTIF] president_transfer old: $e');
+              return <String>[];
+            });
       }
     }
   }

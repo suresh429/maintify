@@ -192,8 +192,10 @@ class RegistrationProvider extends ChangeNotifier {
           type:       'president_registered',
           targetRole: UserRole.admin,
         )
-        .catchError(
-            (e) => debugPrint('[NOTIF] president_registered error: $e'));
+        .catchError((e) {
+          debugPrint('[NOTIF] president_registered error: $e');
+          return <String>[];
+        });
 
     _isLoading = false;
     notifyListeners();

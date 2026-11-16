@@ -154,7 +154,7 @@ class _AddFundExpenseScreenState extends State<AddFundExpenseScreen> {
 
             // Category dropdown
             DropdownButtonFormField<String>(
-              value: _category,
+              initialValue: _category,
               decoration: InputDecoration(
                 labelText: 'Category',
                 labelStyle: TextStyle(color: cs.onSurfaceVariant),
