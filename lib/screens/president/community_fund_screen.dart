@@ -12,85 +12,127 @@ import 'add_fund_collection_screen.dart';
 import 'add_fund_expense_screen.dart';
 import 'fund_transactions_screen.dart';
 
-/// President-side Community Fund main screen.
-/// Shows the balance card, quick action buttons, and recent transactions.
+/// Unified Community Fund screen — works for both president and resident.
+///
+/// Pass [role] to control visibility of write actions.
+/// President sees Add Collection / Add Expense buttons and can delete transactions.
+/// Resident sees a read-only view.
 class CommunityFundScreen extends StatelessWidget {
-  const CommunityFundScreen({super.key});
+  final UserRole role;
+  const CommunityFundScreen({super.key, this.role = UserRole.president});
+
+  bool get _isPresident => role == UserRole.president;
 
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final aptId = auth.currentUser?.apartmentId ?? '';
     final fund = context.watch<CommunityFundProvider>();
-    final theme = RoleTheme.of(UserRole.president);
+    final theme = RoleTheme.of(role);
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (fund.isLoading && fund.summary == null) {
-      return const Scaffold(body: ShimmerDashboard());
-    }
+    return Scaffold(
+      backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF6F7FB),
+      appBar: _buildAppBar(context, theme),
+      body: fund.isLoading && fund.summary == null
+          ? const ShimmerDashboard()
+          : !fund.isInitialized
+              ? _NotInitializedView(theme: theme, aptId: aptId, isPresident: _isPresident)
+              : _FundBody(
+                  fund: fund,
+                  aptId: aptId,
+                  theme: theme,
+                  cs: cs,
+                  isDark: isDark,
+                  isPresident: _isPresident,
+                ),
+    );
+  }
 
-    // Not yet initialized — show setup card
-    if (!fund.isInitialized) {
-      return Scaffold(
-        backgroundColor: cs.surface,
-        body: _NotInitializedView(theme: theme, aptId: aptId),
-      );
-    }
+  PreferredSizeWidget _buildAppBar(BuildContext context, RoleTheme theme) {
+    return AppBar(
+      title: Text('Community Fund',
+          style: AppTextStyles.heading3(color: Colors.white)),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: theme.gradient,
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+        ),
+      ),
+      iconTheme: const IconThemeData(color: Colors.white),
+      actions: [
+        if (!_isPresident)
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Read-only',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Main scrollable body
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FundBody extends StatelessWidget {
+  final CommunityFundProvider fund;
+  final String aptId;
+  final RoleTheme theme;
+  final ColorScheme cs;
+  final bool isDark;
+  final bool isPresident;
+
+  const _FundBody({
+    required this.fund,
+    required this.aptId,
+    required this.theme,
+    required this.cs,
+    required this.isDark,
+    required this.isPresident,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final summary = fund.summary!;
     final recent = fund.transactions.take(5).toList();
+    // Extra bottom padding so last tile doesn't hide under the fixed bar
+    final bottomPad = isPresident ? 90.0 : 32.0;
 
-    return Scaffold(
-      backgroundColor: cs.surface,
-      body: RefreshIndicator(
-        color: theme.effectivePrimary(context),
-        onRefresh: () async {
-          // Stream auto-updates; just trigger a small delay
-          await Future.delayed(const Duration(milliseconds: 400));
-        },
+    final listView = RefreshIndicator(
+      color: theme.effectivePrimary(context),
+      onRefresh: () async => Future.delayed(const Duration(milliseconds: 400)),
+      child: SafeArea(
+        top: false,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(8, 8, 8, bottomPad),
           children: [
-            // ── Balance card ────────────────────────────────────────────────
+            // ── Balance card ───────────────────────────────────────────────
             _BalanceCard(summary: summary, theme: theme),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
 
-            // ── Quick actions ────────────────────────────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: _ActionButton(
-                    label: 'Add Collection',
-                    icon: Icons.add_circle_outline_rounded,
-                    color: AppColors.paid,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AddFundCollectionScreen(aptId: aptId),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _ActionButton(
-                    label: 'Add Expense',
-                    icon: Icons.remove_circle_outline_rounded,
-                    color: AppColors.overdue,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AddFundExpenseScreen(aptId: aptId),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // ── Stats row ────────────────────────────────────────────────────
+            // ── Stats row ─────────────────────────────────────────────────
             Row(
               children: [
                 Expanded(
@@ -102,7 +144,7 @@ class CommunityFundScreen extends StatelessWidget {
                     isDark: isDark,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: _StatTile(
                     label: 'Total Expenses',
@@ -114,14 +156,24 @@ class CommunityFundScreen extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
-            // ── Recent transactions ──────────────────────────────────────────
+            // ── Fund utilization bar ───────────────────────────────────────
+            if (summary.totalCollectedPaise > 0) ...[
+              _UtilizationBar(
+                  summary: summary,
+                  cs: cs,
+                  isDark: isDark,
+                  accent: theme.effectivePrimary(context)),
+              const SizedBox(height: 10),
+            ],
+
+            // ── Recent transactions header ─────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Recent Transactions',
-                    style: AppTextStyles.heading3(color: cs.onSurface)),
+                    style: AppTextStyles.bodySmall(color: cs.onSurface)),
                 if (fund.transactions.length > 5)
                   TextButton(
                     onPressed: () => Navigator.push(
@@ -130,27 +182,105 @@ class CommunityFundScreen extends StatelessWidget {
                         builder: (_) => FundTransactionsScreen(aptId: aptId),
                       ),
                     ),
-                    child: Text('View All',
-                        style: AppTextStyles.caption(
-                            color: theme.effectivePrimary(context))),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Row(
+                      children: [
+                        Text('View All',
+                            style: AppTextStyles.caption(
+                                    color: theme.effectivePrimary(context))
+                                .copyWith(fontWeight: FontWeight.w600)),
+                        Icon(Icons.chevron_right_rounded,
+                            color: theme.effectivePrimary(context), size: 16),
+                      ],
+                    ),
                   ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
 
+            // ── Transaction list ───────────────────────────────────────────
             if (recent.isEmpty)
-              const EmptyState(
+              EmptyState(
                 icon: Icons.account_balance_wallet_outlined,
                 title: 'No Transactions Yet',
-                subtitle: 'Add a collection or expense to get started.',
+                subtitle: isPresident
+                    ? 'Add a collection or expense to get started.'
+                    : 'No transactions have been recorded yet.',
               )
             else
-              ...recent.map((t) => _TxnTile(txn: t, cs: cs, isDark: isDark)),
-
-            const SizedBox(height: 20),
+              ...recent.map(
+                (t) => _TxnTile(
+                  txn: t,
+                  aptId: aptId,
+                  cs: cs,
+                  isDark: isDark,
+                  canDelete: isPresident,
+                ),
+              ),
           ],
         ),
       ),
+    );
+
+    if (!isPresident) return listView;
+
+    return Stack(
+      children: [
+        listView,
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: SafeArea(
+            top: false,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : cs.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: cs.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _BottomActionButton(
+                      label: 'Add Collection',
+                      icon: Icons.add_rounded,
+                      color: AppColors.paid,
+                      onTap: () =>
+                          showAddFundCollectionSheet(context, aptId),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _BottomActionButton(
+                      label: 'Add Expense',
+                      icon: Icons.remove_rounded,
+                      color: AppColors.overdue,
+                      onTap: () =>
+                          showAddFundExpenseSheet(context, aptId),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -162,7 +292,12 @@ class CommunityFundScreen extends StatelessWidget {
 class _NotInitializedView extends StatefulWidget {
   final RoleTheme theme;
   final String aptId;
-  const _NotInitializedView({required this.theme, required this.aptId});
+  final bool isPresident;
+  const _NotInitializedView({
+    required this.theme,
+    required this.aptId,
+    required this.isPresident,
+  });
 
   @override
   State<_NotInitializedView> createState() => _NotInitializedViewState();
@@ -181,11 +316,8 @@ class _NotInitializedViewState extends State<_NotInitializedView> {
         createdBy: auth.currentUser?.id ?? '',
       );
       if (mounted) {
-        AppUtils.showSnackBar(
-          context,
-          'Community Fund initialized successfully!',
-          color: AppColors.paid,
-        );
+        AppUtils.showSnackBar(context, 'Community Fund initialized!',
+            color: AppColors.paid);
       }
     } catch (e) {
       if (mounted) AppUtils.showSnackBar(context, 'Failed: $e');
@@ -197,35 +329,37 @@ class _NotInitializedViewState extends State<_NotInitializedView> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: widget.theme.gradient,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: widget.theme.gradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: const Icon(Icons.account_balance_wallet_outlined,
-                    color: Colors.white, size: 48),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: 24),
-              Text('Community Fund',
-                  style: AppTextStyles.heading2(color: cs.onSurface)),
-              const SizedBox(height: 10),
-              Text(
-                'Set up a shared fund to track collections and expenses for your apartment community.',
-                style: AppTextStyles.bodyMedium(color: cs.onSurfaceVariant),
-                textAlign: TextAlign.center,
-              ),
+              child: const Icon(Icons.account_balance_wallet_outlined,
+                  color: Colors.white, size: 52),
+            ),
+            const SizedBox(height: 28),
+            Text('Community Fund',
+                style: AppTextStyles.heading2(color: cs.onSurface)),
+            const SizedBox(height: 10),
+            Text(
+              widget.isPresident
+                  ? 'Set up a shared fund to track collections and expenses for your community.'
+                  : 'Your apartment president has not set up a community fund yet.',
+              style: AppTextStyles.bodyMedium(color: cs.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+            if (widget.isPresident) ...[
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
@@ -250,7 +384,7 @@ class _NotInitializedViewState extends State<_NotInitializedView> {
                 ),
               ),
             ],
-          ),
+          ],
         ),
       ),
     );
@@ -269,58 +403,83 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: theme.gradient,
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: theme.primary.withValues(alpha: 0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+            color: theme.primary.withValues(alpha: 0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.account_balance_wallet_rounded,
-                    color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Text('Community Fund Balance',
-                  style: AppTextStyles.caption(
-                      color: Colors.white.withValues(alpha: 0.85))),
-            ],
+          // Wallet icon
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.account_balance_wallet_rounded,
+                color: Colors.white, size: 22),
           ),
-          const SizedBox(height: 16),
-          Text(
-            AppUtils.formatCurrency(summary.balance),
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 32,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+          const SizedBox(width: 14),
+
+          // Label + amount
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Available Balance',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  AppUtils.formatCurrency(summary.balance),
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '${summary.transactionCount} transaction${summary.transactionCount == 1 ? '' : 's'} recorded',
-            style: AppTextStyles.caption(
-                color: Colors.white.withValues(alpha: 0.7)),
+
+          // Collected / Spent mini stats
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _MiniStat(
+                icon: Icons.south_rounded,
+                label: 'In',
+                value: AppUtils.formatCurrency(summary.totalCollected),
+                color: Colors.white,
+              ),
+              const SizedBox(height: 6),
+              _MiniStat(
+                icon: Icons.north_rounded,
+                label: 'Out',
+                value: AppUtils.formatCurrency(summary.totalExpensed),
+                color: Colors.white,
+              ),
+            ],
           ),
         ],
       ),
@@ -328,56 +487,51 @@ class _BalanceCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Action button
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ActionButton extends StatelessWidget {
-  final String label;
+class _MiniStat extends StatelessWidget {
   final IconData icon;
+  final String label;
+  final String value;
   final Color color;
-  final VoidCallback onTap;
-  const _ActionButton({
-    required this.label,
+  const _MiniStat({
     required this.icon,
+    required this.label,
+    required this.value,
     required this.color,
-    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: isDark ? 0.15 : 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.25)),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 11, color: color.withValues(alpha: 0.65)),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+            color: color.withValues(alpha: 0.65),
+          ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(label,
-                  style: AppTextStyles.subheading(color: cs.onSurface)
-                      .copyWith(fontSize: 13),
-                  overflow: TextOverflow.ellipsis),
-            ),
-          ],
+        const SizedBox(width: 5),
+        Text(
+          value,
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
         ),
-      ),
+      ],
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Stat tile
+// Stats tile
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _StatTile extends StatelessWidget {
@@ -398,11 +552,73 @@ class _StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(value,
+                    style: AppTextStyles.subheading(color: cs.onSurface)
+                        .copyWith(fontWeight: FontWeight.w700, fontSize: 14)),
+                Text(label,
+                    style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Utilization bar
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _UtilizationBar extends StatelessWidget {
+  final FundSummary summary;
+  final ColorScheme cs;
+  final bool isDark;
+  final Color accent;
+  const _UtilizationBar({
+    required this.summary,
+    required this.cs,
+    required this.isDark,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (summary.totalExpensedPaise / summary.totalCollectedPaise)
+        .clamp(0.0, 1.0);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
@@ -414,15 +630,92 @@ class _StatTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.donut_small_rounded,
+                      size: 16, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Text('Fund Utilization',
+                      style: AppTextStyles.subheading(color: cs.onSurface)
+                          .copyWith(fontSize: 13)),
+                ],
+              ),
+              Text(
+                '${(pct * 100).toInt()}% spent',
+                style: AppTextStyles.caption(color: accent)
+                    .copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 8,
+              backgroundColor: AppColors.paid.withValues(alpha: isDark ? 0.15 : 0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                pct > 0.8 ? AppColors.overdue : AppColors.paid,
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(value,
-              style: AppTextStyles.subheading(color: cs.onSurface)
-                  .copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 2),
-          Text(label,
-              style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Collected: ${AppUtils.formatCurrency(summary.totalCollected)}',
+                  style: AppTextStyles.caption(color: AppColors.paid)
+                      .copyWith(fontWeight: FontWeight.w600)),
+              Text('Spent: ${AppUtils.formatCurrency(summary.totalExpensed)}',
+                  style: AppTextStyles.caption(color: AppColors.overdue)
+                      .copyWith(fontWeight: FontWeight.w600)),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action button (president only)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _BottomActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  const _BottomActionButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 18, color: Colors.white),
+        label: Text(
+          label,
+          style: AppTextStyles.buttonText(color: Colors.white)
+              .copyWith(fontSize: 13),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
     );
   }
@@ -434,85 +727,148 @@ class _StatTile extends StatelessWidget {
 
 class _TxnTile extends StatelessWidget {
   final FundTransaction txn;
+  final String aptId;
   final ColorScheme cs;
   final bool isDark;
-  const _TxnTile({required this.txn, required this.cs, required this.isDark});
+  final bool canDelete;
+  const _TxnTile({
+    required this.txn,
+    required this.aptId,
+    required this.cs,
+    required this.isDark,
+    required this.canDelete,
+  });
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await AppUtils.showConfirmDialog(
+      context,
+      title: 'Delete Transaction',
+      message: 'This will reverse the balance effect. Are you sure?',
+      confirmText: 'Delete',
+      confirmColor: AppColors.overdue,
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await context.read<CommunityFundProvider>().deleteTransaction(
+            txnId: txn.id,
+            aptId: aptId,
+            amountPaise: txn.amountPaise,
+            type: txn.type,
+          );
+      if (context.mounted) {
+        AppUtils.showSnackBar(context, 'Transaction deleted.',
+            color: AppColors.paid);
+      }
+    } catch (e) {
+      if (context.mounted) AppUtils.showSnackBar(context, 'Failed: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final isIncome = txn.isCollection;
     final color = isIncome ? AppColors.paid : AppColors.overdue;
-    final sign = isIncome ? '+' : '-';
+    final sign = isIncome ? '+' : '−';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(12),
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Icon badge
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              isIncome ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+              isIncome
+                  ? Icons.arrow_downward_rounded
+                  : Icons.arrow_upward_rounded,
               color: color,
               size: 18,
             ),
           ),
           const SizedBox(width: 12),
+
+          // Description + meta
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(txn.description,
-                    style: AppTextStyles.bodyMedium(color: cs.onSurface),
+                    style: AppTextStyles.bodyMedium(color: cs.onSurface)
+                        .copyWith(fontWeight: FontWeight.w600),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     if (!isIncome) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(txn.category,
-                            style: AppTextStyles.caption(
-                                color: cs.onSurfaceVariant)
-                                .copyWith(fontSize: 10)),
-                      ),
+                      _Chip(txn.category, cs: cs),
                       const SizedBox(width: 6),
                     ],
-                    Text(AppUtils.formatDate(txn.createdAt),
-                        style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
+                    _Chip(AppUtils.formatDate(txn.createdAt), cs: cs),
                   ],
                 ),
               ],
             ),
           ),
-          Text(
-            '$sign${AppUtils.formatCurrency(txn.amount)}',
-            style: AppTextStyles.subheading(color: color)
-                .copyWith(fontWeight: FontWeight.w700),
+
+          // Amount + optional delete
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$sign${AppUtils.formatCurrency(txn.amount)}',
+                style: AppTextStyles.subheading(color: color)
+                    .copyWith(fontWeight: FontWeight.w700, fontSize: 14),
+              ),
+              if (canDelete) ...[
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: () => _confirmDelete(context),
+                  child: Icon(Icons.delete_outline_rounded,
+                      color: cs.onSurfaceVariant, size: 17),
+                ),
+              ],
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String text;
+  final ColorScheme cs;
+  const _Chip(this.text, {required this.cs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(text,
+          style: AppTextStyles.caption(color: cs.onSurfaceVariant)
+              .copyWith(fontSize: 10)),
     );
   }
 }
