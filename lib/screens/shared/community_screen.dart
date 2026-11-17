@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../core/theme/role_theme.dart';
 import '../../widgets/maintify_banner_ad.dart';
 import '../resident/complaints_screen.dart';
 import '../resident/directory_screen.dart';
@@ -13,10 +12,7 @@ class CommunityScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = RoleTheme.of(UserRole.resident);
-    final accent = theme.effectivePrimary(context);
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return DefaultTabController(
       length: 3,
@@ -27,62 +23,41 @@ class CommunityScreen extends StatelessWidget {
             child: MaintifyBannerAd(),
           ),
 
-          // ── Filled pill TabBar ──────────────────────────────────────────
+          // TabBar
           Container(
             color: cs.surface,
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-            child: Container(
-              height: 42,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? AppColors.darkSurfaceVariant
-                    : cs.surfaceContainerHighest.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TabBar(
-                indicator: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.35),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+            child: TabBar(
+              labelColor: AppColors.green,
+              unselectedLabelColor: cs.onSurfaceVariant,
+              indicatorColor: AppColors.green,
+              indicatorWeight: 1,
+              indicatorSize: TabBarIndicatorSize.tab,
+              labelStyle: AppTextStyles.caption(color: AppColors.green)
+                  .copyWith(fontWeight: FontWeight.w700, fontSize: 11),
+              unselectedLabelStyle:
+                  AppTextStyles.caption(color: cs.onSurfaceVariant)
+                      .copyWith(fontSize: 11),
+              dividerColor: cs.outlineVariant.withValues(alpha: 0.4),
+              tabs: const [
+                Tab(
+                  icon: Icon(Icons.receipt_long_outlined, size: 16),
+                  text: 'Payment Board',
+                  iconMargin: EdgeInsets.only(bottom: 2),
+                  height: 46,
                 ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                dividerColor: Colors.transparent,
-                labelColor: Colors.white,
-                unselectedLabelColor: cs.onSurfaceVariant,
-                labelPadding: EdgeInsets.zero,
-                padding: const EdgeInsets.all(3),
-                labelStyle: AppTextStyles.caption(color: Colors.white)
-                    .copyWith(fontWeight: FontWeight.w600, fontSize: 11),
-                unselectedLabelStyle:
-                    AppTextStyles.caption(color: cs.onSurfaceVariant)
-                        .copyWith(fontSize: 11),
-                tabs: const [
-                  Tab(
-                    icon: Icon(Icons.receipt_long_outlined, size: 16),
-                    text: 'Payment Board',
-                    iconMargin: EdgeInsets.only(bottom: 2),
-                    height: 36,
-                  ),
-                  Tab(
-                    icon: Icon(Icons.chat_bubble_outline_rounded, size: 16),
-                    text: 'Complaints',
-                    iconMargin: EdgeInsets.only(bottom: 2),
-                    height: 36,
-                  ),
-                  Tab(
-                    icon: Icon(Icons.people_outline_rounded, size: 16),
-                    text: 'Directory',
-                    iconMargin: EdgeInsets.only(bottom: 2),
-                    height: 36,
-                  ),
-                ],
-              ),
+                Tab(
+                  icon: Icon(Icons.chat_bubble_outline_rounded, size: 16),
+                  text: 'Complaints',
+                  iconMargin: EdgeInsets.only(bottom: 2),
+                  height: 46,
+                ),
+                Tab(
+                  icon: Icon(Icons.people_outline_rounded, size: 16),
+                  text: 'Directory',
+                  iconMargin: EdgeInsets.only(bottom: 2),
+                  height: 46,
+                ),
+              ],
             ),
           ),
 
