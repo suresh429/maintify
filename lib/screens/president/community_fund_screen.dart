@@ -128,45 +128,9 @@ class _FundBody extends StatelessWidget {
         child: ListView(
           padding: EdgeInsets.fromLTRB(8, 8, 8, bottomPad),
           children: [
-            // ── Balance card ───────────────────────────────────────────────
-            _BalanceCard(summary: summary, theme: theme),
+            // ── Fund summary card (balance + stats + utilization) ──────────
+            _FundSummaryCard(summary: summary, theme: theme, isDark: isDark),
             const SizedBox(height: 10),
-
-            // ── Stats row ─────────────────────────────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: _StatTile(
-                    label: 'Total Collected',
-                    value: AppUtils.formatCurrency(summary.totalCollected),
-                    color: AppColors.paid,
-                    icon: Icons.trending_up_rounded,
-                    isDark: isDark,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _StatTile(
-                    label: 'Total Expenses',
-                    value: AppUtils.formatCurrency(summary.totalExpensed),
-                    color: AppColors.overdue,
-                    icon: Icons.trending_down_rounded,
-                    isDark: isDark,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            // ── Fund utilization bar ───────────────────────────────────────
-            if (summary.totalCollectedPaise > 0) ...[
-              _UtilizationBar(
-                  summary: summary,
-                  cs: cs,
-                  isDark: isDark,
-                  accent: theme.effectivePrimary(context)),
-              const SizedBox(height: 10),
-            ],
 
             // ── Recent transactions header ─────────────────────────────────
             Row(
@@ -395,15 +359,24 @@ class _NotInitializedViewState extends State<_NotInitializedView> {
 // Balance card
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _BalanceCard extends StatelessWidget {
+class _FundSummaryCard extends StatelessWidget {
   final FundSummary summary;
   final RoleTheme theme;
-  const _BalanceCard({required this.summary, required this.theme});
+  final bool isDark;
+  const _FundSummaryCard({
+    required this.summary,
+    required this.theme,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final pct = summary.totalCollectedPaise > 0
+        ? (summary.totalExpensedPaise / summary.totalCollectedPaise)
+            .clamp(0.0, 1.0)
+        : 0.0;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: theme.gradient,
@@ -419,69 +392,118 @@ class _BalanceCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          // Wallet icon
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.account_balance_wallet_rounded,
-                color: Colors.white, size: 22),
-          ),
-          const SizedBox(width: 14),
-
-          // Label + amount
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Top row: icon + balance + in/out stats ────────────────────
+            Row(
               children: [
-                Text(
-                  'Available Balance',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.75),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.account_balance_wallet_rounded,
+                      color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Available Balance',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.75),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        AppUtils.formatCurrency(summary.balance),
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  AppUtils.formatCurrency(summary.balance),
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _MiniStat(
+                      icon: Icons.south_rounded,
+                      label: 'In',
+                      value: AppUtils.formatCurrency(summary.totalCollected),
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 6),
+                    _MiniStat(
+                      icon: Icons.north_rounded,
+                      label: 'Out',
+                      value: AppUtils.formatCurrency(summary.totalExpensed),
+                      color: Colors.white,
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
 
-          // Collected / Spent mini stats
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _MiniStat(
-                icon: Icons.south_rounded,
-                label: 'In',
-                value: AppUtils.formatCurrency(summary.totalCollected),
-                color: Colors.white,
+            // ── Utilization bar (only when there's collected data) ─────────
+            if (summary.totalCollectedPaise > 0) ...[
+              const SizedBox(height: 14),
+              Container(
+                height: 1,
+                color: Colors.white.withValues(alpha: 0.2),
               ),
-              const SizedBox(height: 6),
-              _MiniStat(
-                icon: Icons.north_rounded,
-                label: 'Out',
-                value: AppUtils.formatCurrency(summary.totalExpensed),
-                color: Colors.white,
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Fund Utilization',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withValues(alpha: 0.75),
+                    ),
+                  ),
+                  Text(
+                    '${(pct * 100).toInt()}% spent',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: pct,
+                  minHeight: 7,
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Colors.white.withValues(alpha: pct > 0.8 ? 1.0 : 0.85),
+                  ),
+                ),
               ),
             ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -530,155 +552,6 @@ class _MiniStat extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Stats tile
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _StatTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  final IconData icon;
-  final bool isDark;
-  const _StatTile({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.icon,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value,
-                    style: AppTextStyles.subheading(color: cs.onSurface)
-                        .copyWith(fontWeight: FontWeight.w700, fontSize: 14)),
-                Text(label,
-                    style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Utilization bar
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _UtilizationBar extends StatelessWidget {
-  final FundSummary summary;
-  final ColorScheme cs;
-  final bool isDark;
-  final Color accent;
-  const _UtilizationBar({
-    required this.summary,
-    required this.cs,
-    required this.isDark,
-    required this.accent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (summary.totalExpensedPaise / summary.totalCollectedPaise)
-        .clamp(0.0, 1.0);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.donut_small_rounded,
-                      size: 16, color: cs.onSurfaceVariant),
-                  const SizedBox(width: 6),
-                  Text('Fund Utilization',
-                      style: AppTextStyles.subheading(color: cs.onSurface)
-                          .copyWith(fontSize: 13)),
-                ],
-              ),
-              Text(
-                '${(pct * 100).toInt()}% spent',
-                style: AppTextStyles.caption(color: accent)
-                    .copyWith(fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: pct,
-              minHeight: 8,
-              backgroundColor: AppColors.paid.withValues(alpha: isDark ? 0.15 : 0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(
-                pct > 0.8 ? AppColors.overdue : AppColors.paid,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Collected: ${AppUtils.formatCurrency(summary.totalCollected)}',
-                  style: AppTextStyles.caption(color: AppColors.paid)
-                      .copyWith(fontWeight: FontWeight.w600)),
-              Text('Spent: ${AppUtils.formatCurrency(summary.totalExpensed)}',
-                  style: AppTextStyles.caption(color: AppColors.overdue)
-                      .copyWith(fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Action button (president only)
@@ -821,7 +694,7 @@ class _TxnTile extends StatelessWidget {
                       _Chip(txn.category, cs: cs),
                       const SizedBox(width: 6),
                     ],
-                    _Chip(AppUtils.formatDate(txn.createdAt), cs: cs),
+                    _Chip(AppUtils.formatDateTime(txn.createdAt), cs: cs),
                   ],
                 ),
               ],

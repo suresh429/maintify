@@ -75,6 +75,23 @@ class FundSummary {
   double get totalCollected => totalCollectedPaise / 100;
   double get totalExpensed => totalExpensedPaise / 100;
 
+  FundSummary copyWith({
+    int? balancePaise,
+    int? totalCollectedPaise,
+    int? totalExpensedPaise,
+    int? transactionCount,
+    DateTime? lastUpdatedAt,
+  }) => FundSummary(
+        apartmentId: apartmentId,
+        balancePaise: balancePaise ?? this.balancePaise,
+        totalCollectedPaise: totalCollectedPaise ?? this.totalCollectedPaise,
+        totalExpensedPaise: totalExpensedPaise ?? this.totalExpensedPaise,
+        transactionCount: transactionCount ?? this.transactionCount,
+        createdAt: createdAt,
+        lastUpdatedAt: lastUpdatedAt ?? this.lastUpdatedAt,
+        createdBy: createdBy,
+      );
+
   factory FundSummary.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
     return FundSummary(
