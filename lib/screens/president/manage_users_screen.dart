@@ -184,6 +184,173 @@ class _MemberCard extends StatelessWidget {
   final BillProvider billProvider;
   const _MemberCard({required this.user, required this.billProvider});
 
+  Future<bool> _showVerifySheet(BuildContext context) async {
+    final totalDue = billProvider.totalDueForUser(user.id);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : cs.surface,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Container(
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(
+                        color: cs.outlineVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.overdue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.person_remove_outlined,
+                          color: AppColors.overdue, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Verify Before Removing',
+                              style: AppTextStyles.heading3(color: cs.onSurface)),
+                          Text('Confirm this is an unauthorized resident',
+                              style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Resident details
+                _VerifyRow(icon: Icons.person_outline_rounded,
+                    label: 'Name', value: user.name, cs: cs),
+                _VerifyRow(icon: Icons.door_front_door_outlined,
+                    label: 'Flat', value: user.unit.isNotEmpty ? 'Flat ${user.unit}' : '—', cs: cs),
+                _VerifyRow(icon: Icons.email_outlined,
+                    label: 'Email', value: user.email.isNotEmpty ? user.email : '—', cs: cs),
+                _VerifyRow(icon: Icons.phone_outlined,
+                    label: 'Mobile', value: user.phone.isNotEmpty ? user.phone : '—', cs: cs),
+
+                // Dues warning
+                if (totalDue > 0) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.overdue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: AppColors.overdue.withValues(alpha: 0.25)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded,
+                            color: AppColors.overdue, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Has ${AppUtils.formatCurrency(totalDue)} unpaid dues — clear bills before removing.',
+                            style: AppTextStyles.caption(color: AppColors.overdue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 20),
+
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text('Cancel',
+                            style: AppTextStyles.buttonText(
+                                color: cs.onSurface)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: totalDue > 0
+                            ? null
+                            : () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.overdue,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor:
+                              AppColors.overdue.withValues(alpha: 0.3),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text('Remove',
+                            style: AppTextStyles.buttonText(
+                                color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    return result == true;
+  }
+
+  Future<void> _doRemove(BuildContext context) async {
+    try {
+      final auth = context.read<AuthProvider>();
+      final aptId = auth.currentUser?.apartmentId ?? '';
+      await context.read<UserProvider>().removeUser(
+            user.id,
+            aptId: aptId,
+            isPresident: false,
+          );
+      if (context.mounted) {
+        AppUtils.showSnackBar(context, '${user.name} removed from apartment.',
+            color: AppColors.paid);
+      }
+    } catch (e) {
+      if (context.mounted) AppUtils.showSnackBar(context, 'Failed: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -196,7 +363,7 @@ class _MemberCard extends StatelessWidget {
     final totalDue = billProvider.totalDueForUser(user.id);
     final isPresident = user.role == UserRole.president;
 
-    return Container(
+    final card = Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: cs.surface,
@@ -373,6 +540,41 @@ class _MemberCard extends StatelessWidget {
         ],
       ),
     );
+
+    // President card — not dismissible
+    if (isPresident) return card;
+
+    // Resident card — swipe left to remove
+    return Dismissible(
+      key: ValueKey(user.id),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _showVerifySheet(context),
+      onDismissed: (_) => _doRemove(context),
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: AppColors.overdue,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person_remove_outlined, color: Colors.white, size: 22),
+            SizedBox(height: 4),
+            Text('Remove',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                )),
+          ],
+        ),
+      ),
+      child: card,
+    );
   }
 
   Widget _divider() => Container(
@@ -380,6 +582,40 @@ class _MemberCard extends StatelessWidget {
         height: 24,
         color: AppColors.lightGray.withValues(alpha: 0.5),
       );
+}
+
+class _VerifyRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final ColorScheme cs;
+  const _VerifyRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.cs,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: cs.onSurfaceVariant),
+          const SizedBox(width: 12),
+          Text('$label: ',
+              style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
+          Expanded(
+            child: Text(value,
+                style: AppTextStyles.bodySmall(color: cs.onSurface)
+                    .copyWith(fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _BillStat extends StatelessWidget {
