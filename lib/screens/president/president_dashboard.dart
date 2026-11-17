@@ -54,7 +54,7 @@ class PresidentDashboard extends StatefulWidget {
 class _PresidentDashboardState extends State<PresidentDashboard> {
   int _currentIndex = 0;
 
-  static const _titles = ['Dashboard', 'Manage Users', 'Bills', 'Complaints', 'Profile'];
+  static const _titles = ['Dashboard', 'Residents', 'Bills', 'Complaints', 'Profile'];
 
   late final List<Widget> _pages;
 
@@ -230,7 +230,7 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
         role: UserRole.president,
         navItems: const [
           WebNavItem(icon: Icons.dashboard_outlined, label: 'Dashboard'),
-          WebNavItem(icon: Icons.people_outlined, label: 'Manage Users'),
+          WebNavItem(icon: Icons.people_outlined, label: 'Residents'),
           WebNavItem(icon: Icons.receipt_long_outlined, label: 'Bills'),
           WebNavItem(icon: Icons.report_problem_outlined, label: 'Complaints'),
           WebNavItem(icon: Icons.person_outline_rounded, label: 'Profile'),
@@ -268,7 +268,7 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
             NavigationDestination(
               icon: Icon(Icons.people_outline_rounded),
               selectedIcon: Icon(Icons.people_rounded),
-              label: 'Users',
+              label: 'Residents',
             ),
             NavigationDestination(
               icon: Icon(Icons.receipt_long_outlined),
