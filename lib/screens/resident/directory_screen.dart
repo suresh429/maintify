@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -79,7 +80,9 @@ class _MemberTile extends StatelessWidget {
         RoleTheme.of(UserRole.resident).effectivePrimary(context);
     final avatarColor = _isPresident ? presidentColor : residentColor;
 
-    return Container(
+    return GestureDetector(
+      onTap: () => _showDetails(context),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -161,6 +164,92 @@ class _MemberTile extends StatelessWidget {
           _RoleChip(isPresident: _isPresident),
         ],
       ),
+    ));
+  }
+
+  void _showDetails(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final avatarColor = _isPresident
+        ? RoleTheme.of(UserRole.president).effectivePrimary(context)
+        : RoleTheme.of(UserRole.resident).effectivePrimary(context);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : cs.surface,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Container(
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(
+                        color: cs.outlineVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Avatar + name
+                CircleAvatar(
+                  radius: 32,
+                  backgroundColor: avatarColor.withValues(alpha: 0.12),
+                  child: Text(
+                    member.avatarInitials,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      color: avatarColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(member.name,
+                    style: AppTextStyles.heading3(color: cs.onSurface)),
+                const SizedBox(height: 4),
+                _RoleChip(isPresident: _isPresident),
+                const SizedBox(height: 20),
+
+                // Details list
+                _DetailRow(
+                  icon: Icons.door_front_door_outlined,
+                  label: 'Flat / Unit',
+                  value: member.unit.isNotEmpty ? member.unit : '—',
+                  cs: cs,
+                ),
+                _DetailRow(
+                  icon: Icons.email_outlined,
+                  label: 'Email',
+                  value: member.email.isNotEmpty ? member.email : '—',
+                  cs: cs,
+                ),
+                _DetailRow(
+                  icon: Icons.phone_outlined,
+                  label: 'Mobile',
+                  value: member.phone.isNotEmpty ? member.phone : '—',
+                  cs: cs,
+                  isLast: true,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -205,6 +294,71 @@ class _RoleChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Detail row ────────────────────────────────────────────────────────────────
+
+class _DetailRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final ColorScheme cs;
+  final bool isLast;
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.cs,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: cs.onSurfaceVariant),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
+                    const SizedBox(height: 2),
+                    Text(value,
+                        style: AppTextStyles.bodyMedium(color: cs.onSurface)
+                            .copyWith(fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  if (value != '—') {
+                    Clipboard.setData(ClipboardData(text: value));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('$label copied'),
+                        duration: const Duration(seconds: 2),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+                child: Icon(Icons.copy_rounded,
+                    size: 16, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+              ),
+            ],
+          ),
+        ),
+        if (!isLast)
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
+      ],
     );
   }
 }
