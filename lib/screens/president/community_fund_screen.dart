@@ -15,7 +15,7 @@ import 'fund_transactions_screen.dart';
 /// Unified Community Fund screen — works for both president and resident.
 ///
 /// Pass [role] to control visibility of write actions.
-/// President sees Add Collection / Add Expense buttons and can delete transactions.
+/// President sees Add Collection / Add Expense buttons.
 /// Resident sees a read-only view.
 class CommunityFundScreen extends StatelessWidget {
   final UserRole role;
@@ -179,10 +179,8 @@ class _FundBody extends StatelessWidget {
               ...recent.map(
                 (t) => _TxnTile(
                   txn: t,
-                  aptId: aptId,
                   cs: cs,
                   isDark: isDark,
-                  canDelete: isPresident,
                 ),
               ),
           ],
@@ -600,42 +598,13 @@ class _BottomActionButton extends StatelessWidget {
 
 class _TxnTile extends StatelessWidget {
   final FundTransaction txn;
-  final String aptId;
   final ColorScheme cs;
   final bool isDark;
-  final bool canDelete;
   const _TxnTile({
     required this.txn,
-    required this.aptId,
     required this.cs,
     required this.isDark,
-    required this.canDelete,
   });
-
-  Future<void> _confirmDelete(BuildContext context) async {
-    final confirmed = await AppUtils.showConfirmDialog(
-      context,
-      title: 'Delete Transaction',
-      message: 'This will reverse the balance effect. Are you sure?',
-      confirmText: 'Delete',
-      confirmColor: AppColors.overdue,
-    );
-    if (confirmed != true || !context.mounted) return;
-    try {
-      await context.read<CommunityFundProvider>().deleteTransaction(
-            txnId: txn.id,
-            aptId: aptId,
-            amountPaise: txn.amountPaise,
-            type: txn.type,
-          );
-      if (context.mounted) {
-        AppUtils.showSnackBar(context, 'Transaction deleted.',
-            color: AppColors.paid);
-      }
-    } catch (e) {
-      if (context.mounted) AppUtils.showSnackBar(context, 'Failed: $e');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -701,24 +670,10 @@ class _TxnTile extends StatelessWidget {
             ),
           ),
 
-          // Amount + optional delete
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$sign${AppUtils.formatCurrency(txn.amount)}',
-                style: AppTextStyles.subheading(color: color)
-                    .copyWith(fontWeight: FontWeight.w700, fontSize: 14),
-              ),
-              if (canDelete) ...[
-                const SizedBox(height: 4),
-                GestureDetector(
-                  onTap: () => _confirmDelete(context),
-                  child: Icon(Icons.delete_outline_rounded,
-                      color: cs.onSurfaceVariant, size: 17),
-                ),
-              ],
-            ],
+          Text(
+            '$sign${AppUtils.formatCurrency(txn.amount)}',
+            style: AppTextStyles.subheading(color: color)
+                .copyWith(fontWeight: FontWeight.w700, fontSize: 14),
           ),
         ],
       ),

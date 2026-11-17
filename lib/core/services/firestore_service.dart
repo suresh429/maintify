@@ -893,44 +893,4 @@ class FirestoreService {
     return txnRef.id;
   }
 
-  /// Deletes a fund transaction and reverses its effect on the summary.
-  Future<void> deleteFundTransaction({
-    required String txnId,
-    required String aptId,
-    required int amountPaise,
-    required String type, // FundTxnType.collection | FundTxnType.expense
-  }) async {
-    final txnRef = _db.collection('fund_transactions').doc(txnId);
-    final summaryRef = _db.collection('fund_summary').doc(aptId);
-
-    await _db.runTransaction((tx) async {
-      final summarySnap = await tx.get(summaryRef);
-      if (!summarySnap.exists) throw Exception('Community Fund not found');
-
-      // Guard: deleting a collection reduces balance — ensure it won't go negative.
-      if (type == FundTxnType.collection) {
-        final currentBalance =
-            (summarySnap.data()!['balancePaise'] as num?)?.toInt() ?? 0;
-        if (currentBalance - amountPaise < 0) {
-          throw Exception(
-              'Cannot delete this collection — it would make the balance negative. Remove related expenses first.');
-        }
-      }
-
-      tx.delete(txnRef);
-
-      final balanceDelta    = type == FundTxnType.collection ? -amountPaise : amountPaise;
-      final collectedDelta  = type == FundTxnType.collection ? -amountPaise : 0;
-      final expensedDelta   = type == FundTxnType.expense    ? -amountPaise : 0;
-      tx.update(summaryRef, {
-        'balancePaise': FieldValue.increment(balanceDelta),
-        if (collectedDelta != 0)
-          'totalCollectedPaise': FieldValue.increment(collectedDelta),
-        if (expensedDelta != 0)
-          'totalExpensedPaise': FieldValue.increment(expensedDelta),
-        'transactionCount': FieldValue.increment(-1),
-        'lastUpdatedAt': FieldValue.serverTimestamp(),
-      });
-    });
-  }
 }

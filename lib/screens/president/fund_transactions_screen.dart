@@ -8,7 +8,7 @@ import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../widgets/shimmer_loading.dart';
 
-/// Full transaction history — president can delete individual entries.
+/// Full transaction history — read-only audit trail.
 class FundTransactionsScreen extends StatefulWidget {
   final String aptId;
   const FundTransactionsScreen({super.key, required this.aptId});
@@ -85,7 +85,6 @@ class _FundTransactionsScreenState extends State<FundTransactionsScreen> {
                         itemCount: filtered.length,
                         itemBuilder: (_, i) => _TxnCard(
                           txn: filtered[i],
-                          aptId: widget.aptId,
                           cs: cs,
                           isDark: isDark,
                         ),
@@ -137,40 +136,13 @@ class _Chip extends StatelessWidget {
 
 class _TxnCard extends StatelessWidget {
   final FundTransaction txn;
-  final String aptId;
   final ColorScheme cs;
   final bool isDark;
   const _TxnCard({
     required this.txn,
-    required this.aptId,
     required this.cs,
     required this.isDark,
   });
-
-  Future<void> _confirmDelete(BuildContext context) async {
-    final confirmed = await AppUtils.showConfirmDialog(
-      context,
-      title: 'Delete Transaction',
-      message: 'This will reverse the balance effect. Are you sure?',
-      confirmText: 'Delete',
-      confirmColor: AppColors.overdue,
-    );
-    if (confirmed != true || !context.mounted) return;
-    try {
-      await context.read<CommunityFundProvider>().deleteTransaction(
-            txnId: txn.id,
-            aptId: aptId,
-            amountPaise: txn.amountPaise,
-            type: txn.type,
-          );
-      if (context.mounted) {
-        AppUtils.showSnackBar(context, 'Transaction deleted.',
-            color: AppColors.paid);
-      }
-    } catch (e) {
-      if (context.mounted) AppUtils.showSnackBar(context, 'Failed: $e');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -234,21 +206,10 @@ class _TxnCard extends StatelessWidget {
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$sign${AppUtils.formatCurrency(txn.amount)}',
-                style: AppTextStyles.subheading(color: color)
-                    .copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
-              GestureDetector(
-                onTap: () => _confirmDelete(context),
-                child: Icon(Icons.delete_outline_rounded,
-                    color: cs.onSurfaceVariant, size: 18),
-              ),
-            ],
+          Text(
+            '$sign${AppUtils.formatCurrency(txn.amount)}',
+            style: AppTextStyles.subheading(color: color)
+                .copyWith(fontWeight: FontWeight.w700),
           ),
         ],
       ),

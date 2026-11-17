@@ -155,55 +155,6 @@ class CommunityFundProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteTransaction({
-    required String txnId,
-    required String aptId,
-    required int amountPaise,
-    required String type,
-  }) async {
-    // Client-side guard: prevent balance going negative before hitting Firestore.
-    if (type == FundTxnType.collection && _summary != null) {
-      if (_summary!.balancePaise - amountPaise < 0) {
-        throw Exception(
-            'Cannot delete this collection — it would make the balance negative. Remove related expenses first.');
-      }
-    }
-
-    _setLoading(true);
-    try {
-      await _fs.deleteFundTransaction(
-        txnId: txnId,
-        aptId: aptId,
-        amountPaise: amountPaise,
-        type: type,
-      );
-      // Optimistic update — immediately remove from list and update summary.
-      _transactions = _transactions.where((t) => t.id != txnId).toList();
-      if (_summary != null) {
-        final isCollection = type == FundTxnType.collection;
-        _summary = _summary!.copyWith(
-          balancePaise: isCollection
-              ? _summary!.balancePaise - amountPaise
-              : _summary!.balancePaise + amountPaise,
-          totalCollectedPaise: isCollection
-              ? _summary!.totalCollectedPaise - amountPaise
-              : _summary!.totalCollectedPaise,
-          totalExpensedPaise: isCollection
-              ? _summary!.totalExpensedPaise
-              : _summary!.totalExpensedPaise - amountPaise,
-          transactionCount: _summary!.transactionCount - 1,
-          lastUpdatedAt: DateTime.now(),
-        );
-      }
-      _error = null;
-    } catch (e) {
-      _error = e.toString();
-      rethrow;
-    } finally {
-      _setLoading(false);
-    }
-  }
-
   void _setLoading(bool v) {
     _isLoading = v;
     notifyListeners();
