@@ -36,9 +36,12 @@ class MonthlyBillSummary {
 
   int get fullyPaidFlats {
     if (bills.isEmpty || totalFlats == 0) return 0;
+    final excluded = allExcludedUserIds;
     final userIds = allPayments.map((p) => p.userId).toSet();
     return userIds.where((uid) {
+      if (excluded.contains(uid)) return false; // excluded flats don't count
       return bills.every((bill) {
+        if (bill.excludedUserIds.contains(uid)) return true; // exempt from this bill
         final matches = allPayments
             .where((x) => x.billId == bill.id && x.userId == uid)
             .toList();
@@ -54,7 +57,7 @@ class MonthlyBillSummary {
   /// Eligible flats = total - excluded.
   int get eligibleFlats {
     final n = totalFlats - allExcludedUserIds.length;
-    return n.clamp(1, totalFlats);
+    return n.clamp(0, totalFlats);
   }
 
   int get pendingFlats => eligibleFlats - fullyPaidFlats;
@@ -675,20 +678,21 @@ class BillProvider extends ChangeNotifier {
     if (idx != -1) {
       final old = _payments[idx];
       _payments[idx] = BillPayment(
-        id:             old.id,
-        billId:         old.billId,
-        userId:         old.userId,
-        unitNumber:     old.unitNumber,
-        amount:         old.amount,
-        status:         BillStatus.pendingApproval,
-        referenceLast4: referenceLast4,
-        paymentMethod:  'upi',
-        upiIdUsed:      upiIdUsed,
-        adminVerified:  false,
-        submittedAt:    now,
-        submittedBy:    userId,
-        approvedAt:     old.approvedAt,
-        approvedBy:     old.approvedBy,
+        id:                 old.id,
+        billId:             old.billId,
+        userId:             old.userId,
+        unitNumber:         old.unitNumber,
+        amount:             old.amount,
+        status:             BillStatus.pendingApproval,
+        referenceLast4:     referenceLast4,
+        paymentMethod:      'upi',
+        upiIdUsed:          upiIdUsed,
+        adminVerified:      false,
+        submittedAt:        now,
+        submittedBy:        userId,
+        approvedAt:         old.approvedAt,
+        approvedBy:         old.approvedBy,
+        carryForwardAmount: old.carryForwardAmount,
       );
     }
 
@@ -834,21 +838,22 @@ class BillProvider extends ChangeNotifier {
         if (idx != -1) {
           final old = _payments[idx];
           _payments[idx] = BillPayment(
-            id:            old.id,
-            billId:        old.billId,
-            userId:        old.userId,
-            unitNumber:    old.unitNumber,
-            amount:        old.amount,
-            status:        BillStatus.pending,
-            paidDate:      old.paidDate,
-            transactionId: old.transactionId,
-            adminVerified: old.adminVerified,
-            submittedAt:   null,
-            submittedBy:   null,
-            approvedAt:    old.approvedAt,
-            approvedBy:    old.approvedBy,
-            rejectedAt:    now,
-            rejectedBy:    presidentId,
+            id:                 old.id,
+            billId:             old.billId,
+            userId:             old.userId,
+            unitNumber:         old.unitNumber,
+            amount:             old.amount,
+            status:             BillStatus.pending,
+            paidDate:           old.paidDate,
+            transactionId:      old.transactionId,
+            adminVerified:      old.adminVerified,
+            submittedAt:        null,
+            submittedBy:        null,
+            approvedAt:         old.approvedAt,
+            approvedBy:         old.approvedBy,
+            rejectedAt:         now,
+            rejectedBy:         presidentId,
+            carryForwardAmount: old.carryForwardAmount,
           );
         }
       }
