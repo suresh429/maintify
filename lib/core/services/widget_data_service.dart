@@ -19,7 +19,7 @@ class WidgetDataService {
     int pendingBillCount = 0,
     String? pendingAmountDisplay,
   }) async {
-    if (!Platform.isIOS) return;
+    if (kIsWeb || !Platform.isIOS) return;
     try {
       await _channel.invokeMethod<void>('updateWidgetData', {
         'isLoggedIn': isLoggedIn,
@@ -39,7 +39,7 @@ class WidgetDataService {
   /// Clears widget data and shows the logged-out state.
   /// Call this on logout or session expiry.
   static Future<void> clear() async {
-    if (!Platform.isIOS) return;
+    if (kIsWeb || !Platform.isIOS) return;
     try {
       await _channel.invokeMethod<void>('clearWidgetData');
     } catch (e) {

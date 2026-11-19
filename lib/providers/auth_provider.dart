@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../models/user_model.dart';
@@ -120,7 +121,7 @@ class AuthProvider extends ChangeNotifier {
     final box = Hive.box<String>('session');
     box.delete('isLoggedIn');
     box.delete('role');
-    if (Platform.isIOS) WidgetDataService.clear();
+    if (!kIsWeb && Platform.isIOS) WidgetDataService.clear();
     await _auth.signOut();
     _currentUser = null;
     _sessionExpired = true;
@@ -214,7 +215,7 @@ class AuthProvider extends ChangeNotifier {
     box.delete('role');
     _localSessionId = null;
     _sessionExpired = false;
-    if (Platform.isIOS) WidgetDataService.clear();
+    if (!kIsWeb && Platform.isIOS) WidgetDataService.clear();
     await _auth.signOut();
     _currentUser = null;
     _error = null;
