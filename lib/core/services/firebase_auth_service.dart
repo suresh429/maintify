@@ -13,7 +13,7 @@ class FirebaseAuthService {
   /// These accounts bypass email verification to allow immediate login.
   /// All other users must complete Firebase email verification before logging in.
   static const _demoEmails = {
-    'admin@maintify.demo',
+    'support.maintify@gmail.com', // super admin — bypasses verification (no email to verify)
     'president@maintify.demo',
     'resident@maintify.demo',
     'resident2@maintify.demo',
