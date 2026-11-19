@@ -29,6 +29,8 @@ class NotificationPushService {
 
   static const _endpoint =
       'https://maintify-notification-server.onrender.com/send-notification';
+  static const _broadcastEndpoint =
+      'https://maintify-notification-server.onrender.com/send-update-notification';
 
   // Render Free may take up to 30 s to wake from sleep on first request.
   static const _timeout = Duration(seconds: 30);
@@ -119,9 +121,59 @@ class NotificationPushService {
           '[FCM-PUSH] Push timed out — Render may be waking up. '
           'Firestore notification is preserved.');
     } catch (e) {
-      // Log only the runtime type — never log the full exception which may
-      // contain partial credential data.
       debugPrint('[FCM-PUSH] Push failed: ${e.runtimeType}');
     }
+  }
+
+  /// Broadcasts an update notification to ALL presidents and residents.
+  /// Returns `(success, sentCount, error)` — always returns, never throws.
+  Future<({bool success, int sentCount, String? error})> sendUpdateNotification({
+    required String title,
+    required String body,
+  }) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return (success: false, sentCount: 0, error: 'Not authenticated');
+
+      final idToken = await user.getIdToken();
+      if (idToken == null) return (success: false, sentCount: 0, error: 'Could not get auth token');
+
+      debugPrint('[FCM-BROADCAST] Sending update notification to all users');
+
+      final response = await http
+          .post(
+            Uri.parse(_broadcastEndpoint),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $idToken',
+            },
+            body: jsonEncode({'title': title, 'body': body}),
+          )
+          .timeout(const Duration(seconds: 60));
+
+      debugPrint('[FCM-BROADCAST] HTTP status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final sent = (data['successCount'] as int?) ?? 0;
+        debugPrint('[FCM-BROADCAST] Sent to $sent devices');
+        return (success: true, sentCount: sent, error: null);
+      }
+
+      final data = _parseJson(response.body);
+      return (
+        success: false,
+        sentCount: 0,
+        error: data['error'] as String? ?? 'Failed to send notification',
+      );
+    } on TimeoutException {
+      return (success: false, sentCount: 0, error: 'Request timed out. Please try again.');
+    } catch (e) {
+      return (success: false, sentCount: 0, error: 'Something went wrong. Please try again.');
+    }
+  }
+
+  static Map<String, dynamic> _parseJson(String body) {
+    try { return jsonDecode(body) as Map<String, dynamic>; } catch (_) { return {}; }
   }
 }

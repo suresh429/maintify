@@ -21,7 +21,7 @@
 const express           = require('express');
 const cors              = require('cors');
 const cron              = require('node-cron');
-const { verifyIdToken, getUserDoc, sendToUids } = require('./notification');
+const { verifyIdToken, getUserDoc, sendToUids, sendToAllUsers } = require('./notification');
 const { runOverdueCheck } = require('./overdueChecker');
 const { sendResetOtp, resetPasswordWithOtp } = require('./passwordReset');
 
@@ -235,6 +235,56 @@ app.post('/reset-password-otp', async (req, res) => {
     }
     console.error('[RESET_PASSWORD] Unexpected error:', e.message);
     return res.status(500).json({ success: false, error: 'Failed to reset password. Please try again.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /send-update-notification  — admin only broadcast
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.post('/send-update-notification', async (req, res) => {
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, error: 'Missing authorization header' });
+  }
+  const idToken = authHeader.slice(7).trim();
+
+  let caller;
+  try {
+    caller = await verifyIdToken(idToken);
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'Invalid or expired token' });
+  }
+
+  const callerDoc = await getUserDoc(caller.uid).catch(() => null);
+  if (!callerDoc || callerDoc.role !== 'admin') {
+    return res.status(403).json({ success: false, error: 'Only super admins can send broadcast notifications' });
+  }
+
+  // ── Validate body ─────────────────────────────────────────────────────────
+  const { title, body } = req.body ?? {};
+  if (!title || typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ success: false, error: 'title is required' });
+  }
+  if (!body || typeof body !== 'string' || !body.trim()) {
+    return res.status(400).json({ success: false, error: 'body is required' });
+  }
+
+  // ── Broadcast ─────────────────────────────────────────────────────────────
+  console.log(`[BROADCAST] Admin ${caller.uid} sending update notification`);
+  try {
+    const result = await sendToAllUsers(title.trim(), body.trim(), { type: 'app_update' });
+    console.log(`[BROADCAST] Done — success: ${result.successCount}, failed: ${result.failureCount}, total users: ${result.totalUsers}`);
+    return res.json({
+      success:      true,
+      successCount: result.successCount,
+      failureCount: result.failureCount,
+      totalUsers:   result.totalUsers,
+    });
+  } catch (e) {
+    console.error('[BROADCAST] Error:', e.message);
+    return res.status(500).json({ success: false, error: 'Failed to send broadcast notification' });
   }
 });
 

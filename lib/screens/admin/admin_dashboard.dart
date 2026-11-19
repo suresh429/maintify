@@ -23,6 +23,9 @@ import '../../widgets/logout_sheet.dart';
 import '../../widgets/web/web_app_shell.dart';
 import '../../widgets/web/web_page_container.dart';
 import '../../widgets/maintify_banner_ad.dart';
+import '../../widgets/app_text_field.dart';
+import '../../widgets/common_button.dart';
+import '../../core/services/notification_push_service.dart';
 import 'ad_management_screen.dart';
 import 'web_ad_management_screen.dart';
 
@@ -425,6 +428,8 @@ class _DashboardHome extends StatelessWidget {
                   color: Theme.of(context).colorScheme.onSurface)),
           const SizedBox(height: 14),
           _PlatformSettingsCard(),
+          const SizedBox(height: 12),
+          const _BroadcastCard(),
         ] else ...[
           // ── Mobile: original hero banner ───────────────────────────────
           Container(
@@ -582,6 +587,8 @@ class _DashboardHome extends StatelessWidget {
             Text('Platform Settings', style: AppTextStyles.heading3(color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 14),
             _PlatformSettingsCard(),
+            const SizedBox(height: 12),
+            const _BroadcastCard(),
 
             const SizedBox(height: 20),
           ],
@@ -803,6 +810,197 @@ class _ApartmentCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis),
         ),
       ],
+    );
+  }
+}
+
+// ── Broadcast notification card ───────────────────────────────────────────────
+
+class _BroadcastCard extends StatelessWidget {
+  const _BroadcastCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs     = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const color  = Color(0xFF7C3AED); // violet
+
+    return GestureDetector(
+      onTap: () => _showBroadcastSheet(context),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.campaign_outlined, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Send Update Alert',
+                      style: AppTextStyles.subheading(color: cs.onSurface)),
+                  Text('Notify all users about a new app version',
+                      style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showBroadcastSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _BroadcastSheet(),
+    );
+  }
+}
+
+class _BroadcastSheet extends StatefulWidget {
+  const _BroadcastSheet();
+
+  @override
+  State<_BroadcastSheet> createState() => _BroadcastSheetState();
+}
+
+class _BroadcastSheetState extends State<_BroadcastSheet> {
+  final _titleCtrl = TextEditingController(text: 'New Version Available');
+  final _bodyCtrl  = TextEditingController(
+    text: 'A new version of Maintify is available. Update now for the latest features and improvements.',
+  );
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _bodyCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final title = _titleCtrl.text.trim();
+    final body  = _bodyCtrl.text.trim();
+    if (title.isEmpty || body.isEmpty) {
+      AppUtils.showSnackBar(context, 'Title and message are required.', isError: true);
+      return;
+    }
+
+    setState(() => _sending = true);
+    final result = await NotificationPushService.instance.sendUpdateNotification(
+      title: title,
+      body:  body,
+    );
+    if (!mounted) return;
+    setState(() => _sending = false);
+
+    Navigator.pop(context);
+    AppUtils.showSnackBar(
+      context,
+      result.success
+          ? 'Alert sent to ${result.sentCount} device${result.sentCount == 1 ? '' : 's'}.'
+          : result.error ?? 'Failed to send alert.',
+      isError: !result.success,
+      color: result.success ? AppColors.paid : null,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SingleChildScrollView(
+        child: Container(
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+              24, 16, 24, 32 + MediaQuery.of(context).viewPadding.bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.campaign_outlined,
+                      color: Color(0xFF7C3AED), size: 36),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('Send Update Alert',
+                  style: AppTextStyles.heading3(color: cs.onSurface),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 6),
+              Text(
+                'This notification will be sent to all presidents and residents.',
+                style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              AppTextField(
+                label: 'Notification Title',
+                controller: _titleCtrl,
+                prefixIcon: const Icon(Icons.title_outlined),
+              ),
+              const SizedBox(height: 14),
+              AppTextField(
+                label: 'Message',
+                controller: _bodyCtrl,
+                prefixIcon: const Icon(Icons.message_outlined),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 20),
+              CommonButton(
+                text: 'Send to All Users',
+                gradient: const [Color(0xFF7C3AED), Color(0xFF4C1D95)],
+                icon: Icons.send_rounded,
+                isLoading: _sending,
+                onPressed: _sending ? null : _send,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

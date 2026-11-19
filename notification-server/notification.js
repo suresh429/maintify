@@ -259,4 +259,52 @@ async function sendToUids({ recipientUids, title, body, type, referenceId, refer
   }, tokenToUserId);
 }
 
-module.exports = { verifyIdToken, getUserDoc, sendToUids };
+/**
+ * Sends FCM push notification to ALL presidents and residents across every apartment.
+ * Used for broadcast messages such as app-update alerts.
+ *
+ * @param {string} title
+ * @param {string} body
+ * @param {Record<string,string>} data
+ * @returns {Promise<{ successCount: number, failureCount: number, totalUsers: number }>}
+ */
+async function sendToAllUsers(title, body, data) {
+  const snapshot = await _db()
+    .collection('users')
+    .where('role', 'in', ['president', 'resident'])
+    .get();
+
+  const tokens        = [];
+  const tokenToUserId = new Map();
+
+  snapshot.forEach((doc) => {
+    const token = doc.data().fcmToken;
+    if (token && typeof token === 'string' && token.length > 10) {
+      tokens.push(token);
+      tokenToUserId.set(token, doc.id);
+    }
+  });
+
+  console.log(`[FCM-BROADCAST] Found ${snapshot.size} users, ${tokens.length} with valid FCM tokens`);
+
+  if (tokens.length === 0) {
+    return { successCount: 0, failureCount: 0, totalUsers: snapshot.size };
+  }
+
+  // FCM sendEachForMulticast supports up to 500 tokens per call — batch if needed
+  const BATCH_SIZE = 500;
+  let successCount = 0;
+  let failureCount = 0;
+
+  for (let i = 0; i < tokens.length; i += BATCH_SIZE) {
+    const batchTokens = tokens.slice(i, i + BATCH_SIZE);
+    const batchMap    = new Map([...tokenToUserId].filter(([k]) => batchTokens.includes(k)));
+    const result      = await _multicast(batchTokens, title, body, data, batchMap);
+    successCount += result.successCount;
+    failureCount += result.failureCount;
+  }
+
+  return { successCount, failureCount, totalUsers: snapshot.size };
+}
+
+module.exports = { verifyIdToken, getUserDoc, sendToUids, sendToAllUsers };
