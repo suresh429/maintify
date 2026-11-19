@@ -23,6 +23,7 @@ const cors              = require('cors');
 const cron              = require('node-cron');
 const { verifyIdToken, getUserDoc, sendToUids } = require('./notification');
 const { runOverdueCheck } = require('./overdueChecker');
+const { sendResetOtp, resetPasswordWithOtp } = require('./passwordReset');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -173,6 +174,68 @@ app.post('/send-notification', async (req, res) => {
     successCount: result.successCount,
     failureCount: result.failureCount,
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /send-reset-otp  — no auth required
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.post('/send-reset-otp', async (req, res) => {
+  const { email } = req.body ?? {};
+
+  if (!email || typeof email !== 'string' || !email.trim() || !email.includes('@')) {
+    return res.status(400).json({ success: false, error: 'A valid email address is required' });
+  }
+
+  try {
+    await sendResetOtp(email.trim());
+    return res.json({ success: true });
+  } catch (e) {
+    if (e.message === 'RATE_LIMITED') {
+      return res.status(429).json({
+        success: false,
+        error: 'Please wait before requesting another OTP',
+      });
+    }
+    console.error('[RESET_OTP] Unexpected error:', e.message);
+    return res.status(500).json({ success: false, error: 'Failed to send OTP. Please try again.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /reset-password-otp  — no auth required
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.post('/reset-password-otp', async (req, res) => {
+  const { email, otp, newPassword } = req.body ?? {};
+
+  if (!email || typeof email !== 'string' || !email.trim() || !email.includes('@')) {
+    return res.status(400).json({ success: false, error: 'A valid email address is required' });
+  }
+  if (!otp || typeof otp !== 'string' || !otp.trim()) {
+    return res.status(400).json({ success: false, error: 'OTP is required' });
+  }
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+    return res.status(400).json({ success: false, error: 'New password must be at least 6 characters' });
+  }
+
+  try {
+    await resetPasswordWithOtp(email.trim(), otp.trim(), newPassword);
+    return res.json({ success: true });
+  } catch (e) {
+    const errorMap = {
+      NO_OTP_FOUND:       'No OTP request found. Please request a new OTP.',
+      OTP_EXPIRED:        'OTP has expired. Please request a new one.',
+      INVALID_OTP:        'Invalid OTP. Please check and try again.',
+      TOO_MANY_ATTEMPTS:  'Too many failed attempts. Please request a new OTP.',
+    };
+    const message = errorMap[e.message];
+    if (message) {
+      return res.status(400).json({ success: false, error: message });
+    }
+    console.error('[RESET_PASSWORD] Unexpected error:', e.message);
+    return res.status(500).json({ success: false, error: 'Failed to reset password. Please try again.' });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
