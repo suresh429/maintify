@@ -222,7 +222,7 @@ class _FundBody extends StatelessWidget {
                     child: _BottomActionButton(
                       label: 'Add Collection',
                       icon: Icons.add_rounded,
-                      color: AppColors.paid,
+                      gradient: const [Color(0xFF16A34A), Color(0xFF14532D)],
                       onTap: () =>
                           showAddFundCollectionSheet(context, aptId),
                     ),
@@ -232,7 +232,7 @@ class _FundBody extends StatelessWidget {
                     child: _BottomActionButton(
                       label: 'Add Expense',
                       icon: Icons.remove_rounded,
-                      color: AppColors.overdue,
+                      gradient: const [Color(0xFFDC2626), Color(0xFF7F1D1D)],
                       onTap: () =>
                           showAddFundExpenseSheet(context, aptId),
                     ),
@@ -558,33 +558,50 @@ class _MiniStat extends StatelessWidget {
 class _BottomActionButton extends StatelessWidget {
   final String label;
   final IconData icon;
-  final Color color;
+  final List<Color> gradient;
   final VoidCallback onTap;
   const _BottomActionButton({
     required this.label,
     required this.icon,
-    required this.color,
+    required this.gradient,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Container(
       height: 48,
-      child: ElevatedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 18, color: Colors.white),
-        label: Text(
-          label,
-          style: AppTextStyles.buttonText(color: Colors.white)
-              .copyWith(fontSize: 13),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradient,
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
         ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: gradient.first.withValues(alpha: 0.35),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: AppTextStyles.buttonText(color: Colors.white)
+                    .copyWith(fontSize: 13),
+              ),
+            ],
           ),
         ),
       ),

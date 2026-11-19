@@ -54,7 +54,7 @@ class PresidentDashboard extends StatefulWidget {
 class _PresidentDashboardState extends State<PresidentDashboard> {
   int _currentIndex = 0;
 
-  static const _titles = ['Dashboard', 'Residents', 'Bills', 'Complaints', 'Profile'];
+  static const _titles = ['Dashboard', 'Residents', 'Bills', 'Complaints', 'Profile', 'Community Fund'];
 
   late final List<Widget> _pages;
 
@@ -102,6 +102,7 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
       MarkPaidScreen(),
       PresidentComplaintsScreen(),
       PresidentProfileScreen(),
+      CommunityFundScreen(),
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardProvider>().initialize();
@@ -234,6 +235,7 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
           WebNavItem(icon: Icons.receipt_long_outlined, label: 'Bills'),
           WebNavItem(icon: Icons.report_problem_outlined, label: 'Complaints'),
           WebNavItem(icon: Icons.person_outline_rounded, label: 'Profile'),
+          WebNavItem(icon: Icons.account_balance_wallet_outlined, label: 'Community Fund'),
         ],
         currentIndex: _currentIndex,
         onIndexChanged: _onTabSelected,
