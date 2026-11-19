@@ -129,299 +129,118 @@ class _DialogContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surface = isDark ? AppColors.darkSurface : Colors.white;
-    final textPrimary =
-        isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
-    final textSecondary =
-        isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
-    final divider = isDark ? AppColors.darkBorder : const Color(0xFFE8EDF2);
+    final isDark   = Theme.of(context).brightness == Brightness.dark;
+    final surface  = isDark ? AppColors.darkSurface : Colors.white;
+    final onSurface = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final subtle   = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(20),
       child: Material(
         color: surface,
-        elevation: 16,
+        elevation: 12,
         shadowColor: Colors.black26,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Header ───────────────────────────────────────────────────────
-            _Header(isForce: isForce),
-
-            // ── Body ─────────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Update Available',
-                    style: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'A newer version of Maintify (v${model.latestVersion}) is available.\n\n'
-                    'Please update the app to enjoy the latest features, '
-                    'performance improvements, bug fixes, and security enhancements.',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w400,
-                      color: textSecondary,
-                      height: 1.6,
-                    ),
-                  ),
-                  if (isForce) ...[
-                    const SizedBox(height: 14),
-                    _ForceNote(isDark: isDark),
-                  ],
-                ],
-              ),
-            ),
-
-            // ── Buttons ──────────────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              decoration: BoxDecoration(
-                color: surface,
-                border: Border(top: BorderSide(color: divider)),
-              ),
-              child: isForce
-                  ? _UpdateButton(onTap: onUpdate, isForce: true)
-                  : Row(
-                      children: [
-                        Expanded(
-                          child: _LaterButton(
-                              onTap: onLater, isDark: isDark),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: _UpdateButton(
-                              onTap: onUpdate, isForce: false),
-                        ),
-                      ],
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _Header extends StatelessWidget {
-  const _Header({required this.isForce});
-
-  final bool isForce;
-
-  static const _blueGradient = [Color(0xFF3B82F6), Color(0xFF1D4ED8)];
-  static const _redGradient = [Color(0xFFEF4444), Color(0xFFB91C1C)];
-
-  @override
-  Widget build(BuildContext context) {
-    final gradient = isForce ? _redGradient : _blueGradient;
-
-    return Container(
-      width: double.infinity,
-      height: 118,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradient,
-        ),
-      ),
-      child: Stack(
-        children: [
-          // Decorative circle — top right
-          Positioned(
-            top: -18,
-            right: -18,
-            child: _Circle(size: 90, opacity: 0.08),
-          ),
-          // Decorative circle — bottom left
-          Positioned(
-            bottom: -24,
-            left: -8,
-            child: _Circle(size: 72, opacity: 0.06),
-          ),
-          // Icon centred
-          Center(
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                isForce
-                    ? Icons.system_update_rounded
-                    : Icons.system_update_alt_rounded,
-                color: Colors.white,
-                size: 30,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Circle extends StatelessWidget {
-  const _Circle({required this.size, required this.opacity});
-
-  final double size;
-  final double opacity;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: opacity),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Small warning banner shown below the body text for force updates.
-class _ForceNote extends StatelessWidget {
-  const _ForceNote({required this.isDark});
-
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFFECACA)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.info_outline_rounded,
-              size: 16, color: Color(0xFFDC2626)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'This update is required to continue using Maintify.',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFFDC2626),
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _UpdateButton extends StatelessWidget {
-  const _UpdateButton({required this.onTap, required this.isForce});
-
-  final VoidCallback onTap;
-  final bool isForce;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = isForce
-        ? const [Color(0xFFEF4444), Color(0xFFB91C1C)]
-        : const [Color(0xFF3B82F6), Color(0xFF1D4ED8)];
-
-    return SizedBox(
-      height: 48,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: colors),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: colors.last.withValues(alpha: 0.28),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ElevatedButton(
-          onPressed: onTap,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.system_update_rounded,
-                  color: Colors.white, size: 17),
-              const SizedBox(width: 6),
-              Text(
-                'Update Now',
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+              // Icon
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E3A8A).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.system_update_outlined,
+                  size: 32,
+                  color: isForce ? const Color(0xFFDC2626) : const Color(0xFF1E3A8A),
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // Title
+              Text(
+                'Update Available',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: onSurface,
+                ),
+              ),
+              const SizedBox(height: 6),
+
+              // Subtitle
+              Text(
+                isForce
+                    ? 'A required update (v${model.latestVersion}) is available. Please update to continue.'
+                    : 'A new version (v${model.latestVersion}) is available.',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: subtle,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+
+              // Buttons
+              Row(
+                children: [
+                  if (!isForce) ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: onLater,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          side: BorderSide(
+                            color: isDark
+                                ? AppColors.darkBorder
+                                : const Color(0xFFCBD5E1),
+                          ),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(
+                          'Later',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: subtle,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    flex: isForce ? 1 : 2,
+                    child: ElevatedButton(
+                      onPressed: onUpdate,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        backgroundColor: isForce
+                            ? const Color(0xFFDC2626)
+                            : const Color(0xFF1E3A8A),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text(
+                        'Update',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LaterButton extends StatelessWidget {
-  const _LaterButton({required this.onTap, required this.isDark});
-
-  final VoidCallback onTap;
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: OutlinedButton(
-        onPressed: onTap,
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(
-            color: isDark ? AppColors.darkBorder : const Color(0xFFCBD5E1),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(
-          'Later',
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: isDark
-                ? AppColors.darkTextSecondary
-                : AppColors.textSecondary,
           ),
         ),
       ),
