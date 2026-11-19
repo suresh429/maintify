@@ -10,7 +10,7 @@ import 'package:http/http.dart' as http;
 /// captured and returned as [({bool success, String? error})].
 class PasswordResetService {
   static const _base = 'https://maintify-notification-server.onrender.com';
-  static const _timeout = Duration(seconds: 30);
+  static const _timeout = Duration(seconds: 60);
 
   // ── Send OTP ───────────────────────────────────────────────────────────────
 
