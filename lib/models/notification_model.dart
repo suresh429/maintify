@@ -16,8 +16,9 @@ class NotificationType {
   static const String meetingUpdated    = 'meeting_updated';
   static const String meetingCancelled  = 'meeting_cancelled';
   static const String presidentTransfer = 'president_transfer';
-  static const String residentRegistered = 'resident_registered';
-  static const String system            = 'system';
+  static const String residentRegistered     = 'resident_registered';
+  static const String paymentOverdueReminder = 'payment_overdue_reminder';
+  static const String system                 = 'system';
 }
 
 class NotificationModel {

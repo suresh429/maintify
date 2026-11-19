@@ -333,6 +333,8 @@ class _NotificationTile extends StatelessWidget {
         return Icons.swap_horiz_rounded;
       case NotificationType.residentRegistered:
         return Icons.person_add_outlined;
+      case NotificationType.paymentOverdueReminder:
+        return Icons.warning_amber_rounded;
       default:
         return Icons.info_outline_rounded;
     }
@@ -409,7 +411,8 @@ class _NotificationTile extends StatelessWidget {
     // Payment types — referenceId is billId for these notifications
     if (type == NotificationType.paymentReceived ||
         type == NotificationType.paymentApproved ||
-        type == NotificationType.paymentRejected) {
+        type == NotificationType.paymentRejected ||
+        type == NotificationType.paymentOverdueReminder) {
       debugPrint('[NOTIF-TAP]   branch: payment');
       if (refId.isEmpty) {
         debugPrint('[NOTIF-TAP]   refId is empty — returning');
@@ -530,6 +533,8 @@ class _NotificationTile extends StatelessWidget {
       case NotificationType.presidentTransfer:
       case NotificationType.residentRegistered:
         return isDark ? const Color(0xFFA78BFA) : AppColors.purple;
+      case NotificationType.paymentOverdueReminder:
+        return isDark ? const Color(0xFFFBBF24) : AppColors.overdue;
       default:
         return isDark ? const Color(0xFFA78BFA) : AppColors.purple;
     }

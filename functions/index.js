@@ -5,19 +5,23 @@
  * Email (SMTP) functions keep their own logic (they use Firebase Secrets).
  *
  * Trigger map:
- *   president_invitations/{invId}         onCreate  → Invitation email  (SMTP)
- *   users/{userId}                        onUpdate  → Welcome email when welcomeEmailReady=true (SMTP)
- *   apartments/{aptId}                    onUpdate  → FCM: president registered / role transferred
- *   users/{userId}                        onCreate  → FCM: new resident joined → notify admin
- *   bills/{billId}                        onCreate  → FCM: new bill → notify residents
- *   bills/{billId}                        onUpdate  → FCM: bill edited → notify residents
- *   bills/{billId}                        onDelete  → FCM: bill deleted → notify residents
- *   meetings/{meetingId}                  onCreate  → FCM: new meeting → notify residents
- *   meetings/{meetingId}                  onUpdate  → FCM: meeting edited / cancelled
- *   complaints/{complaintId}              onCreate  → FCM: new complaint → notify admin
- *   complaints/{complaintId}              onUpdate  → FCM: complaint closed → notify creator
- *   complaints/{id}/messages/{msgId}      onCreate  → FCM: new message → notify other party
- *   payments/{paymentId}                  onUpdate  → FCM: payment submitted / verified / rejected
+ *   president_invitations/{invId}         onCreate   → Invitation email  (SMTP)
+ *   users/{userId}                        onUpdate   → Welcome email when welcomeEmailReady=true (SMTP)
+ *   apartments/{aptId}                    onUpdate   → FCM: president registered / role transferred
+ *   users/{userId}                        onCreate   → FCM: new resident joined → notify admin
+ *   bills/{billId}                        onCreate   → FCM: new bill → notify residents
+ *   bills/{billId}                        onUpdate   → FCM: bill edited → notify residents
+ *   bills/{billId}                        onDelete   → FCM: bill deleted → notify residents
+ *   meetings/{meetingId}                  onCreate   → FCM: new meeting → notify residents
+ *   meetings/{meetingId}                  onUpdate   → FCM: meeting edited / cancelled
+ *   complaints/{complaintId}              onCreate   → FCM: new complaint → notify admin
+ *   complaints/{complaintId}              onUpdate   → FCM: complaint closed → notify creator
+ *   complaints/{id}/messages/{msgId}      onCreate   → FCM: new message → notify other party
+ *   payments/{paymentId}                  onUpdate   → FCM: payment submitted / verified / rejected
+ *   fund_transactions/{txnId}             onCreate   → FCM: fund collection / expense → notify residents
+ *
+ * Note: Daily overdue payment reminders run via node-cron in the Render notification server
+ *       (notification-server/overdueChecker.js) — not as a Cloud Function.
  */
 
 'use strict';
@@ -27,6 +31,7 @@ const {
   onDocumentUpdated,
   onDocumentDeleted,
 } = require('firebase-functions/v2/firestore');
+// onSchedule intentionally not imported — overdue reminders run via Render server (overdueChecker.js)
 const admin = require('firebase-admin');
 
 const { sendEmail, GMAIL_EMAIL, GMAIL_APP_PASSWORD } = require('./services/mailService');

@@ -245,9 +245,8 @@ screens/
 │                                    upi-settings (UPI ID config + enable/disable toggle),
 │                                    community-fund (fund overview + balance), add-fund-collection,
 │                                    add-fund-expense, fund-transactions (transaction history)
-├── resident/                      ← 9 screens: dashboard, bills, monthly-bill-detail,
-│                                    payment-history, i-paid, complaints (community board), directory, profile,
-│                                    community-fund-summary (read-only balance + totals)
+├── resident/                      ← 8 screens: dashboard, bills, monthly-bill-detail,
+│                                    payment-history, i-paid, complaints (community board), directory, profile
 └── shared/
     ├── chat_screen.dart           ← Complaint message threads; `currentUserId` param enables read-only mode for non-owners
     ├── community_screen.dart      ← 3-tab container: Payment Board | Complaints | Directory (resident Community nav tab)
@@ -327,7 +326,7 @@ A maintenance/expense pool tracked per apartment. All monetary values stored in 
 - `addCollection()` / `addExpense()` — write transaction + update summary atomically in one batch; always call `initializeFund()` first if summary may not exist.
 - `deleteTransaction()` — reverses the summary delta atomically (increases balance for expense deletion, decreases for collection deletion).
 
-**Access model:** President can add collections and expenses; residents see a read-only `CommunityFundSummaryScreen` with balance and totals only. `CommunityFundProvider` streams are started for both roles from `DashboardRouter`.
+**Access model:** President can add collections and expenses; residents see a read-only community fund summary (balance and totals) rendered inline on `ResidentDashboard`. `CommunityFundProvider` streams are started for both roles from `DashboardRouter`.
 
 ### Bottom Sheet Rules
 
@@ -395,6 +394,7 @@ Node.js v2 functions in `functions/index.js`. Deploy with `firebase deploy --onl
 | `onComplaintMessage` | `complaints/{id}/messages/{msgId}` onCreate | FCM to the other party (admin reply → resident; resident message → admin) |
 | `onComplaintUpdated` | `complaints/{complaintId}` onUpdate | FCM when complaint is closed/resolved |
 | `onPaymentUpdated` | `payments/{paymentId}` onUpdate | Case A: resident submits → FCM + in-app notification to admin. Case B: admin verifies → FCM + in-app notification to resident |
+| `dailyOverduePaymentReminder` | Scheduled — 09:00 AM IST daily | For every bill past its `dueDate`, finds residents whose payment `status` is `'Pending'` or `'Overdue'` (skips `'Pending Approval'` and `'Paid'`), groups by resident, and sends one FCM + in-app notification. `referenceId` = first overdue `billId`; tapping navigates to bill detail. |
 
 ### Email Service
 

@@ -18,9 +18,11 @@
  *   - Private keys and credentials are never logged.
  */
 
-const express = require('express');
-const cors    = require('cors');
+const express           = require('express');
+const cors              = require('cors');
+const cron              = require('node-cron');
 const { verifyIdToken, getUserDoc, sendToUids } = require('./notification');
+const { runOverdueCheck } = require('./overdueChecker');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -177,6 +179,22 @@ app.use((err, req, res, next) => {
 process.on('unhandledRejection', (reason) => {
   console.error('[SERVER] Unhandled promise rejection:', reason?.message ?? reason);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Scheduled job — Daily overdue payment reminder at 09:00 AM IST
+// ─────────────────────────────────────────────────────────────────────────────
+
+cron.schedule(
+  '0 9 * * *',
+  () => {
+    runOverdueCheck().catch((e) =>
+      console.error('[OVERDUE] Scheduled check failed:', e.message)
+    );
+  },
+  { timezone: 'Asia/Kolkata' }
+);
+
+console.log('[CRON] Daily overdue reminder scheduled — 09:00 AM IST');
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[SERVER] Maintify Notification Server running on port ${PORT}`);
