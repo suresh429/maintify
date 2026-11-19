@@ -212,6 +212,19 @@ async function _checkProject({ db, messaging, label }) {
       const userId = payDoc.data().userId;
       if (!userId) continue;
 
+      // Only send reminders to residents — skip president and admin.
+      // Bills are created for all flats including the president's flat,
+      // but overdue reminders should never appear in the president's list.
+      if (!userMap.has(userId)) {
+        try {
+          const userDoc = await db.collection('users').doc(userId).get();
+          if (!userDoc.exists || userDoc.data().role !== 'resident') continue;
+        } catch (e) {
+          console.warn(`[OVERDUE] [${label}] Could not fetch role for ${userId}: ${e.message}`);
+          continue;
+        }
+      }
+
       if (!userMap.has(userId)) {
         userMap.set(userId, {
           aptId,
