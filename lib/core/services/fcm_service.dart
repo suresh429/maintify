@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../navigation_key.dart';
 import 'firestore_service.dart';
 
@@ -312,6 +313,19 @@ class FcmService {
     final type          = parts.isNotEmpty ? parts[0] : '';
     final referenceId   = parts.length > 1 ? parts[1] : '';
     final referenceType = parts.length > 2 ? parts[2] : '';
+
+    // Update notification → open Play Store directly
+    if (type == 'app_update') {
+      debugPrint('[FCM-NAV] app_update — opening Play Store');
+      launchUrl(
+        Uri.parse('https://play.google.com/store/apps/details?id=com.maintify.app'),
+        mode: LaunchMode.externalApplication,
+      ).catchError((e) {
+        debugPrint('[FCM-NAV] Play Store launch failed: $e');
+        return false;
+      });
+      return;
+    }
 
     debugPrint('[FCM-NAV] ══════════════════════════════════════');
     debugPrint('[FCM-NAV] About to pushNamedAndRemoveUntil /dashboard');
