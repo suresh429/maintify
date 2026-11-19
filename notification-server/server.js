@@ -271,11 +271,31 @@ app.post('/send-update-notification', async (req, res) => {
     return res.status(400).json({ success: false, error: 'body is required' });
   }
 
-  // ── Broadcast ─────────────────────────────────────────────────────────────
+  // ── Broadcast FCM + write in-app notification docs ───────────────────────
   console.log(`[BROADCAST] Admin ${caller.uid} sending update notification`);
   try {
     const result = await sendToAllUsers(title.trim(), body.trim(), { type: 'app_update' });
     console.log(`[BROADCAST] Done — success: ${result.successCount}, failed: ${result.failureCount}, total users: ${result.totalUsers}`);
+
+    // Write one in-app notification doc per role so it appears in the
+    // notifications list for all presidents and residents.
+    const db  = require('firebase-admin').firestore();
+    const now = require('firebase-admin').firestore.FieldValue.serverTimestamp();
+    const batch = db.batch();
+    for (const role of ['president', 'resident']) {
+      const ref = db.collection('notifications').doc();
+      batch.set(ref, {
+        title:      title.trim(),
+        body:       body.trim(),
+        type:       'app_update',
+        targetRole: role,
+        isRead:     false,
+        createdAt:  now,
+      });
+    }
+    await batch.commit();
+    console.log('[BROADCAST] In-app notification docs written for president + resident');
+
     return res.json({
       success:      true,
       successCount: result.successCount,

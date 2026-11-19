@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/complaint_provider.dart';
@@ -335,6 +336,8 @@ class _NotificationTile extends StatelessWidget {
         return Icons.person_add_outlined;
       case NotificationType.paymentOverdueReminder:
         return Icons.warning_amber_rounded;
+      case NotificationType.appUpdate:
+        return Icons.system_update_outlined;
       default:
         return Icons.info_outline_rounded;
     }
@@ -419,6 +422,16 @@ class _NotificationTile extends StatelessWidget {
         return;
       }
       _navigateToBill(context, refId, role);
+      return;
+    }
+
+    // App update → open Play Store
+    if (type == NotificationType.appUpdate) {
+      debugPrint('[NOTIF-TAP]   branch: app_update → Play Store');
+      launchUrl(
+        Uri.parse('https://play.google.com/store/apps/details?id=com.maintify.app'),
+        mode: LaunchMode.externalApplication,
+      );
       return;
     }
 
@@ -535,6 +548,8 @@ class _NotificationTile extends StatelessWidget {
         return isDark ? const Color(0xFFA78BFA) : AppColors.purple;
       case NotificationType.paymentOverdueReminder:
         return isDark ? const Color(0xFFFBBF24) : AppColors.overdue;
+      case NotificationType.appUpdate:
+        return isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED);
       default:
         return isDark ? const Color(0xFFA78BFA) : AppColors.purple;
     }

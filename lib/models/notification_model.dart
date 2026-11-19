@@ -19,6 +19,7 @@ class NotificationType {
   static const String residentRegistered     = 'resident_registered';
   static const String paymentOverdueReminder = 'payment_overdue_reminder';
   static const String system                 = 'system';
+  static const String appUpdate              = 'app_update';
 }
 
 class NotificationModel {
