@@ -7,7 +7,6 @@ import '../models/user_model.dart';
 import '../core/theme/role_theme.dart';
 import '../core/services/connectivity_service.dart';
 import '../core/services/firebase_auth_service.dart';
-import '../core/services/password_reset_service.dart';
 import '../core/services/firestore_service.dart';
 import '../core/services/fcm_service.dart';
 import '../core/services/widget_data_service.dart';
@@ -187,34 +186,11 @@ class AuthProvider extends ChangeNotifier {
     return true;
   }
 
-  // ── OTP-based forgot password ─────────────────────────────────────────────
+  // ── Forgot password ───────────────────────────────────────────────────────
 
-  /// Sends a 6-digit OTP to [email] via the Render notification server.
-  /// Does NOT set [_error] on the provider — the caller handles errors inline.
-  Future<({bool success, String? error})> sendResetOtp(String email) async {
-    if (ConnectivityService.instance.isDisconnected) {
-      return (
-        success: false,
-        error: 'No internet connection. Please try again once you\'re back online.',
-      );
-    }
-    return PasswordResetService.sendOtp(email);
-  }
-
-  /// Verifies [otp] and sets [newPassword] for [email] via the Render server.
-  /// Does NOT set [_error] on the provider — the caller handles errors inline.
-  Future<({bool success, String? error})> confirmOtpAndResetPassword(
-    String email,
-    String otp,
-    String newPassword,
-  ) async {
-    if (ConnectivityService.instance.isDisconnected) {
-      return (
-        success: false,
-        error: 'No internet connection. Please try again once you\'re back online.',
-      );
-    }
-    return PasswordResetService.resetPassword(email, otp, newPassword);
+  Future<bool> generateForgotPassword(String email) async {
+    if (ConnectivityService.instance.isDisconnected) return false;
+    return _auth.sendPasswordResetEmail(email);
   }
 
   // ── Logout ────────────────────────────────────────────────────────────────

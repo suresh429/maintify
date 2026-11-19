@@ -1,6 +1,4 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../core/config/app_config.dart';
@@ -619,7 +617,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 }
 
-// ── Forgot Password bottom sheet (2-step OTP flow) ───────────────────────────
+// ── Forgot Password bottom sheet ─────────────────────────────────────────────
 
 class _ForgotPasswordSheet extends StatefulWidget {
   final String initialEmail;
@@ -630,20 +628,10 @@ class _ForgotPasswordSheet extends StatefulWidget {
 }
 
 class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
-  int _step = 1;
-
-  final _emailCtrl       = TextEditingController();
-  final _otpCtrl         = TextEditingController();
-  final _newPassCtrl     = TextEditingController();
-  final _confirmPassCtrl = TextEditingController();
-
-  bool    _saving          = false;
-  bool    _obscureNew      = true;
-  bool    _obscureConfirm  = true;
+  final _emailCtrl = TextEditingController();
+  bool    _sending  = false;
+  bool    _sent     = false;
   String? _errorMsg;
-
-  int    _resendCooldown = 0;
-  Timer? _cooldownTimer;
 
   @override
   void initState() {
@@ -654,307 +642,20 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
   @override
   void dispose() {
     _emailCtrl.dispose();
-    _otpCtrl.dispose();
-    _newPassCtrl.dispose();
-    _confirmPassCtrl.dispose();
-    _cooldownTimer?.cancel();
     super.dispose();
   }
 
-  void _startCooldown() {
-    _cooldownTimer?.cancel();
-    setState(() => _resendCooldown = 60);
-    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) { t.cancel(); return; }
-      setState(() {
-        _resendCooldown--;
-        if (_resendCooldown <= 0) t.cancel();
-      });
-    });
-  }
-
-  Future<void> _sendOtp() async {
+  Future<void> _send() async {
     final email = _emailCtrl.text.trim();
     if (email.isEmpty || !email.contains('@')) {
       setState(() => _errorMsg = 'Please enter a valid email address.');
       return;
     }
-    setState(() { _saving = true; _errorMsg = null; });
-    final auth   = context.read<AuthProvider>();
-    final result = await auth.sendResetOtp(email);
+    setState(() { _sending = true; _errorMsg = null; });
+    final ok = await context.read<AuthProvider>().generateForgotPassword(email);
     if (!mounted) return;
-    setState(() => _saving = false);
-    if (result.success) {
-      _startCooldown();
-      setState(() => _step = 2);
-    } else {
-      setState(() => _errorMsg = result.error ?? 'Failed to send OTP. Please try again.');
-    }
-  }
-
-  Future<void> _resendOtp() async {
-    final email = _emailCtrl.text.trim();
-    setState(() { _saving = true; _errorMsg = null; });
-    final auth   = context.read<AuthProvider>();
-    final result = await auth.sendResetOtp(email);
-    if (!mounted) return;
-    setState(() => _saving = false);
-    if (result.success) {
-      _startCooldown();
-      setState(() => _errorMsg = null);
-    } else {
-      setState(() => _errorMsg = result.error ?? 'Failed to resend OTP. Please try again.');
-    }
-  }
-
-  Future<void> _resetPassword() async {
-    final otp         = _otpCtrl.text.trim();
-    final newPass     = _newPassCtrl.text;
-    final confirmPass = _confirmPassCtrl.text;
-
-    if (otp.length != 6) {
-      setState(() => _errorMsg = 'Please enter the 6-digit OTP.');
-      return;
-    }
-    if (newPass.length < 6) {
-      setState(() => _errorMsg = 'Password must be at least 6 characters.');
-      return;
-    }
-    if (newPass != confirmPass) {
-      setState(() => _errorMsg = 'Passwords do not match.');
-      return;
-    }
-
-    setState(() { _saving = true; _errorMsg = null; });
-    final auth   = context.read<AuthProvider>();
-    final result = await auth.confirmOtpAndResetPassword(
-      _emailCtrl.text.trim(), otp, newPass,
-    );
-    if (!mounted) return;
-    setState(() => _saving = false);
-    if (result.success) {
-      Navigator.pop(context);
-      AppUtils.showSnackBar(
-        context,
-        'Password reset successfully! Please log in.',
-      );
-    } else {
-      setState(() => _errorMsg = result.error ?? 'Failed to reset password. Please try again.');
-    }
-  }
-
-  // ── Handle (drag indicator) ───────────────────────────────────────────────
-
-  Widget _buildHandle(ColorScheme cs) => Center(
-    child: Container(
-      width: 40,
-      height: 4,
-      decoration: BoxDecoration(
-        color: cs.outlineVariant,
-        borderRadius: BorderRadius.circular(2),
-      ),
-    ),
-  );
-
-  // ── Error message row ─────────────────────────────────────────────────────
-
-  Widget _buildError() => _errorMsg == null
-      ? const SizedBox.shrink()
-      : Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.redAccent, size: 16),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  _errorMsg!,
-                  style: AppTextStyles.caption(color: Colors.redAccent),
-                ),
-              ),
-            ],
-          ),
-        );
-
-  // ── Step 1: email entry ───────────────────────────────────────────────────
-
-  Widget _buildStep1(ColorScheme cs) => Column(
-    mainAxisSize: MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      _buildHandle(cs),
-      const SizedBox(height: 24),
-      Center(
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E3A8A).withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.lock_reset_rounded,
-              color: Color(0xFF1E3A8A), size: 36),
-        ),
-      ),
-      const SizedBox(height: 16),
-      Text(
-        'Forgot Password',
-        style: AppTextStyles.heading3(color: cs.onSurface),
-        textAlign: TextAlign.center,
-      ),
-      const SizedBox(height: 6),
-      Text(
-        "We'll send a 6-digit OTP to your email",
-        style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
-        textAlign: TextAlign.center,
-      ),
-      const SizedBox(height: 24),
-      AppTextField(
-        label: 'Registered Email',
-        controller: _emailCtrl,
-        keyboardType: TextInputType.emailAddress,
-        prefixIcon: const Icon(Icons.email_outlined),
-        hint: 'e.g., user@apartment.com',
-      ),
-      _buildError(),
-      const SizedBox(height: 20),
-      CommonButton(
-        text: 'Send OTP',
-        gradient: const [Color(0xFF1E3A8A), Color(0xFF06B6D4)],
-        isLoading: _saving,
-        onPressed: _saving ? null : _sendOtp,
-      ),
-    ],
-  );
-
-  // ── Step 2: OTP + new password ────────────────────────────────────────────
-
-  Widget _buildStep2(ColorScheme cs) {
-    final email = _emailCtrl.text.trim();
-    final displayEmail = email.length > 30
-        ? '${email.substring(0, 14)}...${email.substring(email.length - 10)}'
-        : email;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildHandle(cs),
-        const SizedBox(height: 24),
-        Center(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF06B6D4).withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.verified_rounded,
-                color: Color(0xFF06B6D4), size: 36),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Enter OTP',
-          style: AppTextStyles.heading3(color: cs.onSurface),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Enter the 6-digit code sent to $displayEmail',
-          style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 24),
-        AppTextField(
-          label: 'OTP Code',
-          controller: _otpCtrl,
-          keyboardType: TextInputType.number,
-          prefixIcon: const Icon(Icons.pin_outlined),
-          hint: '6-digit code',
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(6),
-          ],
-        ),
-        const SizedBox(height: 14),
-        AppTextField(
-          label: 'New Password',
-          controller: _newPassCtrl,
-          obscureText: _obscureNew,
-          prefixIcon: const Icon(Icons.lock_outline),
-          suffixIcon: IconButton(
-            icon: Icon(
-              _obscureNew
-                  ? Icons.visibility_off_outlined
-                  : Icons.visibility_outlined,
-              size: 20,
-            ),
-            onPressed: () => setState(() => _obscureNew = !_obscureNew),
-          ),
-        ),
-        const SizedBox(height: 14),
-        AppTextField(
-          label: 'Confirm New Password',
-          controller: _confirmPassCtrl,
-          obscureText: _obscureConfirm,
-          prefixIcon: const Icon(Icons.lock_outline),
-          suffixIcon: IconButton(
-            icon: Icon(
-              _obscureConfirm
-                  ? Icons.visibility_off_outlined
-                  : Icons.visibility_outlined,
-              size: 20,
-            ),
-            onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
-          ),
-        ),
-        _buildError(),
-        const SizedBox(height: 20),
-        CommonButton(
-          text: 'Reset Password',
-          gradient: const [Color(0xFF1E3A8A), Color(0xFF06B6D4)],
-          isLoading: _saving,
-          onPressed: _saving ? null : _resetPassword,
-        ),
-        const SizedBox(height: 12),
-        // Resend OTP
-        Center(
-          child: _resendCooldown > 0
-              ? Text(
-                  'Resend OTP in ${_resendCooldown}s',
-                  style: AppTextStyles.caption(color: cs.onSurfaceVariant),
-                )
-              : TextButton(
-                  onPressed: _saving ? null : _resendOtp,
-                  child: Text(
-                    'Resend OTP',
-                    style: AppTextStyles.caption(color: cs.primary)
-                        .copyWith(fontWeight: FontWeight.w600),
-                  ),
-                ),
-        ),
-        // Change email
-        Center(
-          child: TextButton(
-            onPressed: _saving
-                ? null
-                : () => setState(() {
-                      _step = 1;
-                      _otpCtrl.clear();
-                      _newPassCtrl.clear();
-                      _confirmPassCtrl.clear();
-                      _errorMsg = null;
-                      _cooldownTimer?.cancel();
-                      _resendCooldown = 0;
-                    }),
-            child: Text(
-              'Change Email',
-              style: AppTextStyles.caption(color: cs.onSurfaceVariant),
-            ),
-          ),
-        ),
-      ],
-    );
+    setState(() { _sending = false; _sent = ok; });
+    if (!ok) setState(() => _errorMsg = 'Could not send reset email. Please try again.');
   }
 
   @override
@@ -969,8 +670,86 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: EdgeInsets.fromLTRB(
-            24, 16, 24, 32 + MediaQuery.of(context).viewPadding.bottom),
-          child: _step == 1 ? _buildStep1(cs) : _buildStep2(cs),
+              24, 16, 24, 32 + MediaQuery.of(context).viewPadding.bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E3A8A).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.lock_reset_rounded,
+                      color: Color(0xFF1E3A8A), size: 36),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('Forgot Password',
+                  style: AppTextStyles.heading3(color: cs.onSurface),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 6),
+              Text(
+                _sent
+                    ? 'A password reset link has been sent to your email. Check your inbox and follow the link.'
+                    : "Enter your registered email and we'll send you a reset link.",
+                style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+              if (!_sent) ...[
+                const SizedBox(height: 24),
+                AppTextField(
+                  label: 'Registered Email',
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  hint: 'e.g., user@apartment.com',
+                ),
+                if (_errorMsg != null) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          color: Colors.redAccent, size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(_errorMsg!,
+                            style: AppTextStyles.caption(
+                                color: Colors.redAccent)),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 20),
+                CommonButton(
+                  text: 'Send Reset Email',
+                  gradient: const [Color(0xFF1E3A8A), Color(0xFF06B6D4)],
+                  isLoading: _sending,
+                  onPressed: _sending ? null : _send,
+                ),
+              ] else ...[
+                const SizedBox(height: 24),
+                CommonButton(
+                  text: 'Done',
+                  gradient: const [Color(0xFF1E3A8A), Color(0xFF06B6D4)],
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
