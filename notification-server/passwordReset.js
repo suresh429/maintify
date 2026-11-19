@@ -10,36 +10,44 @@
  *   password_reset_otps/{email}  — temporary OTP doc; deleted after use or expiry
  *
  * Env vars required for email sending:
- *   GMAIL_EMAIL          — Gmail address used as sender
- *   GMAIL_APP_PASSWORD   — Gmail App Password (not the account password)
+ *   SENDGRID_API_KEY     — SendGrid API key
+ *   SENDGRID_FROM_EMAIL  — Verified sender email address in SendGrid
  */
 
 const admin  = require('firebase-admin');
 const crypto = require('crypto');
 
-// Lazy nodemailer transporter — created on first use so secrets are available
-let _transporter = null;
+// ─────────────────────────────────────────────────────────────────────────────
+// Email sender — SendGrid HTTP API (works on Render Free; SMTP is blocked)
+// ─────────────────────────────────────────────────────────────────────────────
 
-function _getTransporter() {
-  if (_transporter) return _transporter;
+async function _sendEmail({ to, subject, html }) {
+  const apiKey   = process.env.SENDGRID_API_KEY;
+  const fromEmail = process.env.SENDGRID_FROM_EMAIL;
 
-  const nodemailer = require('nodemailer');
-  const email    = process.env.GMAIL_EMAIL;
-  const password = process.env.GMAIL_APP_PASSWORD;
-
-  if (!email || !password) {
-    throw new Error('Missing GMAIL_EMAIL or GMAIL_APP_PASSWORD environment variables.');
+  if (!apiKey || !fromEmail) {
+    throw new Error('Missing SENDGRID_API_KEY or SENDGRID_FROM_EMAIL environment variables.');
   }
 
-  _transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: email, pass: password },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
+  const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: fromEmail, name: 'Maintify' },
+      subject,
+      content: [{ type: 'text/html', value: html }],
+    }),
+    signal: AbortSignal.timeout(15000),
   });
 
-  return _transporter;
+  if (!response.ok && response.status !== 202) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`SendGrid error ${response.status}: ${text}`);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -231,9 +239,7 @@ async function sendResetOtp(email) {
   });
 
   // Send email
-  const transporter = _getTransporter();
-  await transporter.sendMail({
-    from:    `"Maintify" <${process.env.GMAIL_EMAIL}>`,
+  await _sendEmail({
     to:      normalizedEmail,
     subject: 'Your Maintify Password Reset OTP',
     html:    _buildOtpEmailHtml(otp),
