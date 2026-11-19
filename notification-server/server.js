@@ -43,6 +43,27 @@ app.get('/', (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GET /trigger-overdue-check?secret=<OVERDUE_TRIGGER_SECRET>
+// Manual trigger for testing overdue reminders without waiting for 9 AM cron.
+// Protect with OVERDUE_TRIGGER_SECRET env var — never expose without it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.get('/trigger-overdue-check', async (req, res) => {
+  const secret = process.env.OVERDUE_TRIGGER_SECRET;
+  if (!secret) {
+    return res.status(403).json({ success: false, error: 'Trigger endpoint disabled — set OVERDUE_TRIGGER_SECRET env var to enable' });
+  }
+  if (req.query.secret !== secret) {
+    return res.status(403).json({ success: false, error: 'Invalid secret' });
+  }
+
+  res.json({ success: true, message: 'Overdue check started — watch Render logs' });
+  runOverdueCheck().catch((e) =>
+    console.error('[OVERDUE] Manual trigger failed:', e.message)
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /send-notification
 // ─────────────────────────────────────────────────────────────────────────────
 
