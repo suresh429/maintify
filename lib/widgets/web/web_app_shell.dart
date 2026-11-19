@@ -20,6 +20,9 @@ class WebAppShell extends StatefulWidget {
   /// The current page body — swapped by the parent on index change.
   final Widget child;
 
+  /// Optional action widgets shown in the top bar after the page title.
+  final List<Widget>? actions;
+
   const WebAppShell({
     super.key,
     required this.role,
@@ -27,6 +30,7 @@ class WebAppShell extends StatefulWidget {
     required this.currentIndex,
     required this.onIndexChanged,
     required this.child,
+    this.actions,
   });
 
   @override
@@ -105,6 +109,7 @@ class _WebAppShellState extends State<WebAppShell> {
                   role: widget.role,
                   onToggleSidebar: () =>
                       setState(() => _sidebarExpanded = !_sidebarExpanded),
+                  actions: widget.actions,
                 ),
 
                 // Page content — use LayoutBuilder to pass TIGHT constraints

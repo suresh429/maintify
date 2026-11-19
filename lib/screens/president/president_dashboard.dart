@@ -237,6 +237,7 @@ class _PresidentDashboardState extends State<PresidentDashboard> {
         ],
         currentIndex: _currentIndex,
         onIndexChanged: _onTabSelected,
+        actions: _currentIndex == 0 ? [_buildFAB(theme)] : null,
         child: IndexedStack(index: _currentIndex, children: _pages),
       );
     }

@@ -16,11 +16,15 @@ class WebTopBar extends StatelessWidget implements PreferredSizeWidget {
   final UserRole role;
   final VoidCallback onToggleSidebar;
 
+  /// Optional action widgets rendered after the page title (before the spacer).
+  final List<Widget>? actions;
+
   const WebTopBar({
     super.key,
     required this.title,
     required this.role,
     required this.onToggleSidebar,
+    this.actions,
   });
 
   @override
@@ -73,6 +77,11 @@ class WebTopBar extends StatelessWidget implements PreferredSizeWidget {
                 color: cs.onSurface,
               ),
             ),
+
+            if (actions != null) ...[
+              const SizedBox(width: 12),
+              ...actions!,
+            ],
 
             const Spacer(),
 

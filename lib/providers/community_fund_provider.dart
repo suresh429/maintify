@@ -106,6 +106,21 @@ class CommunityFundProvider extends ChangeNotifier {
           lastUpdatedAt: DateTime.now(),
         );
       }
+      _transactions = [
+        FundTransaction(
+          id: id,
+          apartmentId: aptId,
+          type: FundTxnType.collection,
+          amountPaise: amountPaise,
+          description: description,
+          category: FundCategory.general,
+          createdBy: createdBy,
+          createdByName: createdByName,
+          createdAt: DateTime.now(),
+          receiptNote: receiptNote?.isEmpty == true ? null : receiptNote,
+        ),
+        ..._transactions,
+      ];
       _error = null;
       return id;
     } catch (e) {
@@ -145,6 +160,21 @@ class CommunityFundProvider extends ChangeNotifier {
           lastUpdatedAt: DateTime.now(),
         );
       }
+      _transactions = [
+        FundTransaction(
+          id: id,
+          apartmentId: aptId,
+          type: FundTxnType.expense,
+          amountPaise: amountPaise,
+          description: description,
+          category: category,
+          createdBy: createdBy,
+          createdByName: createdByName,
+          createdAt: DateTime.now(),
+          receiptNote: receiptNote?.isEmpty == true ? null : receiptNote,
+        ),
+        ..._transactions,
+      ];
       _error = null;
       return id;
     } catch (e) {
