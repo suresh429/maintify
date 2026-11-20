@@ -31,8 +31,10 @@ class ConnectivityProvider extends ChangeNotifier with WidgetsBindingObserver {
   Timer? _debounce;
   Timer? _suppressionTimer;
 
-  /// How long to wait before declaring the device offline.
-  static const _offlineDebounce = Duration(milliseconds: 2500);
+  /// How long a disconnected state must persist before the banner appears.
+  /// 5 s tolerates brief Wi-Fi hand-offs, DHCP renewals, and OEM background
+  /// network-kill events that recover on their own.
+  static const _offlineDebounce = Duration(milliseconds: 5000);
 
   /// Reconnection is confirmed quickly.
   static const _onlineDebounce = Duration(milliseconds: 500);
@@ -50,9 +52,15 @@ class ConnectivityProvider extends ChangeNotifier with WidgetsBindingObserver {
   /// (no debounce, no [notifyListeners]).
   bool _suppressed = true;
 
-  /// Connectivity state at the moment a suppression window opens.
-  /// Used on resume to decide whether state actually changed.
-  bool _stateAtSuppressStart = true;
+  /// The last connectivity state that was actually *notified* to the UI via
+  /// [notifyListeners].  This is intentionally separate from [_isConnected],
+  /// which tracks the raw stream/probe result and may change silently in the
+  /// background without ever being shown to the user.
+  ///
+  /// Used as the baseline for the resume-suppression comparison so that a
+  /// WiFi blip while the app is backgrounded (never shown to the user) does
+  /// NOT cause a spurious "back online" banner when the user reopens the app.
+  bool _lastNotifiedConnected = true;
 
   /// Generation counter — incremented each time a suppression window opens.
   /// Allows the async [checkNow] callback to detect if a newer suppression
@@ -120,6 +128,7 @@ class ConnectivityProvider extends ChangeNotifier with WidgetsBindingObserver {
         }
         debugPrint('[CONNECTIVITY] Notifying: transition to ${connected ? "ONLINE" : "OFFLINE"}');
         _isConnected = connected;
+        _lastNotifiedConnected = connected;
         notifyListeners();
       },
     );
@@ -140,7 +149,10 @@ class ConnectivityProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   void _onResume() {
     debugPrint('[CONNECTIVITY] App resumed — starting ${_resumeSuppression.inSeconds}s suppression window');
-    _stateAtSuppressStart = _isConnected;
+    // Compare against the last state the UI was actually *told about*, not the
+    // raw cached state.  A WiFi blip while backgrounded (never shown to user)
+    // must not cause a spurious "back online" banner on resume.
+    final uiKnewConnected = _lastNotifiedConnected;
     _suppressed = true;
     _debounce?.cancel();
     _suppressionTimer?.cancel();
@@ -153,10 +165,11 @@ class ConnectivityProvider extends ChangeNotifier with WidgetsBindingObserver {
       try {
         final confirmed = await _service.checkNow();
         if (_suppressionGeneration != resumeGeneration) return; // stale
-        debugPrint('[CONNECTIVITY] Resume probe: ${confirmed ? "online" : "offline"} (was: ${_stateAtSuppressStart ? "online" : "offline"})');
+        debugPrint('[CONNECTIVITY] Resume probe: ${confirmed ? "online" : "offline"} (ui knew: ${uiKnewConnected ? "online" : "offline"})');
         _isConnected = confirmed;
-        if (confirmed != _stateAtSuppressStart) {
+        if (confirmed != uiKnewConnected) {
           debugPrint('[CONNECTIVITY] Genuine state change on resume — notifying');
+          _lastNotifiedConnected = confirmed;
           notifyListeners();
         } else {
           debugPrint('[CONNECTIVITY] State unchanged on resume — no notification');

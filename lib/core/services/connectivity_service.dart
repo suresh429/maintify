@@ -23,13 +23,20 @@ class ConnectivityService {
 
   static final ConnectivityService instance = ConnectivityService._();
 
-  /// Poll every 10 s using Cloudflare and Google DNS — both are highly
-  /// reliable and available worldwide.  The longer interval reduces false
-  /// positives on networks where the default 5 s checks occasionally time out
-  /// (corporate proxies, VPNs, Wi-Fi hand-offs).
+  /// Poll every 15 s.  Three endpoints provide redundancy: if one is blocked
+  /// by a carrier or VPN the others confirm real internet access.
+  ///
+  /// - generate_204: Google's official captive-portal probe (used by Chrome /
+  ///   Android OS).  Returns HTTP 204 — fastest possible response, no HTML.
+  /// - one.one.one.one / dns.google: Cloudflare and Google DNS-over-HTTPS,
+  ///   backed by anycast so they're always reachable on working connections.
+  ///
+  /// The checker considers the device CONNECTED if ANY endpoint responds.
+  /// This eliminates false-offline from a single host being temporarily slow.
   final InternetConnection _checker = InternetConnection.createInstance(
-    checkInterval: const Duration(seconds: 10),
+    checkInterval: const Duration(seconds: 15),
     customCheckOptions: [
+      InternetCheckOption(uri: Uri.parse('https://clients3.google.com/generate_204')),
       InternetCheckOption(uri: Uri.parse('https://one.one.one.one')),
       InternetCheckOption(uri: Uri.parse('https://dns.google')),
     ],
