@@ -1,7 +1,4 @@
-import 'package:firebase_remote_config/firebase_remote_config.dart';
-
-/// Immutable snapshot of the three version-control values from Firebase
-/// Remote Config. Nothing is hardcoded — all values are Remote Config driven.
+/// Immutable snapshot of the three version-control values from Firestore.
 class AppVersionModel {
   final String latestVersion;
   final bool forceUpdate;
@@ -13,11 +10,17 @@ class AppVersionModel {
     required this.playStoreUrl,
   });
 
-  factory AppVersionModel.fromRemoteConfig(FirebaseRemoteConfig config) {
+  factory AppVersionModel.fromMap(Map<String, dynamic> map) {
     return AppVersionModel(
-      latestVersion: config.getString('latest_version').trim(),
-      forceUpdate: config.getBool('force_update'),
-      playStoreUrl: config.getString('play_store_url').trim(),
+      latestVersion: (map['latestVersion'] as String? ?? '').trim(),
+      forceUpdate:   map['forceUpdate']   as bool?   ?? false,
+      playStoreUrl:  (map['playStoreUrl'] as String? ?? '').trim(),
     );
   }
+
+  static const AppVersionModel empty = AppVersionModel(
+    latestVersion: '0.0.0',
+    forceUpdate:   false,
+    playStoreUrl:  '',
+  );
 }

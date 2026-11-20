@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/apartment_provider.dart';
@@ -10,9 +11,15 @@ import '../providers/notification_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/ads_provider.dart';
 import '../providers/community_fund_provider.dart';
+import '../providers/version_provider.dart';
+import '../models/notification_model.dart';
+import '../models/update_status.dart';
 import '../core/theme/role_theme.dart';
 import '../core/services/widget_data_service.dart';
 import '../core/utils/app_utils.dart';
+import '../widgets/update_dialog.dart';
+import '../core/app_update/presentation/providers/app_update_provider.dart';
+import '../core/app_update/presentation/services/app_update_coordinator.dart';
 import 'admin/admin_dashboard.dart';
 import 'president/president_dashboard.dart';
 import 'resident/resident_dashboard.dart';
@@ -174,6 +181,23 @@ class _StreamStarterState extends State<_StreamStarter> with WidgetsBindingObser
       final aptId = user.apartmentId ?? '';
       final role = auth.role!;
 
+      // ── Update check ───────────────────────────────────────────────────────
+      // Android: Google Play In-App Update API via AppUpdateCoordinator.
+      //          Works on ALL Android devices without Firebase Remote Config.
+      // iOS/web: Firebase RC + Firestore fallback (unchanged behaviour).
+      Future.delayed(const Duration(seconds: 3), () async {
+        if (!mounted) return;
+        if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+          final coordinator = AppUpdateCoordinator(
+            context.read<AppUpdateProvider>(),
+          );
+          await coordinator.runUpdateCheck(context);
+        } else {
+          await _checkRcVersion(context, auth, user);
+        }
+      });
+      // ── End update check ───────────────────────────────────────────────────
+
       context.read<ApartmentProvider>().startListening();
       context.read<UserProvider>().startListening();
       context.read<NotificationProvider>().startListening(user.id);
@@ -205,6 +229,45 @@ class _StreamStarterState extends State<_StreamStarter> with WidgetsBindingObser
         Future.delayed(const Duration(seconds: 3), () => _pushWidgetUpdate());
       }
     });
+  }
+
+  // ── iOS / web: Firebase RC + Firestore fallback ──────────────────────────
+  Future<void> _checkRcVersion(
+    BuildContext ctx,
+    AuthProvider auth,
+    dynamic user,
+  ) async {
+    final versionProvider = ctx.read<VersionProvider>();
+    debugPrint('[DASH-ROUTER] Running RC/Firestore version check…');
+    await versionProvider.checkVersion();
+    if (!mounted) return;
+    final status = versionProvider.status;
+    final model  = versionProvider.model;
+    if ((status == UpdateStatus.forceUpdate ||
+            status == UpdateStatus.optionalUpdate) &&
+        model != null) {
+      final box      = Hive.box<String>('session');
+      final dedupKey = 'update_notif_${model.latestVersion}';
+      if (box.get(dedupKey) != 'true') {
+        await box.put(dedupKey, 'true');
+        if (!mounted) return;
+        await ctx.read<NotificationProvider>().addAndPersistNotification(
+          title:         'App Update Available',
+          body:          'Version ${model.latestVersion} is available. Tap to update.',
+          type:          NotificationType.appUpdate,
+          targetRole:    auth.role ?? UserRole.resident,
+          targetUserIds: [user.id],
+        );
+      }
+      if (!mounted) return;
+      debugPrint('[DASH-ROUTER] Showing update dialog: $status');
+      showUpdateDialog(
+        ctx,
+        model:    model,
+        isForce:  status == UpdateStatus.forceUpdate,
+        onUpdate: versionProvider.openStore,
+      );
+    }
   }
 
   /// Reads current app state and pushes a snapshot to iOS WidgetKit.

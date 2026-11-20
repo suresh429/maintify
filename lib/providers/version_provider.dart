@@ -17,6 +17,7 @@ class VersionProvider extends ChangeNotifier {
   UpdateStatus get status => _status;
   bool get isChecking => _isChecking;
 
+
   /// Fetches Remote Config and determines [UpdateStatus].
   /// On any failure the status falls back to [UpdateStatus.upToDate] so the
   /// app is never permanently blocked by a connectivity issue.

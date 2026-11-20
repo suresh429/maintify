@@ -117,7 +117,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
           // ── Notification list ──────────────────────────────────────────
           Expanded(
-            child: itemCount == 0
+            child: SafeArea(
+              top: false,
+              child: itemCount == 0
                 ? _buildEmpty(context, isDark)
                 : ListView.builder(
                     padding: isWeb
@@ -162,6 +164,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       );
                     },
                   ),
+            ),
           ),
         ],
       ),

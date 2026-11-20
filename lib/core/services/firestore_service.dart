@@ -739,6 +739,49 @@ class FirestoreService {
     }
   }
 
+  // ──────────────────────────── VERSION CONFIG ──────────────────────────────
+  // Firestore path: systemConfig/versionConfig
+  // Schema: { latestVersion: String, forceUpdate: bool, updatedAt: Timestamp }
+  //
+  // Create/update this document in the Firebase console whenever you release
+  // a new version.  It is used as a reliable fallback on devices where
+  // Firebase Remote Config is blocked (e.g. Poco/MIUI at startup).
+  //
+  // Example:
+  //   Firebase Console → Firestore → systemConfig/versionConfig
+  //   { latestVersion: "1.0.6", forceUpdate: false }
+
+  /// Reads [systemConfig/versionConfig] once.
+  /// Returns null if the document doesn't exist or a read error occurs —
+  /// callers should treat null as "no version info available".
+  Future<Map<String, dynamic>?> getVersionConfig() async {
+    try {
+      final doc = await _db
+          .collection('systemConfig')
+          .doc('versionConfig')
+          .get();
+      if (!doc.exists || doc.data() == null) return null;
+      return doc.data();
+    } catch (e) {
+      debugPrint('[FirestoreService] getVersionConfig error: $e');
+      return null;
+    }
+  }
+
+  /// Writes [systemConfig/versionConfig] (super admin only — enforced by rules).
+  Future<void> updateVersionConfig({
+    required String latestVersion,
+    required bool forceUpdate,
+    required String updatedBy,
+  }) async {
+    await _db.collection('systemConfig').doc('versionConfig').set({
+      'latestVersion': latestVersion,
+      'forceUpdate':   forceUpdate,
+      'updatedAt':     FieldValue.serverTimestamp(),
+      'updatedBy':     updatedBy,
+    }, SetOptions(merge: true));
+  }
+
   /// Updates UPI payment settings for an apartment.
   Future<void> updateUpiSettings({
     required String aptId,

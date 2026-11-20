@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../providers/notification_provider.dart';
 import '../providers/version_provider.dart';
-import '../models/notification_model.dart';
-import '../models/update_status.dart';
 import '../core/constants/app_constants.dart';
-import '../core/theme/role_theme.dart';
 import '../widgets/maintify_logo.dart';
-import '../widgets/update_dialog.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -55,76 +49,25 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   /// Startup flow:
-  ///   1. Auth restore + Remote Config fetch + 2.4 s branding delay (all parallel).
-  ///   2. Force update  → non-dismissible dialog; app stays on splash.
-  ///   3. Optional update → dismissible dialog; navigation continues after dismiss.
-  ///   4. Up to date    → navigate to dashboard or login.
+  ///   1. Auth restore + version check (RC fetch to warm up Hive/RC cache) +
+  ///      2.4 s branding delay — all parallel.
+  ///   2. Navigate to /dashboard or /login.
+  ///
+  /// The update dialog is intentionally NOT shown here.  It is shown from
+  /// [DashboardRouter] after the user is authenticated and Firestore streams
+  /// are live.  This ensures the dialog works on all devices — including those
+  /// where Firebase Remote Config is blocked at startup (e.g. Poco/MIUI).
   Future<void> _navigate() async {
-    final auth = context.read<AuthProvider>();
+    final auth    = context.read<AuthProvider>();
     final version = context.read<VersionProvider>();
 
     await Future.wait([
       Future.delayed(const Duration(milliseconds: 2400)),
       auth.tryRestoreSession(),
+      // Run version check to warm up RC cache / Hive. Dialog shown on dashboard.
       version.checkVersion(),
     ]);
 
-    if (!mounted) return;
-
-    final status = version.status;
-    final model = version.model;
-
-    // ── Persist app_update in-app notification (once per version) ────────
-    // This ensures the notification appears in NotificationsScreen.
-    // Deduplicated via Hive so we write at most once per version per device.
-    if ((status == UpdateStatus.forceUpdate ||
-            status == UpdateStatus.optionalUpdate) &&
-        model != null &&
-        auth.isLoggedIn &&
-        auth.currentUser != null) {
-      final box = Hive.box<String>('session');
-      final dedupKey = 'update_notif_${model.latestVersion}';
-      if (box.get(dedupKey) != 'true') {
-        await box.put(dedupKey, 'true');
-        final notifProvider = context.read<NotificationProvider>();
-        final userId = auth.currentUser!.id;
-        final role = auth.role ?? UserRole.resident;
-        await notifProvider.addAndPersistNotification(
-          title: 'App Update Available',
-          body: 'Version ${model.latestVersion} is available. Tap to update.',
-          type: NotificationType.appUpdate,
-          targetRole: role,
-          targetUserIds: [userId],
-        );
-      }
-    }
-
-    // ── Force update ──────────────────────────────────────────────────────
-    // Show non-dismissible dialog and return early — the user must update.
-    // If they background the app and return, the dialog is still visible.
-    // If the app is killed and relaunched, this flow runs again.
-    if (status == UpdateStatus.forceUpdate && model != null) {
-      showUpdateDialog(
-        context,
-        model: model,
-        isForce: true,
-        onUpdate: version.openStore,
-      );
-      return;
-    }
-
-    // ── Optional update ───────────────────────────────────────────────────
-    // Await the dialog so navigation happens only after the user acts.
-    if (status == UpdateStatus.optionalUpdate && model != null) {
-      await showUpdateDialog(
-        context,
-        model: model,
-        isForce: false,
-        onUpdate: version.openStore,
-      );
-    }
-
-    // ── Continue to app ───────────────────────────────────────────────────
     if (!mounted) return;
     Navigator.pushReplacementNamed(
       context,
