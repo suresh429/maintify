@@ -19,6 +19,7 @@
  *   complaints/{id}/messages/{msgId}      onCreate   → FCM: new message → notify other party
  *   payments/{paymentId}                  onUpdate   → FCM: payment submitted / verified / rejected
  *   fund_transactions/{txnId}             onCreate   → FCM: fund collection / expense → notify residents
+ *   systemConfig/versionConfig            onUpdate   → FCM + in-app: new latestVersion → notify ALL presidents + residents
  *
  * Note: Daily overdue payment reminders run via node-cron in the Render notification server
  *       (notification-server/overdueChecker.js) — not as a Cloud Function.
@@ -671,3 +672,46 @@ exports.onPaymentUpdated = onDocumentUpdated('payments/{paymentId}', async (even
   }
 });
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// App version update — broadcast to ALL presidents + residents
+// Triggered when super admin updates systemConfig/versionConfig.
+// Sends FCM push + in-app notification so ALL users see it in their
+// notifications list regardless of when they next open the app.
+// ─────────────────────────────────────────────────────────────────────────────
+exports.onVersionConfigUpdated = onDocumentUpdated('systemConfig/versionConfig', async (event) => {
+  const before = event.data.before.data() || {};
+  const after  = event.data.after.data()  || {};
+
+  const prevVersion = (before.latestVersion || '').trim();
+  const newVersion  = (after.latestVersion  || '').trim();
+
+  // Only broadcast when the version string actually changes.
+  if (!newVersion || newVersion === '0.0.0' || newVersion === prevVersion) {
+    console.log(`[VERSION] No version change (${prevVersion} → ${newVersion}) — skipping broadcast.`);
+    return;
+  }
+
+  console.log(`[VERSION] New version detected: ${prevVersion} → ${newVersion}. Broadcasting to presidents + residents…`);
+
+  const title = 'App Update Available';
+  const body  = `Version ${newVersion} is available. Tap to update.`;
+
+  // Notify all presidents across all apartments.
+  await sendToRole('president', {
+    title,
+    body,
+    type:          'app_update',
+    saveToFirestore: true,
+  });
+
+  // Notify all residents across all apartments.
+  await sendToRole('resident', {
+    title,
+    body,
+    type:          'app_update',
+    saveToFirestore: true,
+  });
+
+  console.log(`[VERSION] Broadcast complete for version ${newVersion}.`);
+});
