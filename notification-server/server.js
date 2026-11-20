@@ -274,27 +274,42 @@ app.post('/send-update-notification', async (req, res) => {
   // ── Broadcast FCM + write in-app notification docs ───────────────────────
   console.log(`[BROADCAST] Admin ${caller.uid} sending update notification`);
   try {
+    const db  = require('firebase-admin').firestore();
+    const now = require('firebase-admin').firestore.FieldValue.serverTimestamp();
+
+    // Send FCM to all presidents + residents
     const result = await sendToAllUsers(title.trim(), body.trim(), { type: 'app_update' });
     console.log(`[BROADCAST] Done — success: ${result.successCount}, failed: ${result.failureCount}, total users: ${result.totalUsers}`);
 
-    // Write one in-app notification doc per role so it appears in the
-    // notifications list for all presidents and residents.
-    const db  = require('firebase-admin').firestore();
-    const now = require('firebase-admin').firestore.FieldValue.serverTimestamp();
-    const batch = db.batch();
-    for (const role of ['president', 'resident']) {
-      const ref = db.collection('notifications').doc();
-      batch.set(ref, {
-        title:      title.trim(),
-        body:       body.trim(),
-        type:       'app_update',
-        targetRole: role,
-        isRead:     false,
-        createdAt:  now,
-      });
+    // Write one in-app notification doc per user with userId field so the
+    // Flutter stream (where('userId', isEqualTo: uid)) returns it for each user.
+    const usersSnap = await db
+      .collection('users')
+      .where('role', 'in', ['president', 'resident'])
+      .get();
+
+    if (!usersSnap.empty) {
+      // Firestore batch supports up to 500 operations — chunk if needed
+      const CHUNK    = 499;
+      const userDocs = usersSnap.docs;
+      for (let i = 0; i < userDocs.length; i += CHUNK) {
+        const batch = db.batch();
+        userDocs.slice(i, i + CHUNK).forEach((userDoc) => {
+          const ref = db.collection('notifications').doc();
+          batch.set(ref, {
+            title:      title.trim(),
+            body:       body.trim(),
+            type:       'app_update',
+            targetRole: userDoc.data().role,
+            userId:     userDoc.id,
+            isRead:     false,
+            createdAt:  now,
+          });
+        });
+        await batch.commit();
+      }
+      console.log(`[BROADCAST] In-app notification docs written for ${usersSnap.size} users`);
     }
-    await batch.commit();
-    console.log('[BROADCAST] In-app notification docs written for president + resident');
 
     return res.json({
       success:      true,

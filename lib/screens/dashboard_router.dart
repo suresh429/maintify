@@ -18,7 +18,6 @@ import '../core/theme/role_theme.dart';
 import '../core/services/widget_data_service.dart';
 import '../core/utils/app_utils.dart';
 import '../widgets/update_dialog.dart';
-import '../core/app_update/domain/entities/app_update_info.dart';
 import '../core/app_update/presentation/providers/app_update_provider.dart';
 import '../core/app_update/presentation/services/app_update_coordinator.dart';
 import 'admin/admin_dashboard.dart';
@@ -189,31 +188,17 @@ class _StreamStarterState extends State<_StreamStarter> with WidgetsBindingObser
       Future.delayed(const Duration(seconds: 3), () async {
         if (!mounted) return;
         if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+          // Show Play In-App Update dialog (immediate / flexible).
           final coordinator = AppUpdateCoordinator(
             context.read<AppUpdateProvider>(),
           );
           await coordinator.runUpdateCheck(context);
           if (!mounted) return;
-          // Write in-app notification for Android so all roles see it
-          // in their notifications list (Play Core dialog alone is not enough).
-          final updateInfo = context.read<AppUpdateProvider>().info;
-          if (updateInfo.status == AppUpdateStatus.optionalUpdate ||
-              updateInfo.status == AppUpdateStatus.forceUpdate) {
-            final dedupKey =
-                'app_update_notif_${updateInfo.availableVersionCode ?? 0}';
-            final box = Hive.box<String>('session');
-            if (box.get(dedupKey) != 'true') {
-              await box.put(dedupKey, 'true');
-              if (!mounted) return;
-              await context.read<NotificationProvider>().addAndPersistNotification(
-                title:         'App Update Available',
-                body:          'A new version of Maintify is available. Tap to update.',
-                type:          NotificationType.appUpdate,
-                targetRole:    auth.role ?? UserRole.resident,
-                targetUserIds: [user.id],
-              );
-            }
-          }
+          // Always run Firestore version check on Android too — just for the
+          // in-app notification (no dialog shown). This ensures the notification
+          // appears in ALL roles' notification list regardless of whether Play
+          // Core succeeds (it fails in debug builds).
+          await _checkRcVersion(context, auth, user, showDialog: false);
         } else {
           await _checkRcVersion(context, auth, user);
         }
@@ -253,12 +238,15 @@ class _StreamStarterState extends State<_StreamStarter> with WidgetsBindingObser
     });
   }
 
-  // ── iOS / web: Firebase RC + Firestore fallback ──────────────────────────
+  // ── iOS / web: Firestore version check + optional dialog ────────────────
+  // showDialog: false → notification only (used on Android after Play Core check)
+  // showDialog: true  → notification + update dialog (iOS / web)
   Future<void> _checkRcVersion(
     BuildContext ctx,
     AuthProvider auth,
-    dynamic user,
-  ) async {
+    dynamic user, {
+    bool showDialog = true,
+  }) async {
     final versionProvider = ctx.read<VersionProvider>();
     debugPrint('[DASH-ROUTER] Running RC/Firestore version check…');
     await versionProvider.checkVersion();
@@ -281,6 +269,7 @@ class _StreamStarterState extends State<_StreamStarter> with WidgetsBindingObser
           targetUserIds: [user.id],
         );
       }
+      if (!showDialog) return;
       if (!mounted) return;
       debugPrint('[DASH-ROUTER] Showing update dialog: $status');
       showUpdateDialog(
