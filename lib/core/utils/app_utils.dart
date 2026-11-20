@@ -97,6 +97,23 @@ class AppUtils {
     }
   }
 
+  /// Opens the Play Store listing for the given [packageId].
+  ///
+  /// Tries the `market://` URI first — this bypasses web-link interceptors
+  /// (e.g. Realme/ColorOS shelper) and opens Play Store directly.
+  /// Falls back to the HTTPS URL if `market://` is unavailable (e.g. web,
+  /// devices without Google Play).
+  static Future<void> launchPlayStore(String packageId) async {
+    final marketUri = Uri.parse('market://details?id=$packageId');
+    if (await canLaunchUrl(marketUri)) {
+      await launchUrl(marketUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    final httpsUri =
+        Uri.parse('https://play.google.com/store/apps/details?id=$packageId');
+    await launchUrl(httpsUri, mode: LaunchMode.externalApplication);
+  }
+
   static Future<bool?> showConfirmDialog(
     BuildContext context, {
     required String title,

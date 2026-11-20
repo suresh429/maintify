@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/complaint_provider.dart';
@@ -428,10 +427,7 @@ class _NotificationTile extends StatelessWidget {
     // App update → open Play Store
     if (type == NotificationType.appUpdate) {
       debugPrint('[NOTIF-TAP]   branch: app_update → Play Store');
-      launchUrl(
-        Uri.parse('https://play.google.com/store/apps/details?id=com.maintify.app'),
-        mode: LaunchMode.externalApplication,
-      );
+      AppUtils.launchPlayStore('com.maintify.app');
       return;
     }
 

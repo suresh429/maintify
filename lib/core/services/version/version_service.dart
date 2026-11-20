@@ -1,10 +1,10 @@
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../models/app_version_model.dart';
 import '../../../models/update_status.dart';
+import '../../utils/app_utils.dart';
 import '../../utils/version_compare.dart';
 
 /// Handles Remote Config fetching, version comparison, and Play Store
@@ -62,18 +62,15 @@ class VersionService {
     return UpdateStatus.upToDate;
   }
 
-  /// Opens the Play Store URL from Remote Config.
+  static const String _packageId = 'com.maintify.app';
+
+  /// Opens the Play Store listing.
+  /// Uses [AppUtils.launchPlayStore] which tries `market://` first to avoid
+  /// web-link interceptors on some Android OEM ROMs (e.g. Realme/ColorOS).
+  /// The [model.playStoreUrl] from Remote Config is ignored — the package ID
+  /// is authoritative and market:// is more reliable than an HTTPS URL.
   Future<void> openStore(AppVersionModel model) async {
-    final url = model.playStoreUrl;
-    if (url.isEmpty) {
-      debugPrint('[VersionService] play_store_url is empty — skipping launch.');
-      return;
-    }
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      debugPrint('[VersionService] Cannot launch URL: $url');
-    }
+    debugPrint('[VersionService] Opening Play Store for $_packageId');
+    await AppUtils.launchPlayStore(_packageId);
   }
 }

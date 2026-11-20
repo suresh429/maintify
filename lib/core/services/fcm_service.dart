@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../navigation_key.dart';
+import '../utils/app_utils.dart';
 import 'firestore_service.dart';
 
 /// Handles Firebase Cloud Messaging — permission, token lifecycle,
@@ -317,12 +317,8 @@ class FcmService {
     // Update notification → open Play Store directly
     if (type == 'app_update') {
       debugPrint('[FCM-NAV] app_update — opening Play Store');
-      launchUrl(
-        Uri.parse('https://play.google.com/store/apps/details?id=com.maintify.app'),
-        mode: LaunchMode.externalApplication,
-      ).catchError((e) {
+      AppUtils.launchPlayStore('com.maintify.app').catchError((e) {
         debugPrint('[FCM-NAV] Play Store launch failed: $e');
-        return false;
       });
       return;
     }

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/notification_provider.dart';
 import '../providers/version_provider.dart';
+import '../models/notification_model.dart';
 import '../models/update_status.dart';
 import '../core/constants/app_constants.dart';
+import '../core/theme/role_theme.dart';
 import '../widgets/maintify_logo.dart';
 import '../widgets/update_dialog.dart';
 
@@ -69,6 +73,31 @@ class _SplashScreenState extends State<SplashScreen>
 
     final status = version.status;
     final model = version.model;
+
+    // ── Persist app_update in-app notification (once per version) ────────
+    // This ensures the notification appears in NotificationsScreen.
+    // Deduplicated via Hive so we write at most once per version per device.
+    if ((status == UpdateStatus.forceUpdate ||
+            status == UpdateStatus.optionalUpdate) &&
+        model != null &&
+        auth.isLoggedIn &&
+        auth.currentUser != null) {
+      final box = Hive.box<String>('session');
+      final dedupKey = 'update_notif_${model.latestVersion}';
+      if (box.get(dedupKey) != 'true') {
+        await box.put(dedupKey, 'true');
+        final notifProvider = context.read<NotificationProvider>();
+        final userId = auth.currentUser!.id;
+        final role = auth.role ?? UserRole.resident;
+        await notifProvider.addAndPersistNotification(
+          title: 'App Update Available',
+          body: 'Version ${model.latestVersion} is available. Tap to update.',
+          type: NotificationType.appUpdate,
+          targetRole: role,
+          targetUserIds: [userId],
+        );
+      }
+    }
 
     // ── Force update ──────────────────────────────────────────────────────
     // Show non-dismissible dialog and return early — the user must update.
