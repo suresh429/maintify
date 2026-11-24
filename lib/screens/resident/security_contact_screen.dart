@@ -197,52 +197,25 @@ class _SecurityContactCard extends StatelessWidget {
                 if (staff.shift != null) _ShiftBadge(shift: staff.shift!),
               ],
             ),
-            const SizedBox(height: 10),
-            // Mobile number
-            Row(
+            const SizedBox(height: 12),
+            // Info chips
+            Wrap(
+              spacing: 10,
+              runSpacing: 6,
               children: [
-                Icon(Icons.phone_outlined,
-                    size: 14, color: cs.onSurfaceVariant),
-                const SizedBox(width: 6),
-                Text(
-                  staff.mobileNumber,
-                  style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
-                ),
+                if (salary != null)
+                  _InfoChip(
+                    icon: Icons.currency_rupee_rounded,
+                    label: '₹${salary!.monthlySalary.toStringAsFixed(0)}/mo',
+                    color: AppColors.paid,
+                  ),
+                if (staff.address != null && staff.address!.isNotEmpty)
+                  _InfoChip(
+                    icon: Icons.location_on_outlined,
+                    label: staff.address!,
+                  ),
               ],
             ),
-            // Salary row (shown only if loaded)
-            if (salary != null) ...[
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Icon(Icons.currency_rupee_rounded,
-                      size: 14, color: cs.onSurfaceVariant),
-                  const SizedBox(width: 6),
-                  Text(
-                    '₹${salary!.monthlySalary.toStringAsFixed(0)} / month',
-                    style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
-                  ),
-                ],
-              ),
-            ],
-            // Address row (shown only if set)
-            if (staff.address != null && staff.address!.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.location_on_outlined,
-                      size: 14, color: cs.onSurfaceVariant),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      staff.address!,
-                      style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
-                    ),
-                  ),
-                ],
-              ),
-            ],
             const SizedBox(height: 12),
             // Action buttons
             Row(
@@ -349,6 +322,27 @@ class _ShiftBadge extends StatelessWidget {
           color: color,
         ),
       ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color? color;
+  const _InfoChip({required this.icon, required this.label, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final c = color ?? cs.onSurfaceVariant;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: c),
+        const SizedBox(width: 4),
+        Text(label, style: AppTextStyles.caption(color: c)),
+      ],
     );
   }
 }
