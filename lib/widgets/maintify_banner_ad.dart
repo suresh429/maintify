@@ -39,7 +39,7 @@ class _MaintifyBannerAdState extends State<MaintifyBannerAd> {
     }
   }
 
-  void _loadAd() {
+  Future<void> _loadAd() async {
     if (kIsWeb || !AdMobIds.isMobilePlatform) {
       debugPrint('[MaintifyBannerAd] skipped — web or unsupported platform');
       return;
@@ -49,11 +49,17 @@ class _MaintifyBannerAdState extends State<MaintifyBannerAd> {
       debugPrint('[MaintifyBannerAd] skipped — adUnitId is empty');
       return;
     }
-    debugPrint('[MaintifyBannerAd] loading ad — unit=$adUnitId');
+
+    final width = MediaQuery.of(context).size.width.truncate();
+    final adSize =
+        await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(width);
+    if (!mounted || adSize == null) return;
+
+    debugPrint('[MaintifyBannerAd] loading adaptive ad — unit=$adUnitId width=$width');
 
     _bannerAd = BannerAd(
       adUnitId: adUnitId,
-      size: AdSize.banner,
+      size: adSize,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (_) {

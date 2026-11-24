@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/bill_provider.dart';
+import '../../widgets/maintify_banner_ad.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
@@ -41,7 +42,9 @@ class PaymentHistoryScreen extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(height: 20),
+        const MaintifyBannerAd(),
+
+        const SizedBox(height: 12),
 
         // ── Section header ────────────────────────────────────────────────
         Padding(

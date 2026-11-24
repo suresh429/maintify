@@ -10,6 +10,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
+import '../../widgets/maintify_banner_ad.dart';
 import '../../widgets/upi_payment_sheet.dart';
 
 class ResidentMonthlyBillDetailScreen extends StatefulWidget {
@@ -106,6 +107,10 @@ class _ResidentMonthlyBillDetailScreenState
 
             // ── Section 3: Payment Info ────────────────────────────────────
             _buildPaymentInfo(context, theme, fresh, userId, billProvider, cs, isDark, apt),
+            const SizedBox(height: 14),
+
+            // ── Banner ad ──────────────────────────────────────────────────
+            const MaintifyBannerAd(),
           ],
         ),
       ),

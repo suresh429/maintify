@@ -9,6 +9,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../models/user_model.dart';
+import '../../widgets/maintify_banner_ad.dart';
 import '../../widgets/pill_filter_bar.dart';
 import '../../widgets/shimmer_loading.dart';
 
@@ -139,6 +140,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             onChanged: (f) => setState(() => _filter = f),
           ),
         ),
+        const MaintifyBannerAd(),
         Padding(
           padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 8.0, 4, isWeb ? 24.0 : 8.0, 8),
           child: Text('${filtered.length} member${filtered.length != 1 ? 's' : ''}',

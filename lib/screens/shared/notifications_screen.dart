@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../widgets/maintify_banner_ad.dart';
 import '../../providers/complaint_provider.dart';
 import '../../providers/bill_provider.dart';
 import '../../models/notification_model.dart';
@@ -114,6 +115,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         children: [
           // ── Filter chips ───────────────────────────────────────────────
           _buildFilterBar(context, theme, unreadCount, isDark, isWeb),
+
+          // ── Banner ad ──────────────────────────────────────────────────
+          const MaintifyBannerAd(),
 
           // ── Notification list ──────────────────────────────────────────
           Expanded(

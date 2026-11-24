@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
+import '../../widgets/maintify_banner_ad.dart';
 import '../../widgets/shimmer_loading.dart';
 import 'add_fund_collection_screen.dart';
 import 'add_fund_expense_screen.dart';
@@ -35,18 +36,25 @@ class CommunityFundScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF6F7FB),
       appBar: _buildAppBar(context, theme),
-      body: fund.isLoading && fund.summary == null
-          ? const ShimmerDashboard()
-          : !fund.isInitialized
-              ? _NotInitializedView(theme: theme, aptId: aptId, isPresident: _isPresident)
-              : _FundBody(
-                  fund: fund,
-                  aptId: aptId,
-                  theme: theme,
-                  cs: cs,
-                  isDark: isDark,
-                  isPresident: _isPresident,
-                ),
+      body: Column(
+        children: [
+          const MaintifyBannerAd(),
+          Expanded(
+            child: fund.isLoading && fund.summary == null
+                ? const ShimmerDashboard()
+                : !fund.isInitialized
+                    ? _NotInitializedView(theme: theme, aptId: aptId, isPresident: _isPresident)
+                    : _FundBody(
+                        fund: fund,
+                        aptId: aptId,
+                        theme: theme,
+                        cs: cs,
+                        isDark: isDark,
+                        isPresident: _isPresident,
+                      ),
+          ),
+        ],
+      ),
     );
   }
 

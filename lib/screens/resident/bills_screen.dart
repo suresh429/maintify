@@ -41,10 +41,6 @@ class _BillsScreenState extends State<BillsScreen> {
 
     return Column(
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 5),
-          child: MaintifyBannerAd(),
-        ),
         // Filter tabs
         Padding(
           padding: EdgeInsets.fromLTRB(isWeb ? 24.0 : 8.0, 8, isWeb ? 24.0 : 8.0, 0),
@@ -89,6 +85,7 @@ class _BillsScreenState extends State<BillsScreen> {
             }).toList(),
           ),
         ),
+        const MaintifyBannerAd(),
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),

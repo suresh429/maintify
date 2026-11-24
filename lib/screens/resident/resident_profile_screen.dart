@@ -18,6 +18,7 @@ import '../../core/utils/web_navigator.dart'
     if (dart.library.html) '../../core/utils/web_navigator_web.dart';
 import '../../widgets/change_password_sheet.dart';
 import '../../widgets/logout_sheet.dart';
+import '../../widgets/maintify_banner_ad.dart';
 import '../shared/notifications_screen.dart';
 
 class ResidentProfileScreen extends StatefulWidget {
@@ -137,6 +138,10 @@ class _ResidentProfileScreenState extends State<ResidentProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
+
+                  // Banner ad
+                  const MaintifyBannerAd(),
+                  const SizedBox(height: 20),
 
                   // Logout
                   _LogoutButton(isWeb: isWeb),
