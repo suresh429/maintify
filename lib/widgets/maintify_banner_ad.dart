@@ -23,6 +23,7 @@ class MaintifyBannerAd extends StatefulWidget {
 class _MaintifyBannerAdState extends State<MaintifyBannerAd> {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
+  bool _isLoadingAd = false; // guards against concurrent _loadAd() calls
   int _retryCount = 0;
   static const int _maxRetries = 3;
   // Retry delays: 10s, 30s, 60s
@@ -36,7 +37,7 @@ class _MaintifyBannerAdState extends State<MaintifyBannerAd> {
     debugPrint('[MaintifyBannerAd] didChangeDependencies — effectiveBannerEnabled=$enabled '
         'configLoaded=${ads.isLoaded} globalAds=${ads.globalAdsEnabled} '
         'aptAds=${ads.apartmentAdsEnabled}');
-    if (enabled && _bannerAd == null && !_isAdLoaded) {
+    if (enabled && _bannerAd == null && !_isAdLoaded && !_isLoadingAd) {
       _loadAd();
     } else if (!enabled && _bannerAd != null) {
       _disposeAd();
@@ -54,10 +55,17 @@ class _MaintifyBannerAdState extends State<MaintifyBannerAd> {
       return;
     }
 
+    // Synchronously guard against concurrent calls before the first await
+    if (_isLoadingAd) return;
+    _isLoadingAd = true;
+
     final width = MediaQuery.of(context).size.width.truncate();
     final adSize =
         await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(width);
-    if (!mounted || adSize == null) return;
+    if (!mounted || adSize == null) {
+      _isLoadingAd = false;
+      return;
+    }
 
     debugPrint('[MaintifyBannerAd] loading adaptive ad — unit=$adUnitId width=$width retry=$_retryCount');
 
@@ -68,6 +76,7 @@ class _MaintifyBannerAdState extends State<MaintifyBannerAd> {
       listener: BannerAdListener(
         onAdLoaded: (_) {
           debugPrint('[MaintifyBannerAd] ad loaded successfully');
+          _isLoadingAd = false;
           _retryCount = 0;
           if (mounted) setState(() => _isAdLoaded = true);
         },
@@ -77,6 +86,7 @@ class _MaintifyBannerAdState extends State<MaintifyBannerAd> {
               'retry=$_retryCount/$_maxRetries');
           ad.dispose();
           _bannerAd = null;
+          _isLoadingAd = false;
           if (mounted) setState(() => _isAdLoaded = false);
           _scheduleRetry();
         },
@@ -96,7 +106,7 @@ class _MaintifyBannerAdState extends State<MaintifyBannerAd> {
     Future.delayed(Duration(seconds: delaySeconds), () {
       if (!mounted) return;
       final enabled = context.read<AdsProvider>().effectiveBannerEnabled;
-      if (enabled && _bannerAd == null && !_isAdLoaded) {
+      if (enabled && _bannerAd == null && !_isAdLoaded && !_isLoadingAd) {
         _loadAd();
       }
     });
@@ -105,6 +115,7 @@ class _MaintifyBannerAdState extends State<MaintifyBannerAd> {
   void _disposeAd() {
     _bannerAd?.dispose();
     _bannerAd = null;
+    _isLoadingAd = false;
     _retryCount = 0;
     if (mounted) setState(() => _isAdLoaded = false);
   }

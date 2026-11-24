@@ -18,6 +18,13 @@ class SecurityStaffProvider extends ChangeNotifier {
 
   StreamSubscription<List<SecurityStaffModel>>? _staffSub;
   bool _started = false;
+  bool _disposed = false;
+  String? _aptId;
+  bool _salariesEnabled = false;
+  int _streamRetryCount = 0;
+  static const int _maxStreamRetries = 5;
+  // Retry delays: 2s, 5s, 10s, 20s, 30s
+  static const List<int> _streamRetryDelays = [2, 5, 10, 20, 30];
 
   // ── Getters ────────────────────────────────────────────────────────────────
 
@@ -28,7 +35,7 @@ class SecurityStaffProvider extends ChangeNotifier {
   /// All staff (active + inactive), useful for management screens.
   List<SecurityStaffModel> get allStaff => List.unmodifiable(_staff);
 
-  /// staffId → salary, loaded by president only.
+  /// staffId → salary. Populated after [loadSalaries] is called.
   Map<String, SecurityStaffSalary> get salaries => Map.unmodifiable(_salaries);
 
   bool get isLoading => _isLoading;
@@ -38,32 +45,74 @@ class SecurityStaffProvider extends ChangeNotifier {
 
   /// Starts the real-time stream for the given apartment.
   /// Idempotent — calling multiple times with the same aptId is safe.
+  /// Auto-retries on error with exponential backoff.
   void startListening(String aptId) {
     if (_started) return;
     _started = true;
+    _aptId = aptId;
+    _subscribeStream(aptId);
+  }
 
+  void _subscribeStream(String aptId) {
+    _staffSub?.cancel();
     _staffSub = _service.streamSecurityStaff(aptId).listen(
       (list) {
+        _streamRetryCount = 0; // reset on successful data
         _staff = list;
         _error = null;
         notifyListeners();
+        // Auto-fetch salaries for any staff not yet cached
+        if (_salariesEnabled) {
+          for (final s in list) {
+            if (!_salaries.containsKey(s.id)) {
+              _fetchSalary(aptId, s.id);
+            }
+          }
+        }
       },
       onError: (e) {
         _error = e.toString();
+        debugPrint('[SecurityStaffProvider] stream error (retry $_streamRetryCount/$_maxStreamRetries): $e');
         notifyListeners();
+        _scheduleStreamRetry(aptId);
       },
     );
   }
 
-  /// Fetches salary for every staff member in [aptId].
-  /// Should only be called for the president role.
-  Future<void> loadSalaries(String aptId) async {
-    for (final staff in _staff) {
-      await _fetchSalary(aptId, staff.id);
+  void _scheduleStreamRetry(String aptId) {
+    if (_streamRetryCount >= _maxStreamRetries) {
+      debugPrint('[SecurityStaffProvider] max stream retries reached');
+      return;
     }
-    // Listen for new staff after the initial load.
-    // We piggy-back on the stream — when _staff changes (via startListening)
-    // we should re-fetch salaries for any newly added staff.
+    final delay = _streamRetryDelays[_streamRetryCount];
+    _streamRetryCount++;
+    debugPrint('[SecurityStaffProvider] retrying stream in ${delay}s (attempt $_streamRetryCount)');
+    Future.delayed(Duration(seconds: delay), () {
+      if (_disposed) return;
+      _subscribeStream(aptId);
+    });
+  }
+
+  /// Manual retry — called when the user taps "Retry" in the error UI.
+  void retry() {
+    final aptId = _aptId;
+    if (aptId == null) return;
+    _streamRetryCount = 0;
+    _error = null;
+    notifyListeners();
+    _subscribeStream(aptId);
+  }
+
+  /// Enables salary loading and fetches salaries for all current staff.
+  /// Call this for both president and resident roles after [startListening].
+  Future<void> loadSalaries(String aptId) async {
+    _salariesEnabled = true;
+    _aptId = aptId;
+    for (final staff in _staff) {
+      if (!_salaries.containsKey(staff.id)) {
+        await _fetchSalary(aptId, staff.id);
+      }
+    }
   }
 
   Future<void> _fetchSalary(String aptId, String staffId) async {
@@ -163,6 +212,7 @@ class SecurityStaffProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _staffSub?.cancel();
     super.dispose();
   }

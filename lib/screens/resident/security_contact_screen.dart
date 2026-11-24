@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
@@ -50,6 +51,43 @@ class _SecurityContactList extends StatelessWidget {
       return const ShimmerDashboard();
     }
 
+    if (provider.error != null && provider.activeStaff.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cloud_off_rounded,
+                  size: 48,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              const SizedBox(height: 16),
+              Text(
+                'Failed to load staff',
+                style: AppTextStyles.subheading(
+                    color: Theme.of(context).colorScheme.onSurface),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Check your connection and try again.',
+                style: AppTextStyles.bodySmall(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () =>
+                    context.read<SecurityStaffProvider>().retry(),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Retry',
+                    style: TextStyle(fontFamily: 'Poppins')),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final staff = provider.activeStaff;
 
     if (staff.isEmpty) {
@@ -60,17 +98,23 @@ class _SecurityContactList extends StatelessWidget {
       );
     }
 
+    final salaries = provider.salaries;
+
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       itemCount: staff.length,
-      itemBuilder: (context, i) => _SecurityContactCard(staff: staff[i]),
+      itemBuilder: (context, i) => _SecurityContactCard(
+        staff: staff[i],
+        salary: salaries[staff[i].id],
+      ),
     );
   }
 }
 
 class _SecurityContactCard extends StatelessWidget {
   final SecurityStaffModel staff;
-  const _SecurityContactCard({required this.staff});
+  final SecurityStaffSalary? salary;
+  const _SecurityContactCard({required this.staff, this.salary});
 
   Future<void> _launchCall(BuildContext context, String mobile) async {
     final uri = Uri(scheme: 'tel', path: mobile);
@@ -88,9 +132,13 @@ class _SecurityContactCard extends StatelessWidget {
   Future<void> _launchWhatsApp(BuildContext context, String mobile) async {
     // Strip leading '+' for WhatsApp URL — use country code directly
     final number = mobile.startsWith('+') ? mobile.substring(1) : mobile;
-    final uri = Uri.parse('https://wa.me/$number');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    // Try direct WhatsApp app scheme first, fall back to wa.me
+    final appUri = Uri.parse('whatsapp://send?phone=$number');
+    final webUri = Uri.parse('https://wa.me/$number');
+    if (await canLaunchUrl(appUri)) {
+      await launchUrl(appUri, mode: LaunchMode.externalApplication);
+    } else if (await canLaunchUrl(webUri)) {
+      await launchUrl(webUri, mode: LaunchMode.externalApplication);
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -108,8 +156,11 @@ class _SecurityContactCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: isDark ? AppColors.darkSurface : cs.surface,
         borderRadius: BorderRadius.circular(16),
+        border: isDark
+            ? Border.all(color: AppColors.darkBorder.withValues(alpha: 0.6))
+            : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
@@ -147,19 +198,51 @@ class _SecurityContactCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            // Mobile number display
+            // Mobile number
             Row(
               children: [
-                const Icon(Icons.phone_outlined,
-                    size: 14, color: AppColors.textSecondary),
+                Icon(Icons.phone_outlined,
+                    size: 14, color: cs.onSurfaceVariant),
                 const SizedBox(width: 6),
                 Text(
                   staff.mobileNumber,
-                  style: AppTextStyles.bodySmall(
-                      color: cs.onSurfaceVariant),
+                  style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
                 ),
               ],
             ),
+            // Salary row (shown only if loaded)
+            if (salary != null) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(Icons.currency_rupee_rounded,
+                      size: 14, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Text(
+                    '₹${salary!.monthlySalary.toStringAsFixed(0)} / month',
+                    style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ],
+            // Address row (shown only if set)
+            if (staff.address != null && staff.address!.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.location_on_outlined,
+                      size: 14, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      staff.address!,
+                      style: AppTextStyles.bodySmall(color: cs.onSurfaceVariant),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 12),
             // Action buttons
             Row(
@@ -188,7 +271,7 @@ class _SecurityContactCard extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: () =>
                         _launchWhatsApp(context, staff.mobileNumber),
-                    icon: const Icon(Icons.chat_rounded,
+                    icon: const FaIcon(FontAwesomeIcons.whatsapp,
                         size: 16, color: Colors.white),
                     label: Text('WhatsApp',
                         style: AppTextStyles.caption(

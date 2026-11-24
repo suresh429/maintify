@@ -231,6 +231,7 @@ class _StreamStarterState extends State<_StreamStarter> with WidgetsBindingObser
           if (aptId.isNotEmpty) {
             context.read<CommunityFundProvider>().startListening(aptId);
             context.read<SecurityStaffProvider>().startListening(aptId);
+            context.read<SecurityStaffProvider>().loadSalaries(aptId);
           }
       }
 

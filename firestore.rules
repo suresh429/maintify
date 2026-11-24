@@ -244,7 +244,8 @@ service cloud.firestore {
       allow delete: if isAdminForApartment(aptId) || isSuperAdmin();
 
       match /private/{doc} {
-        allow read, write: if isAdminForApartment(aptId) || isSuperAdmin();
+        allow read: if isMemberOfApartment(aptId) || isSuperAdmin();
+        allow write: if isAdminForApartment(aptId) || isSuperAdmin();
       }
     }
   }

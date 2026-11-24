@@ -113,11 +113,34 @@ class _SecurityStaffList extends StatelessWidget {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(
-            'Error loading staff: ${provider.error}',
-            style: AppTextStyles.bodyMedium(
-                color: Theme.of(context).colorScheme.error),
-            textAlign: TextAlign.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cloud_off_rounded,
+                  size: 48,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              const SizedBox(height: 16),
+              Text(
+                'Failed to load staff',
+                style: AppTextStyles.subheading(
+                    color: Theme.of(context).colorScheme.onSurface),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Check your connection and try again.',
+                style: AppTextStyles.bodySmall(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () =>
+                    context.read<SecurityStaffProvider>().retry(),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Retry',
+                    style: TextStyle(fontFamily: 'Poppins')),
+              ),
+            ],
           ),
         ),
       );
@@ -157,8 +180,11 @@ class _SecurityStaffCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: isDark ? AppColors.darkSurface : cs.surface,
         borderRadius: BorderRadius.circular(16),
+        border: isDark
+            ? Border.all(color: AppColors.darkBorder.withValues(alpha: 0.6))
+            : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
