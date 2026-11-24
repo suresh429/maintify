@@ -234,5 +234,18 @@ service cloud.firestore {
       allow update: if false; // transactions are immutable
       allow delete: if isAdminForApartment(resource.data.apartmentId) || isSuperAdmin();
     }
+
+    // ── Security Staff ────────────────────────────────────────────────────────
+    // Public staff info readable by all apartment members.
+    // Private compensation only by president of that apartment.
+    match /apartments/{aptId}/securityStaff/{staffId} {
+      allow read: if isMemberOfApartment(aptId) || isSuperAdmin();
+      allow create, update: if isAdminForApartment(aptId) || isSuperAdmin();
+      allow delete: if isAdminForApartment(aptId) || isSuperAdmin();
+
+      match /private/{doc} {
+        allow read, write: if isAdminForApartment(aptId) || isSuperAdmin();
+      }
+    }
   }
 }

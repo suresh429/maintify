@@ -10,6 +10,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/role_theme.dart';
 import '../../core/utils/app_utils.dart';
+import '../../widgets/maintenance_payment_bottom_sheet.dart';
 import 'edit_bill_sheet.dart';
 
 class MonthlyBillDetailScreen extends StatefulWidget {
@@ -164,12 +165,14 @@ class _MonthlyBillDetailScreenState extends State<MonthlyBillDetailScreen> {
                 final userName = ctx.read<UserProvider>().findById(flat.userId)?.name
                     ?? 'Flat ${flat.unitNumber}';
 
-                // Check if any payment for this user is pending approval
+                // Check if any payment for this user is pending approval or partial
                 final userPayments = fresh.allPayments
                     .where((p) => p.userId == flat.userId)
                     .toList();
                 final isPendingApproval =
                     userPayments.any((p) => p.isPendingApproval);
+                final isPartiallyPaid =
+                    userPayments.any((p) => p.isPartiallyPaid);
                 final submittedAt = userPayments
                     .where((p) => p.isPendingApproval)
                     .map((p) => p.submittedAt)
@@ -189,12 +192,37 @@ class _MonthlyBillDetailScreenState extends State<MonthlyBillDetailScreen> {
                   0.0,
                   (sum, p) => sum + p.carryForwardAmount,
                 );
+                // paidAmountPaise for partial display
+                final flatPaidAmountPaise = userPaymentsForFlat.fold<int>(
+                  0,
+                  (sum, p) => sum + p.paidAmountPaise,
+                );
 
                 final presidentId = ctx
                         .read<AuthProvider>()
                         .currentUser
                         ?.id ??
                     '';
+
+                // Find the raw bill for this flat (first bill in the month)
+                final rawBillForFlat = fresh.bills.isNotEmpty
+                    ? (context.read<BillProvider>().rawBillById(fresh.bills.first.id) ??
+                        BillModel(
+                          id: fresh.bills.first.id,
+                          apartmentId: widget.aptId,
+                          createdByAdminId: '',
+                          title: '',
+                          totalAmount: userAmount,
+                          totalFlats: fresh.totalFlats,
+                          category: '',
+                          month: widget.summary.month,
+                          dueDate: fresh.dueDate,
+                          createdAt: DateTime.now(),
+                        ))
+                    : null;
+                // First payment for this flat (used for the bottom sheet)
+                final firstPaymentForFlat =
+                    userPaymentsForFlat.isNotEmpty ? userPaymentsForFlat.first : null;
 
                 return Padding(
                   padding: EdgeInsets.fromLTRB(
@@ -204,10 +232,12 @@ class _MonthlyBillDetailScreenState extends State<MonthlyBillDetailScreen> {
                     userName: userName,
                     isPaid: isPaid,
                     isPendingApproval: isPendingApproval,
+                    isPartiallyPaid: isPartiallyPaid,
                     submittedAt: submittedAt,
                     paidDate: paidDate,
                     amount: userAmount,
                     carryForwardAmount: flatCarryForward,
+                    paidAmountPaise: flatPaidAmountPaise,
                     theme: theme,
                     isLoading: billProvider.isLoading,
                     onApprove: isPendingApproval
@@ -250,18 +280,16 @@ class _MonthlyBillDetailScreenState extends State<MonthlyBillDetailScreen> {
                         : null,
                     onMarkPaid: (isPaid || isPendingApproval)
                         ? null
-                        : () async {
-                            await context
-                                .read<BillProvider>()
-                                .adminMarkMonthPaid(
-                                    widget.summary.month, widget.aptId, flat.userId);
-                            if (!ctx.mounted) return;
-                            AppUtils.showSnackBar(
-                              ctx,
-                              '${flat.unitNumber} marked as paid!',
-                              color: AppColors.paid,
-                            );
-                          },
+                        : (rawBillForFlat != null && firstPaymentForFlat != null)
+                            ? () {
+                                showMaintenancePaymentSheet(
+                                  ctx,
+                                  payment: firstPaymentForFlat,
+                                  bill: rawBillForFlat,
+                                  residentName: userName,
+                                );
+                              }
+                            : null,
                   ),
                 );
               },
@@ -973,10 +1001,12 @@ class _FlatPaymentCard extends StatelessWidget {
   final String? userName;
   final bool isPaid;
   final bool isPendingApproval;
+  final bool isPartiallyPaid;
   final DateTime? submittedAt;
   final DateTime? paidDate;
   final double amount;
   final double carryForwardAmount;
+  final int paidAmountPaise;
   final RoleTheme theme;
   final bool isLoading;
   final VoidCallback? onMarkPaid;
@@ -988,10 +1018,12 @@ class _FlatPaymentCard extends StatelessWidget {
     this.userName,
     required this.isPaid,
     required this.isPendingApproval,
+    this.isPartiallyPaid = false,
     this.submittedAt,
     this.paidDate,
     required this.amount,
     this.carryForwardAmount = 0.0,
+    this.paidAmountPaise = 0,
     required this.theme,
     required this.isLoading,
     this.onMarkPaid,
@@ -1010,6 +1042,8 @@ class _FlatPaymentCard extends StatelessWidget {
       border = Border.all(color: AppColors.paid.withValues(alpha: 0.25));
     } else if (isPendingApproval) {
       border = Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4));
+    } else if (isPartiallyPaid) {
+      border = Border.all(color: AppColors.pending.withValues(alpha: 0.4));
     }
 
     return Container(
@@ -1097,11 +1131,19 @@ class _FlatPaymentCard extends StatelessWidget {
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       )
-                                    : Text(
-                                        'Pending',
-                                        style: AppTextStyles.caption(
-                                            color: cs.onSurfaceVariant),
-                                      ),
+                                    : isPartiallyPaid
+                                        ? Text(
+                                            '${AppUtils.formatCurrency(paidAmountPaise / 100.0)} paid of ${AppUtils.formatCurrency(amount + carryForwardAmount)}',
+                                            style: AppTextStyles.caption(
+                                                color: AppColors.pending),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          )
+                                        : Text(
+                                            'Pending',
+                                            style: AppTextStyles.caption(
+                                                color: cs.onSurfaceVariant),
+                                          ),
                           ),
                         ],
                       ),
@@ -1147,7 +1189,7 @@ class _FlatPaymentCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
 
-                // Action for paid / plain pending
+                // Action for paid / plain pending / partial
                 if (isPaid)
                   const Icon(Icons.check_circle_rounded,
                       color: AppColors.paid, size: 26)
@@ -1156,16 +1198,19 @@ class _FlatPaymentCard extends StatelessWidget {
                     onTap: isLoading ? null : onMarkPaid,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 7),
+                          horizontal: 12, vertical: 7),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: theme.gradient),
+                        gradient: isPartiallyPaid
+                            ? const LinearGradient(
+                                colors: [AppColors.pending, Color(0xFFD97706)])
+                            : LinearGradient(colors: theme.gradient),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text(
-                        'Mark Paid',
-                        style: TextStyle(
+                      child: Text(
+                        isPartiallyPaid ? 'Add Payment' : 'Mark Paid',
+                        style: const TextStyle(
                           fontFamily: 'Poppins',
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),

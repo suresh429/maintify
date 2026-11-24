@@ -560,6 +560,106 @@ class BillProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// President records a partial or full payment for a resident.
+  ///
+  /// [paidAmountPaise] is the NEW amount being recorded in this call (in paise).
+  /// It is added to any previously recorded [paidAmountPaise] on the existing
+  /// payment doc to get [totalPaidPaise].
+  ///
+  /// If [totalPaidPaise] >= total owed, status is set to [BillStatus.paid].
+  /// Otherwise status is set to [BillStatus.partiallyPaid].
+  Future<void> adminMarkPartialPayment({
+    required String billId,
+    required String userId,
+    required int paidAmountPaise,
+    String paymentMethod = 'cash',
+    String? transactionId,
+    String? notes,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final now = DateTime.now();
+      final txnId = transactionId ?? 'TXN${now.millisecondsSinceEpoch}';
+      final paymentId = '${billId}_$userId';
+
+      // Find the existing payment to get current paidAmountPaise
+      final existing = _payments.where((p) => p.billId == billId && p.userId == userId).firstOrNull;
+      final previousPaidPaise = existing?.paidAmountPaise ?? 0;
+      final totalPaidPaise = previousPaidPaise + paidAmountPaise;
+
+      // Calculate total amount owed for this payment
+      final bill = _bills.firstWhere((b) => b.id == billId,
+          orElse: () => throw Exception('Bill not found'));
+      final totalOwedDouble =
+          (existing?.amount ?? bill.amountForUser(userId)) +
+          (existing?.carryForwardAmount ?? 0);
+      final totalOwedPaise = (totalOwedDouble * 100).round();
+
+      // Determine new status
+      final newStatus = totalPaidPaise >= totalOwedPaise
+          ? BillStatus.paid
+          : BillStatus.partiallyPaid;
+
+      await _fs.updatePayment(paymentId, {
+        'status': newStatus,
+        'paidDate': Timestamp.fromDate(now),
+        'transactionId': txnId,
+        'adminVerified': true,
+        'paymentMethod': paymentMethod,
+        'paidAmountPaise': totalPaidPaise,
+        if (notes != null && notes.isNotEmpty) 'paymentNotes': notes,
+      });
+
+      // Update local cache
+      for (int i = 0; i < _payments.length; i++) {
+        if (_payments[i].billId == billId && _payments[i].userId == userId) {
+          _payments[i] = BillPayment(
+            id:                 _payments[i].id,
+            billId:             _payments[i].billId,
+            userId:             _payments[i].userId,
+            unitNumber:         _payments[i].unitNumber,
+            status:             newStatus,
+            paidDate:           now,
+            transactionId:      txnId,
+            adminVerified:      true,
+            amount:             _payments[i].amount,
+            carryForwardAmount: _payments[i].carryForwardAmount,
+            paidAmountPaise:    totalPaidPaise,
+            paymentNotes:       notes ?? _payments[i].paymentNotes,
+            submittedAt:        _payments[i].submittedAt,
+            submittedBy:        _payments[i].submittedBy,
+            approvedAt:         _payments[i].approvedAt,
+            approvedBy:         _payments[i].approvedBy,
+            rejectedAt:         _payments[i].rejectedAt,
+            rejectedBy:         _payments[i].rejectedBy,
+            paymentMethod:      paymentMethod,
+            upiIdUsed:          _payments[i].upiIdUsed,
+            referenceLast4:     _payments[i].referenceLast4,
+          );
+          break;
+        }
+      }
+      MockBillData.replaceAll(_bills, _payments);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Returns how much has been actually paid for this payment in paise.
+  /// If [payment.paidAmountPaise] > 0, use it.
+  /// Otherwise if [payment.isPaid], return the full amount in paise.
+  int getPaymentPaidAmountPaise(BillPayment payment, BillModel bill) {
+    if (payment.paidAmountPaise > 0) return payment.paidAmountPaise;
+    if (payment.isPaid) {
+      final total = (payment.amount ?? bill.amountForUser(payment.userId)) +
+          payment.carryForwardAmount;
+      return (total * 100).round();
+    }
+    return 0;
+  }
+
   // ── Resident submit payment for approval ──────────────────────────────────
 
   /// Resident submits all pending bills in a month for president approval.
@@ -1031,7 +1131,17 @@ class BillProvider extends ChangeNotifier {
         } catch (_) {
           continue;
         }
-        carryForward += p.amount ?? priorBill.amountForUser(userId);
+        if (p.isPartiallyPaid) {
+          // Only carry forward the REMAINING balance (not the full amount)
+          final totalOwed =
+              (p.amount ?? priorBill.amountForUser(userId)) + p.carryForwardAmount;
+          final alreadyPaid = p.paidAmountPaise / 100.0;
+          final remaining = totalOwed - alreadyPaid;
+          if (remaining > 0) carryForward += remaining;
+        } else {
+          carryForward +=
+              (p.amount ?? priorBill.amountForUser(userId)) + p.carryForwardAmount;
+        }
         toClear.add(p.id);
       }
 

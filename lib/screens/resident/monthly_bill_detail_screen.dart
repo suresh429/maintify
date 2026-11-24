@@ -713,6 +713,65 @@ class _ResidentMonthlyBillDetailScreenState
                 ),
               );
             }),
+          ] else if (fresh.status == BillStatus.partiallyPaid) ...[
+            Builder(builder: (context) {
+              // Compute paid amount and remaining for the resident
+              final firstPayment = fresh.views.isNotEmpty
+                  ? fresh.views.first.payment
+                  : null;
+              final paidAmountPaise = firstPayment?.paidAmountPaise ?? 0;
+              final paidAmount = paidAmountPaise / 100.0;
+              final totalDue = fresh.totalAmount;
+              final remaining = (totalDue - paidAmount).clamp(0.0, totalDue);
+              return Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.pending.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: AppColors.pending.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.pie_chart_rounded,
+                        color: AppColors.pending, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Partially Paid',
+                              style: AppTextStyles.bodyMedium(
+                                      color: AppColors.pending)
+                                  .copyWith(fontWeight: FontWeight.w600)),
+                          if (paidAmountPaise > 0) ...[
+                            Text(
+                              '${AppUtils.formatCurrency(paidAmount)} paid · ${AppUtils.formatCurrency(remaining)} remaining',
+                              style: AppTextStyles.caption(
+                                  color: AppColors.pending
+                                      .withValues(alpha: 0.85)),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${AppUtils.formatCurrency(remaining)} will be carried to next month',
+                              style: AppTextStyles.caption(
+                                      color: AppColors.overdue)
+                                  .copyWith(fontSize: 11),
+                            ),
+                          ] else
+                            Text(
+                              'Your payment has been partially recorded.',
+                              style: AppTextStyles.caption(
+                                  color: AppColors.pending
+                                      .withValues(alpha: 0.8)),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
           ] else if (fresh.status == BillStatus.pendingApproval) ...[
             Container(
               padding: const EdgeInsets.all(14),

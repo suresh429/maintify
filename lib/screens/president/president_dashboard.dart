@@ -17,6 +17,7 @@ import 'mark_paid_screen.dart';
 import 'president_complaints_screen.dart';
 import 'president_profile_screen.dart';
 import 'community_fund_screen.dart';
+import 'security_staff_management_screen.dart';
 import '../../widgets/schedule_meeting_sheet.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/meeting_provider.dart';
@@ -688,6 +689,61 @@ class _PresidentHome extends StatelessWidget {
                               style: AppTextStyles.subheading(color: cs.onSurface)),
                           Text(
                               'Track collections and expenses for the apartment',
+                              style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded,
+                        color: cs.onSurfaceVariant),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            // ── Watchman & Security action card ──────────────────────────
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SecurityStaffManagementScreen(),
+                ),
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.security_rounded,
+                          color: AppColors.blue, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Watchman & Security',
+                              style: AppTextStyles.subheading(color: cs.onSurface)),
+                          Text(
+                              'Manage security staff, contacts and schedules',
                               style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                         ],
                       ),

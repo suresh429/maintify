@@ -22,6 +22,7 @@ import 'providers/registration_provider.dart';
 import 'providers/version_provider.dart';
 import 'providers/ads_provider.dart';
 import 'providers/community_fund_provider.dart';
+import 'providers/security_staff_provider.dart';
 import 'core/app_update/presentation/providers/app_update_provider.dart';
 import 'core/app_update/data/repositories/app_update_repository_impl.dart';
 import 'core/services/admob_service.dart';
@@ -154,6 +155,7 @@ class MaintifyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => VersionProvider()),
         ChangeNotifierProvider(create: (_) => AdsProvider()),
         ChangeNotifierProvider(create: (_) => CommunityFundProvider()),
+        ChangeNotifierProvider(create: (_) => SecurityStaffProvider()),
         ChangeNotifierProvider(
           create: (_) => AppUpdateProvider(AppUpdateRepositoryImpl()),
         ),

@@ -11,6 +11,7 @@ import '../providers/notification_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/ads_provider.dart';
 import '../providers/community_fund_provider.dart';
+import '../providers/security_staff_provider.dart';
 import '../providers/version_provider.dart';
 import '../models/notification_model.dart';
 import '../models/update_status.dart';
@@ -219,6 +220,8 @@ class _StreamStarterState extends State<_StreamStarter> with WidgetsBindingObser
           context.read<ComplaintProvider>().startListeningForApartment(aptId);
           if (aptId.isNotEmpty) {
             context.read<CommunityFundProvider>().startListening(aptId);
+            context.read<SecurityStaffProvider>().startListening(aptId);
+            context.read<SecurityStaffProvider>().loadSalaries(aptId);
           }
         case UserRole.resident:
           context.read<BillProvider>().startListeningForApartment(aptId);
@@ -227,6 +230,7 @@ class _StreamStarterState extends State<_StreamStarter> with WidgetsBindingObser
               .startListeningForApartment(aptId);
           if (aptId.isNotEmpty) {
             context.read<CommunityFundProvider>().startListening(aptId);
+            context.read<SecurityStaffProvider>().startListening(aptId);
           }
       }
 

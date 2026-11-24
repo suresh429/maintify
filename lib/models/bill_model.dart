@@ -275,6 +275,14 @@ class BillPayment {
   /// UI: show breakdown as "This Month: amount-carryForwardAmount" + "Previous Dues: carryForwardAmount".
   final double carryForwardAmount;
 
+  // ── Partial payment fields ─────────────────────────────────────────────────
+  /// Total paise actually received so far (0 = nothing paid yet).
+  /// 1 INR = 100 paise; stored as integer to avoid floating-point drift.
+  final int paidAmountPaise;
+
+  /// Optional notes from president when recording a partial or full payment.
+  final String? paymentNotes;
+
   BillPayment({
     required this.id,
     required this.billId,
@@ -295,12 +303,15 @@ class BillPayment {
     this.upiIdUsed,
     this.referenceLast4,
     this.carryForwardAmount = 0.0,
+    this.paidAmountPaise = 0,
+    this.paymentNotes,
   });
 
   bool get isPaid            => status == BillStatus.paid;
   bool get isPending         => status == BillStatus.pending || status == BillStatus.overdue;
   bool get isOverdue         => status == BillStatus.overdue;
   bool get isPendingApproval => status == BillStatus.pendingApproval;
+  bool get isPartiallyPaid   => status == BillStatus.partiallyPaid;
   /// True when status is pending AND was previously rejected (lets UI show a note).
   bool get wasRejected       => status == BillStatus.pending && rejectedAt != null;
   bool get isUpiPayment      => paymentMethod == 'upi';
@@ -332,6 +343,8 @@ class BillPayment {
       upiIdUsed:           d['upiIdUsed']           as String?,
       referenceLast4:      d['referenceLast4']      as String?,
       carryForwardAmount: (d['carryForwardAmount'] as num?)?.toDouble() ?? 0.0,
+      paidAmountPaise:     d['paidAmountPaise']     as int?    ?? 0,
+      paymentNotes:        d['paymentNotes']        as String?,
     );
   }
 
@@ -355,6 +368,8 @@ class BillPayment {
         'upiIdUsed':          upiIdUsed,
         'referenceLast4':     referenceLast4,
         if (carryForwardAmount > 0) 'carryForwardAmount': carryForwardAmount,
+        if (paidAmountPaise > 0)    'paidAmountPaise':    paidAmountPaise,
+        if (paymentNotes != null && paymentNotes!.isNotEmpty) 'paymentNotes': paymentNotes,
       };
 
   BillPayment copyWith({
@@ -371,6 +386,8 @@ class BillPayment {
     String?   paymentMethod,
     String?   upiIdUsed,
     String?   referenceLast4,
+    int?      paidAmountPaise,
+    String?   paymentNotes,
   }) {
     return BillPayment(
       id:                 id,
@@ -379,19 +396,21 @@ class BillPayment {
       unitNumber:         unitNumber,
       amount:             amount,
       carryForwardAmount: carryForwardAmount,
-      status:             status         ?? this.status,
-      paidDate:           paidDate       ?? this.paidDate,
-      transactionId:      transactionId  ?? this.transactionId,
-      adminVerified:      adminVerified  ?? this.adminVerified,
-      submittedAt:        submittedAt,    // nullable — explicit null clears the field
+      status:             status            ?? this.status,
+      paidDate:           paidDate          ?? this.paidDate,
+      transactionId:      transactionId     ?? this.transactionId,
+      adminVerified:      adminVerified     ?? this.adminVerified,
+      submittedAt:        submittedAt,       // nullable — explicit null clears the field
       submittedBy:        submittedBy,
-      approvedAt:         approvedAt     ?? this.approvedAt,
-      approvedBy:         approvedBy     ?? this.approvedBy,
-      rejectedAt:         rejectedAt     ?? this.rejectedAt,
-      rejectedBy:         rejectedBy     ?? this.rejectedBy,
-      paymentMethod:      paymentMethod  ?? this.paymentMethod,
-      upiIdUsed:          upiIdUsed      ?? this.upiIdUsed,
-      referenceLast4:     referenceLast4 ?? this.referenceLast4,
+      approvedAt:         approvedAt        ?? this.approvedAt,
+      approvedBy:         approvedBy        ?? this.approvedBy,
+      rejectedAt:         rejectedAt        ?? this.rejectedAt,
+      rejectedBy:         rejectedBy        ?? this.rejectedBy,
+      paymentMethod:      paymentMethod     ?? this.paymentMethod,
+      upiIdUsed:          upiIdUsed         ?? this.upiIdUsed,
+      referenceLast4:     referenceLast4    ?? this.referenceLast4,
+      paidAmountPaise:    paidAmountPaise   ?? this.paidAmountPaise,
+      paymentNotes:       paymentNotes      ?? this.paymentNotes,
     );
   }
 }

@@ -11,6 +11,7 @@ import '../../models/meeting_model.dart';
 import '../../models/notification_model.dart';
 import '../../models/president_invitation_model.dart';
 import '../../models/fund_model.dart';
+import '../../models/security_staff_model.dart';
 import '../../core/theme/role_theme.dart';
 
 /// Central Firestore service — all collection reads/writes go through here.
@@ -934,6 +935,96 @@ class FirestoreService {
     });
 
     return txnRef.id;
+  }
+
+  // ── Security Staff ─────────────────────────────────────────────────────────
+
+  /// Streams all security staff documents where employmentStatus == 'active'
+  /// from apartments/{aptId}/securityStaff subcollection.
+  Stream<List<SecurityStaffModel>> streamSecurityStaff(String aptId) {
+    return _db
+        .collection('apartments')
+        .doc(aptId)
+        .collection('securityStaff')
+        .where('employmentStatus', isEqualTo: SecurityEmploymentStatus.active)
+        .snapshots()
+        .map((s) => s.docs.map(SecurityStaffModel.fromFirestore).toList());
+  }
+
+  /// Creates public staff doc + private/compensation doc in one batch write.
+  Future<void> addSecurityStaff(
+    SecurityStaffModel staff,
+    SecurityStaffSalary salary,
+  ) async {
+    final staffRef = _db
+        .collection('apartments')
+        .doc(staff.apartmentId)
+        .collection('securityStaff')
+        .doc(staff.id);
+
+    final salaryRef = staffRef.collection('private').doc('compensation');
+
+    final batch = _db.batch();
+    batch.set(staffRef, staff.toMap());
+    batch.set(salaryRef, salary.toMap());
+    await batch.commit();
+  }
+
+  /// Updates public staff doc; also updates private/compensation if salary provided.
+  Future<void> updateSecurityStaff(
+    SecurityStaffModel staff, {
+    SecurityStaffSalary? salary,
+  }) async {
+    final staffRef = _db
+        .collection('apartments')
+        .doc(staff.apartmentId)
+        .collection('securityStaff')
+        .doc(staff.id);
+
+    if (salary != null) {
+      final salaryRef = staffRef.collection('private').doc('compensation');
+      final batch = _db.batch();
+      batch.set(staffRef, staff.toMap(), SetOptions(merge: true));
+      batch.set(salaryRef, salary.toMap(), SetOptions(merge: true));
+      await batch.commit();
+    } else {
+      await staffRef.set(staff.toMap(), SetOptions(merge: true));
+    }
+  }
+
+  /// Soft-deactivates staff by setting employmentStatus to 'inactive'.
+  Future<void> deactivateSecurityStaff(
+    String aptId,
+    String staffId,
+    String presidentId,
+  ) async {
+    await _db
+        .collection('apartments')
+        .doc(aptId)
+        .collection('securityStaff')
+        .doc(staffId)
+        .update({
+      'employmentStatus': SecurityEmploymentStatus.inactive,
+      'updatedAt':        Timestamp.fromDate(DateTime.now()),
+      'updatedBy':        presidentId,
+    });
+  }
+
+  /// Reads the private compensation doc for a single staff member.
+  Future<SecurityStaffSalary?> getSecurityStaffSalary(
+    String aptId,
+    String staffId,
+  ) async {
+    final snap = await _db
+        .collection('apartments')
+        .doc(aptId)
+        .collection('securityStaff')
+        .doc(staffId)
+        .collection('private')
+        .doc('compensation')
+        .get();
+    if (!snap.exists) return null;
+    return SecurityStaffSalary.fromFirestore(staffId, snap);
   }
 
 }
