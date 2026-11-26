@@ -24,6 +24,7 @@ import '../../widgets/web/web_page_container.dart';
 import '../../providers/ads_provider.dart';
 import '../../core/ads/interstitial_manager.dart';
 import '../../widgets/maintify_native_ad.dart';
+import '../../widgets/maintify_banner_ad.dart';
 import '../../providers/complaint_provider.dart';
 import '../../providers/community_fund_provider.dart';
 import '../shared/chat_screen.dart';
@@ -392,6 +393,10 @@ class _ResidentHome extends StatelessWidget {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 5),
+          child: MaintifyBannerAd(),
+        ),
         Padding(
           padding: const EdgeInsets.all(8),
           child: Column(

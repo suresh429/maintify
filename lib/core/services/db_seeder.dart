@@ -61,18 +61,75 @@ class DbSeeder {
           .where('role', isEqualTo: 'admin')
           .limit(1)
           .get();
-      if (snap.docs.isNotEmpty) return;
+      if (snap.docs.isNotEmpty) return; // Admin doc present — nothing to repair.
 
+      // Admin doc is missing — sign in to recreate it and repair any other
+      // system documents that require admin auth to write.
       debugPrint('[DbSeeder] Admin doc missing — recreating...');
       final cred = await _auth.signInWithEmailAndPassword(
         email: _adminEmail,
         password: _adminPassword,
       );
       await _writeAdminDoc(cred.user!.uid);
+      // Also ensure the ad config document is correct while we have admin auth.
+      await _ensureAdConfig();
       await _auth.signOut();
       debugPrint('[DbSeeder] Admin doc recreated.');
     } catch (e) {
       debugPrint('[DbSeeder] _repairAdmin error: $e');
+    }
+  }
+
+  /// Creates or patches systemConfig/adManagement so that all ad types
+  /// (banner, interstitial, native) are enabled.
+  ///
+  /// • If the document does not exist: creates it with all types on.
+  /// • If the document exists but the native field is absent or false:
+  ///   patches only the native field via set(merge:true) so that any other
+  ///   admin-configured values (adsEnabled, banner, interstitial) are preserved.
+  /// • If native is already true: no-op.
+  ///
+  /// Must be called while a user with admin write permissions is signed in.
+  static Future<void> _ensureAdConfig() async {
+    try {
+      final docRef = _db.collection('systemConfig').doc('adManagement');
+      final doc = await docRef.get();
+
+      if (!doc.exists) {
+        debugPrint('[DbSeeder] systemConfig/adManagement missing — creating with all ads enabled...');
+        await docRef.set({
+          'adsEnabled': true,
+          'banner':       {'enabled': true},
+          'interstitial': {
+            'enabled':         true,
+            'frequency':       3,
+            'cooldownSeconds': 60,
+          },
+          'native':    {'enabled': true},
+          'updatedAt': Timestamp.fromDate(DateTime.now()),
+          'updatedBy': 'DbSeeder',
+        });
+        debugPrint('[DbSeeder] systemConfig/adManagement created with all ads enabled.');
+        return;
+      }
+
+      // Document exists — patch the native field if it is absent or false.
+      final data   = doc.data()!;
+      final native = data['native'] as Map<String, dynamic>? ?? {};
+      final nativeEnabled = native['enabled'] as bool? ?? false;
+      if (!nativeEnabled) {
+        await docRef.set(
+          {
+            'native':    {'enabled': true},
+            'updatedAt': Timestamp.fromDate(DateTime.now()),
+            'updatedBy': 'DbSeeder',
+          },
+          SetOptions(merge: true),
+        );
+        debugPrint('[DbSeeder] systemConfig/adManagement patched: native ads enabled.');
+      }
+    } catch (e) {
+      debugPrint('[DbSeeder] _ensureAdConfig error: $e');
     }
   }
 
@@ -213,7 +270,21 @@ class DbSeeder {
     // 10. Meeting — one upcoming scheduled meeting
     await _seedMeeting(presidentId, now);
 
-    // 11. Guard doc
+    // 11. Ad config — all ads enabled for dev testing
+    await _db.collection('systemConfig').doc('adManagement').set({
+      'adsEnabled': true,
+      'banner': {'enabled': true},
+      'interstitial': {
+        'enabled': true,
+        'frequency': 3,
+        'cooldownSeconds': 60,
+      },
+      'native': {'enabled': true},
+      'updatedAt': Timestamp.fromDate(now),
+      'updatedBy': 'DbSeeder',
+    });
+
+    // 12. Guard doc
     await _db.collection('_meta').doc('seeded_v5').set({
       'seededAt': Timestamp.fromDate(now),
       'version':  5,

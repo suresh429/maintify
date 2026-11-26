@@ -4,13 +4,62 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Bundle
 import android.util.Log
+import android.webkit.WebView
+import com.google.android.gms.security.ProviderInstaller
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+
+    /**
+     * Update the Android security provider as early as possible.
+     *
+     * Some OEM devices (Realme, OPPO, Vivo) ship with an outdated TLS stack
+     * that cannot validate modern root CAs used by Google's ad servers, causing
+     * SSL handshake failures (net_error -202 / "Trust anchor for certification
+     * path not found"). ProviderInstaller patches the security provider in-process
+     * before Flutter or the Google Mobile Ads SDK open any network connections.
+     *
+     * Failure is intentionally swallowed — it is non-fatal and simply means the
+     * device stays on its built-in security provider.
+     */
+    override fun onCreate(savedInstanceState: Bundle?) {
+        try {
+            ProviderInstaller.installIfNeeded(this)
+            Log.d("MaintifyAdMob", "ProviderInstaller: security provider updated successfully")
+        } catch (e: Exception) {
+            Log.w("MaintifyAdMob", "ProviderInstaller update skipped (non-critical): ${e.message}")
+        }
+        super.onCreate(savedInstanceState)
+
+        // Pre-warm the system WebView's V8 JavaScript engine.
+        //
+        // On Realme / OPPO / ColorOS devices the WebView oat/arm64/base.odex is
+        // frequently loaded as non-executable ("requires an image which we failed
+        // to load"), so the runtime falls back to JIT compilation.  JIT startup
+        // is significantly slower than AOT — the V8 engine may not be ready by
+        // the time AdMob fires its first banner or interstitial request, causing:
+        //   error code 0 — "Unable to obtain a JavascriptEngine"
+        //
+        // Creating a WebView instance here, right after the Flutter Activity is
+        // set up, triggers V8 initialisation as early as possible.  By the time
+        // Flutter's bootstrap() calls MobileAds.instance.initialize() (and then
+        // the Dart code issues the first ad request), the engine is typically
+        // ready.  This is the standard OEM workaround recommended by the
+        // flutter_google_mobile_ads team.
+        try {
+            val wv = WebView(this)
+            wv.settings.javaScriptEnabled = true
+            Log.d("MaintifyAdMob", "WebView pre-warm: V8 JavaScript engine initialisation started")
+        } catch (e: Exception) {
+            Log.w("MaintifyAdMob", "WebView pre-warm skipped (non-critical): ${e.message}")
+        }
+    }
+
 
     companion object {
         private const val TAG = "MaintifyUPI"

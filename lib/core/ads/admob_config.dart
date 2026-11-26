@@ -184,15 +184,36 @@ class AdMobConfig {
       return _dev;
     }
 
-    // PROD — validate that real IDs have been supplied.
+    // PROD — validate that the platform-relevant IDs have been supplied.
+    // On Android only the Android IDs must be set; on iOS only the iOS IDs.
+    // Checking both platforms at once is wrong when only one platform is
+    // targeted (e.g. a prod-flavor Android debug run where iOS IDs are absent).
     if (kDebugMode) {
-      final bannerOk = !_prod.androidBannerAdUnitId.contains('XXXXXXXXXXXXXXXX') &&
-                       !_prod.iosBannerAdUnitId.contains('XXXXXXXXXXXXXXXX');
+      final platformBannerId = _isAndroid
+          ? _prod.androidBannerAdUnitId
+          : _prod.iosBannerAdUnitId;
+      final bannerOk = !platformBannerId.contains('XXXXXXXXXXXXXXXX');
+      final platformName = _isAndroid ? 'Android' : 'iOS';
       debugPrint('[AdMob] Environment : PROD');
-      debugPrint('[AdMob] Banner ID   : ${bannerOk ? "CONFIGURED" : "NOT CONFIGURED — placeholder in use"}');
+      debugPrint('[AdMob] Platform    : $platformName');
+      debugPrint('[AdMob] Banner ID   : ${bannerOk ? "CONFIGURED ($platformBannerId)" : "NOT CONFIGURED — placeholder in use"}');
       if (!bannerOk) {
-        debugPrint('[AdMob] ⚠  Pass --dart-define=ADMOB_PROD_ANDROID_BANNER_ID=<id>');
-        debugPrint('[AdMob] ⚠  Pass --dart-define=ADMOB_PROD_IOS_BANNER_ID=<id>');
+        final defineKey = _isAndroid
+            ? 'ADMOB_PROD_ANDROID_BANNER_ID'
+            : 'ADMOB_PROD_IOS_BANNER_ID';
+        debugPrint('[AdMob] ⚠  Pass --dart-define=$defineKey=<id>');
+      }
+
+      final platformInterstitialId = _isAndroid
+          ? _prod.androidInterstitialAdUnitId
+          : _prod.iosInterstitialAdUnitId;
+      final interstitialOk = !platformInterstitialId.contains('XXXXXXXXXXXXXXXX');
+      debugPrint('[AdMob] Interstitial: ${interstitialOk ? "CONFIGURED" : "NOT CONFIGURED — placeholder in use"}');
+      if (!interstitialOk) {
+        final defineKey = _isAndroid
+            ? 'ADMOB_PROD_ANDROID_INTERSTITIAL_ID'
+            : 'ADMOB_PROD_IOS_INTERSTITIAL_ID';
+        debugPrint('[AdMob] ⚠  Pass --dart-define=$defineKey=<id>');
       }
     }
 
@@ -209,6 +230,13 @@ class AdMobConfig {
 
   static bool get _isAndroid =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  /// Platform-appropriate AdMob App ID for the current flavor.
+  /// Returns empty string on web (ads are disabled on web).
+  String get appId {
+    if (!isMobilePlatform) return '';
+    return _isAndroid ? androidAppId : iosAppId;
+  }
 
   /// Platform-appropriate Banner Ad Unit ID for the current flavor.
   /// Returns empty string on web (ads are disabled on web).

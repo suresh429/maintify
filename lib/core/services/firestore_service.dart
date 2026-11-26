@@ -703,11 +703,12 @@ class FirestoreService {
   }
 
   /// Streams only the apartment-level adsEnabled field.
-  /// Emits [false] (ads OFF) when the field is absent or the document missing.
+  /// Defaults to [true] when the field is absent — opt-out model.
+  /// Ads are shown unless the apartment explicitly has adsEnabled=false.
   Stream<bool> streamApartmentAdsConfig(String aptId) {
     return _db.collection('apartments').doc(aptId).snapshots().map((doc) {
-      if (!doc.exists) return false;
-      return (doc.data()?['adsEnabled'] as bool?) ?? false;
+      if (!doc.exists) return true;
+      return (doc.data()?['adsEnabled'] as bool?) ?? true;
     });
   }
 

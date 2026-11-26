@@ -17,18 +17,18 @@ flutter build apk --flavor prod -t lib/main_prod.dart
 flutter build ios --flavor dev -t lib/main_dev.dart
 flutter build ios --flavor prod -t lib/main_prod.dart
 
-# Build PROD with real AdMob IDs (pass all 8 --dart-define flags)
-flutter build appbundle --flavor prod -t lib/main_prod.dart \
-  --dart-define=ADMOB_PROD_ANDROID_APP_ID=ca-app-pub-REAL~APPID \
-  --dart-define=ADMOB_PROD_ANDROID_BANNER_ID=ca-app-pub-REAL/BANNERID \
-  --dart-define=ADMOB_PROD_ANDROID_INTERSTITIAL_ID=ca-app-pub-REAL/INTID \
-  --dart-define=ADMOB_PROD_ANDROID_NATIVE_ID=ca-app-pub-REAL/NATIVEID \
+# Build PROD Android — Android AdMob IDs are hardcoded as defaults in admob_config.dart,
+# so --dart-define flags are only needed if overriding them (or for iOS IDs):
+flutter build appbundle --flavor prod -t lib/main_prod.dart
+# Note: Android App ID must also be set in android/app/src/prod/AndroidManifest.xml
+
+# Build PROD iOS — iOS AdMob IDs are NOT hardcoded; pass all 4 iOS flags:
+flutter build ipa --flavor prod -t lib/main_prod.dart \
   --dart-define=ADMOB_PROD_IOS_APP_ID=ca-app-pub-REAL~APPID \
   --dart-define=ADMOB_PROD_IOS_BANNER_ID=ca-app-pub-REAL/BANNERID \
   --dart-define=ADMOB_PROD_IOS_INTERSTITIAL_ID=ca-app-pub-REAL/INTID \
   --dart-define=ADMOB_PROD_IOS_NATIVE_ID=ca-app-pub-REAL/NATIVEID
-# Note: App IDs must also be set in android/app/src/prod/AndroidManifest.xml
-# and ios/inject_admob_id.sh (PROD_ADMOB_APP_ID variable)
+# Note: iOS App ID must also be set in ios/inject_admob_id.sh (PROD_ADMOB_APP_ID variable)
 
 # Run/build for web (no flavor flag; uses main_dev.dart or main_prod.dart)
 flutter run -d chrome -t lib/main_dev.dart
@@ -86,8 +86,9 @@ Three roles drive the entire app structure: `admin` (super admin), `president` (
 
 **Test credentials** (seeded via `DbSeeder` — DEV flavor only, guarded by `_meta/seeded_v5`):
 - `support.maintify@gmail.com` / `maintify@0606` → Admin (super admin)
-- `president@maintify.demo` / `Maintify@123` → President (demo apartment)
-- `resident@maintify.demo` / `Maintify@123` → Resident (demo apartment)
+- `president@maintify.demo` / `Maintify@123` → President (flat 101, Green Valley Residency / `GRVL1234`)
+- `resident@maintify.demo` / `Maintify@123` → Resident 1 (flat 102)
+- `resident2@maintify.demo` / `Maintify@123` → Resident 2 (flat 103)
 
 
 ### Provider Stack
@@ -353,17 +354,21 @@ Use `Column(mainAxisSize: MainAxisSize.min)` to avoid full-height expansion.
 
 The app has a three-layer ad enable gate: **global kill switch** (`AdConfig.adsEnabled`) AND **per-type switch** (`bannerEnabled`/`interstitialEnabled`/`nativeEnabled`) AND **per-apartment switch** (`apartments/{id}.adsEnabled`). All three must be true for ads to show. Ads are always disabled on web and non-mobile platforms.
 
+**Default model (opt-out):** `apartments.adsEnabled` and `AdConfig.nativeEnabled` both default to `true` — new apartments and new Firestore documents have ads enabled unless explicitly turned off.
+
+**DEV shortcut:** In development flavor (`AppConfig.isDevelopment`), all three `AdsProvider.effective*Enabled` getters bypass the Firestore gate and return `true` unconditionally. This ensures Google test ads always load in dev without needing Firestore config.
+
 **Firestore structure:**
 - `systemConfig/adManagement` — `AdConfig` document (global; managed by super admin via `ad_management_screen.dart`)
 - `apartments/{id}.adsEnabled` — per-apartment flag (managed by super admin per apartment; president sees read-only status on `president_advertising_screen.dart`)
 
 **Key files:**
-- `lib/core/ads/ad_config.dart` — `AdConfig` model (parsed from Firestore). Safe default is `AdConfig.defaultOff()` — all false.
-- `lib/core/ads/admob_config.dart` — `AdMobConfig`: DEV uses Google hardcoded test IDs; PROD reads IDs from `--dart-define` at compile time.
+- `lib/core/ads/ad_config.dart` — `AdConfig` model (parsed from Firestore). Safe default is `AdConfig.defaultOff()` — all false. `nativeEnabled` Firestore fallback is `true`.
+- `lib/core/ads/admob_config.dart` — `AdMobConfig`: DEV uses Google hardcoded test IDs; PROD reads IDs from `--dart-define` at compile time. Validation is platform-aware — Android builds only check Android IDs, iOS builds only check iOS IDs. Exposes `appId` getter (platform-appropriate).
 - `lib/core/ads/admob_ids.dart` — `AdMobIds`: platform-aware helper returning the correct ad unit ID for the current platform/flavor.
 - `lib/core/ads/interstitial_manager.dart` — `InterstitialManager.instance` singleton. Call `preload(config)` after login; call `recordEligibleAction(config, aptAdsEnabled, onDismissed)` at eligible navigation transitions. Frequency and cooldown driven by `AdConfig` fields.
-- `lib/core/services/admob_service.dart` — `AdMobService.initialize()`: initialises the Google Mobile Ads SDK during `bootstrap()`. No-ops on web.
-- `lib/widgets/maintify_banner_ad.dart` — `MaintifyBannerAd`: adaptive banner that self-manages `BannerAd` lifecycle; returns `SizedBox.shrink()` when ads are off.
+- `lib/core/services/admob_service.dart` — `AdMobService.initialize()`: initialises the Google Mobile Ads SDK during `bootstrap()`. No-ops on web. In debug builds, registers physical test device IDs via `updateRequestConfiguration`. Applies a 2-second post-init delay to give the system WebView time to initialise its JavaScript engine on Realme/OPPO/Vivo devices (without this, the first ad request may fail with "Unable to obtain a JavascriptEngine").
+- `lib/widgets/maintify_banner_ad.dart` — `MaintifyBannerAd`: adaptive banner that self-manages `BannerAd` lifecycle. On load failure, retries with exponential backoff (10 s → 30 s → 60 s). `_isRetryPending` prevents Firestore `notifyListeners()` from bypassing the backoff; `_loadGeneration` invalidates stale callbacks after the ad is disposed. Falls back to `AdSize.banner` (320×50) if adaptive size calculation returns null (degraded WebView on some OEMs).
 - `lib/widgets/maintify_native_ad.dart` — `MaintifyNativeAd`: native ad widget (Phase 3).
 
 **Admin screens:**

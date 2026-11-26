@@ -59,7 +59,7 @@ class AdConfig {
       interstitialFrequency: (interstitial['frequency'] as int?) ?? 5,
       interstitialCooldownSeconds:
           (interstitial['cooldownSeconds'] as int?) ?? 300,
-      nativeEnabled: (native['enabled'] as bool?) ?? false,
+      nativeEnabled: (native['enabled'] as bool?) ?? true,
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
       updatedBy: data['updatedBy'] as String?,
     );

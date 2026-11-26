@@ -30,6 +30,7 @@ import 'edit_bill_sheet.dart';
 import '../../widgets/web/web_app_shell.dart';
 import '../../widgets/web/web_page_container.dart';
 import '../../widgets/maintify_banner_ad.dart';
+import '../../widgets/maintify_native_ad.dart';
 import '../../providers/ads_provider.dart';
 import '../../core/ads/interstitial_manager.dart';
 import '../../providers/complaint_provider.dart';
@@ -1001,6 +1002,7 @@ class _PresidentHome extends StatelessWidget {
                 );
               }),
 
+            const MaintifyNativeAd(),
             const SizedBox(height: 10),
           ],
         ),

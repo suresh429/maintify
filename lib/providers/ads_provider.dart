@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../core/ads/ad_config.dart';
 import '../core/ads/admob_ids.dart';
 import '../core/ads/interstitial_manager.dart';
+import '../core/config/app_config.dart';
 import '../core/services/firestore_service.dart';
 
 /// Manages advertising configuration streamed from Firestore.
@@ -30,7 +31,7 @@ class AdsProvider extends ChangeNotifier {
   // ── State ────────────────────────────────────────────────────────────────────
 
   AdConfig _adConfig = AdConfig.defaultOff();
-  bool _apartmentAdsEnabled = false; // safe default OFF
+  bool _apartmentAdsEnabled = true; // default ON — opt-out model
   bool _configLoaded = false;
   bool _aptLoaded = false;
 
@@ -50,6 +51,8 @@ class AdsProvider extends ChangeNotifier {
   /// The single flag used by [AdBanner] for banner ads.
   bool get effectiveBannerEnabled {
     if (kIsWeb || !AdMobIds.isMobilePlatform) return false;
+    // DEV: bypass Firestore gate so test ads always load.
+    if (AppConfig.isDevelopment) return true;
     if (!_configLoaded || !_aptLoaded) return false;
     return _adConfig.adsEnabled &&
         _adConfig.bannerEnabled &&
@@ -62,6 +65,8 @@ class AdsProvider extends ChangeNotifier {
   /// True when interstitials should be considered for eligible transitions.
   bool get effectiveInterstitialEnabled {
     if (kIsWeb || !AdMobIds.isMobilePlatform) return false;
+    // DEV: bypass Firestore gate so test ads always load.
+    if (AppConfig.isDevelopment) return true;
     if (!_configLoaded || !_aptLoaded) return false;
     return _adConfig.adsEnabled &&
         _adConfig.interstitialEnabled &&
@@ -71,6 +76,8 @@ class AdsProvider extends ChangeNotifier {
   /// True when native ads should be shown.
   bool get effectiveNativeEnabled {
     if (kIsWeb || !AdMobIds.isMobilePlatform) return false;
+    // DEV: bypass Firestore gate so test ads always load.
+    if (AppConfig.isDevelopment) return true;
     if (!_configLoaded || !_aptLoaded) return false;
     return _adConfig.adsEnabled &&
         _adConfig.nativeEnabled &&
@@ -98,7 +105,8 @@ class AdsProvider extends ChangeNotifier {
     _configSub = _fs.streamAdConfig().listen(
       (config) {
         debugPrint('[AdsProvider] streamAdConfig update: adsEnabled=${config.adsEnabled} '
-            'banner=${config.bannerEnabled} interstitial=${config.interstitialEnabled}');
+            'banner=${config.bannerEnabled} interstitial=${config.interstitialEnabled} '
+            'native=${config.nativeEnabled}');
         _adConfig = config;
         _configLoaded = true;
         notifyListeners();
